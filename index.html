@@ -92,6 +92,7 @@
   }
   .calc-card { background: radial-gradient(120% 120% at 80% 0%, #3b4a63 0%, #1f2937 55%, #131a24 100%); }
   .bg-card   { background: radial-gradient(120% 120% at 18% 8%, #243089 0%, #141a44 52%, #0a0a1a 100%); }
+  .bb-card   { background: radial-gradient(120% 120% at 82% 8%, #3a1d52 0%, #1c1330 52%, #0c0a18 100%); }
   .calc-card .mini {
     flex: 0 0 auto;
     width: 92px;
@@ -142,6 +143,26 @@
     margin-bottom: 6px;
   }
   .bg-card .kicker { color: #a5b4fc; }
+  .bb-card .kicker { color: #ff9aa2; }
+
+  /* Brick Break card artwork */
+  .bb-card .mini {
+    flex: 0 0 auto;
+    width: 92px; height: 92px;
+    border-radius: 14px;
+    overflow: hidden;
+    position: relative;
+    padding: 11px 11px 0;
+    background: #0c0d16;
+    box-shadow: 0 10px 22px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.06);
+    transform: rotate(-4deg);
+    transition: transform .2s ease;
+  }
+  .bb-card .mini b { display:block; height:7px; border-radius:2px; margin-bottom:4px; }
+  .bb-card .mini .ball { position:absolute; width:7px; height:7px; border-radius:50%; background:#fff;
+    left:38px; bottom:26px; box-shadow:0 0 6px rgba(255,255,255,.8); }
+  .bb-card .mini .pad { position:absolute; left:30px; bottom:10px; width:32px; height:6px; border-radius:3px;
+    background:linear-gradient(180deg,#a5b4fc,#6366f1); box-shadow:0 0 8px rgba(99,102,241,.7); }
   .art-card .name {
     font-family: "Baloo 2", sans-serif;
     font-weight: 800;
@@ -217,6 +238,22 @@
           <span class="kicker">Interactive shaders</span>
           <span class="name">Background</span>
           <span class="desc">Living wallpapers that react to your&nbsp;mouse.</span>
+        </div>
+      </a>
+
+      <a class="card art-card bb-card" href="/Brick-Break/">
+        <div class="mini" aria-hidden="true">
+          <b style="background:#ff5a5f"></b>
+          <b style="background:#ff9f43"></b>
+          <b style="background:#ffd93d"></b>
+          <b style="background:#51cf66"></b>
+          <span class="ball"></span>
+          <span class="pad"></span>
+        </div>
+        <div class="txt">
+          <span class="kicker">Arcade</span>
+          <span class="name">Brick Break</span>
+          <span class="desc">Bounce the ball, clear the&nbsp;wall.</span>
         </div>
       </a>
     </div>
