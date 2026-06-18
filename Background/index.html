@@ -18,11 +18,13 @@
   body { font-family: var(--ui); -webkit-font-smoothing: antialiased; }
 
   #gl { position:fixed; inset:0; width:100vw; height:100vh; display:block; touch-action:none; z-index:1; }
-  #frameHost { position:fixed; inset:0; z-index:2; display:none; background:#05060a; }
-  #frameHost iframe { width:100%; height:100%; border:0; display:block; }
-  /* frosted chip over the bottom-right embed badge — reads as part of the UI
-     on any scene background (light or dark) */
-  .frame-mask { position:absolute; right:14px; bottom:14px; width:178px; height:46px; z-index:3;
+  /* Spline scene rendered straight into our own canvas via @splinetool/runtime
+     — no embed badge, no iframe. */
+  #splineHost { position:fixed; inset:0; z-index:2; display:none; background:#0b0d16; }
+  #spline3d { width:100%; height:100%; display:block; }
+  /* Spline free plan renders its badge into the canvas pixels (not the DOM),
+     so it can only be hidden with an overlay. Frosted chip matches the UI. */
+  .spline-badge-cover { position:absolute; right:14px; bottom:14px; width:178px; height:46px; z-index:3;
     pointer-events:none; border-radius:14px;
     background: rgba(10,12,20,.62);
     backdrop-filter: blur(12px) saturate(140%);
@@ -89,7 +91,7 @@
 </head>
 <body>
   <canvas id="gl"></canvas>
-  <div id="frameHost"><div class="frame-mask"></div></div>
+  <div id="splineHost"><canvas id="spline3d"></canvas><div class="spline-badge-cover"></div></div>
 
   <div class="ui" id="ui">
     <div class="topbar">
@@ -283,8 +285,8 @@ void main(){
 const WALLPAPERS = [
   { name:'Nebula',   label:'Nebula',   frag:F_NEBULA, hint:'Move to warm the gas · press and hold to ignite it' },
   { name:'Liquid',   label:'Liquid',   frag:F_LIQUID, hint:'Move to push the blobs around · click for a pulse' },
-  { name:'Cubes', label:'Cubes', type:'iframe',
-    src:'https://my.spline.design/backgroundhoverinteraction-0Wf1MKFaC0EvqotM05f3baKH/',
+  { name:'Cubes', label:'Cubes', type:'spline',
+    code:'https://prod.spline.design/XflGhneWvlE1aZ9h/scene.splinecode',
     hint:'A field of cubes — hover to push them around' },
 ];
 
@@ -324,7 +326,7 @@ function makeProgram(frag){
 
 let buf;
 function initGL(){
-  programs = WALLPAPERS.map(w => w.type === 'iframe' ? null : makeProgram(w.frag));
+  programs = WALLPAPERS.map(w => w.type ? null : makeProgram(w.frag));
   buf = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, buf);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);
@@ -376,23 +378,27 @@ WALLPAPERS.forEach((w, i) => {
   dock.appendChild(b);
 });
 const slug = w => w.name.toLowerCase().replace(/\s+/g, '-');
-const frameHost = document.getElementById('frameHost');
-let frameEl = null;
-function showFrame(src){
-  if (!frameEl){
-    frameEl = document.createElement('iframe');
-    frameEl.setAttribute('frameborder', '0');
-    frameEl.setAttribute('allow', 'autoplay; fullscreen; xr-spatial-tracking');
-    frameEl.src = src;
-    frameHost.appendChild(frameEl);
-  } else if (frameEl.src !== src) {
-    frameEl.src = src;
-  }
-  frameHost.style.display = 'block';
+const splineHost = document.getElementById('splineHost');
+const splineCanvas = document.getElementById('spline3d');
+let splineApp = null, splineState = 'idle';   // idle | loading | ready | error
+async function showSpline(url){
+  splineHost.style.display = 'block';
   canvas.style.display = 'none';
+  if (splineState === 'idle'){
+    splineState = 'loading';
+    try {
+      const { Application } = await import('https://esm.sh/@splinetool/runtime@1');
+      splineApp = new Application(splineCanvas);
+      await splineApp.load(url);
+      splineState = 'ready';
+    } catch (e) {
+      console.error('Spline runtime failed to load:', e);
+      splineState = 'error';
+    }
+  }
 }
-function hideFrame(){
-  frameHost.style.display = 'none';
+function hideSpline(){
+  splineHost.style.display = 'none';
   canvas.style.display = 'block';
 }
 function selectWallpaper(i, fromURL){
@@ -401,7 +407,7 @@ function selectWallpaper(i, fromURL){
   [...dock.children].forEach((b,bi)=> b.classList.toggle('on', bi===i));
   capName.textContent = w.name;
   if (capHint) capHint.textContent = w.hint;
-  if (w.type === 'iframe') showFrame(w.src); else hideFrame();
+  if (w.type === 'spline') showSpline(w.code); else hideSpline();
   if (!fromURL) history.replaceState(null, '', '#' + slug(w));
 }
 function wallpaperFromURL(){
@@ -435,7 +441,7 @@ function frame(){
   if (now - lastMove > 2600) ui.classList.add('idle');
 
   const P = programs[current];
-  if (P && WALLPAPERS[current].type !== 'iframe') {
+  if (P && !WALLPAPERS[current].type) {
     gl.useProgram(P.pr);
     gl.bindBuffer(gl.ARRAY_BUFFER, buf);
     gl.enableVertexAttribArray(P.a);
