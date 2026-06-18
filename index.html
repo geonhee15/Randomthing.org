@@ -51,13 +51,14 @@
     margin: 0 auto;
     padding: 0 20px 80px;
   }
+  /* Canonical responsive grid: cards never go below ~340px, wrap on their
+     own, and the track width is explicit (not content-based) so card
+     internals can't collapse. Reusable as-is for every future item. */
   .grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
     gap: 22px;
   }
-  @media (max-width: 860px) { .grid { grid-template-columns: repeat(2, 1fr); } }
-  @media (max-width: 560px) { .grid { grid-template-columns: 1fr; } }
 
   .card {
     position: relative;
