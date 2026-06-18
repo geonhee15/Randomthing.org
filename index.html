@@ -77,24 +77,25 @@
   }
 
   /* ---------- Calculator card artwork ---------- */
-  /* Sized with container-query units (cqi) so everything scales to the
-     CARD's own width, not the viewport — nothing clips at any ratio. */
+  /* Fixed internal sizing — no cqi, no vw. The responsive grid guarantees the
+     card is >= 340px wide, so this layout always fits; phones (<=380px) stack
+     vertically and the text takes the full width. This avoids BOTH the
+     container-query feedback collapse and the vw/multi-column mismatch.
+     Reuse this exact structure for every future card. */
   .calc-card {
-    container-type: inline-size;
     background: radial-gradient(120% 120% at 80% 0%, #3b4a63 0%, #1f2937 55%, #131a24 100%);
     display: flex;
     align-items: center;
-    gap: 5cqi;
-    padding: 7cqi;
+    gap: 20px;
+    padding: 24px 26px;
     min-width: 0;
   }
   .calc-card .mini {
     flex: 0 0 auto;
-    width: 26cqi;
-    max-width: 120px;
+    width: 92px;
     background: #0f1620;
     border-radius: 14px;
-    padding: 8%;
+    padding: 9px;
     box-shadow: 0 10px 22px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.05);
     transform: rotate(-4deg);
     transition: transform .2s ease;
@@ -108,17 +109,17 @@
     align-items: center;
     justify-content: flex-end;
     padding: 0 9%;
-    margin-bottom: 9%;
+    margin-bottom: 8px;
     font-family: "Space Grotesk", monospace;
     font-weight: 700;
-    font-size: clamp(11px, 5cqi, 18px);
+    font-size: 16px;
     color: #7dd3fc;
     box-shadow: inset 0 0 10px rgba(0,0,0,.6);
   }
   .calc-card .mini .pad {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 6%;
+    gap: 5px;
   }
   .calc-card .mini .pad i {
     aspect-ratio: 1 / 1;
@@ -132,28 +133,29 @@
   .calc-card .kicker {
     font-family: "Space Grotesk", sans-serif;
     text-transform: uppercase;
-    letter-spacing: 2.5px;
-    font-size: clamp(8px, 2.5cqi, 11px);
+    letter-spacing: .15em;
+    font-size: 11px;
     font-weight: 600;
     color: #7dd3fc;
-    margin-bottom: 1cqi;
-    letter-spacing: clamp(0.5px, 0.6cqi, 2.5px);
-    overflow-wrap: anywhere;
+    margin-bottom: 6px;
   }
   .calc-card .name {
     font-family: "Baloo 2", sans-serif;
     font-weight: 800;
-    font-size: clamp(15px, 9cqi, 46px);
+    font-size: 27px;
     line-height: 1.02;
-    overflow-wrap: anywhere;
   }
   .calc-card .desc {
-    margin-top: 4cqi;
-    font-size: clamp(9px, 3.3cqi, 14px);
+    margin-top: 8px;
+    font-size: 13.5px;
     font-weight: 600;
     color: rgba(255,255,255,.62);
-    line-height: 1.35;
-    overflow-wrap: anywhere;
+    line-height: 1.4;
+  }
+  @media (max-width: 380px) {
+    .calc-card { flex-direction: column; text-align: center; gap: 16px; padding: 24px 20px; }
+    .calc-card .txt { align-items: center; }
+    .calc-card .name { font-size: 30px; }
   }
 
   footer {

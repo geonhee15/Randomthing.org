@@ -289,14 +289,44 @@
   .sw-wrap input { display:none; }
   .sw-wrap input:checked + .sw { background:var(--accent); }
   .sw-wrap input:checked + .sw::after { left:19px; }
+
+  /* brand wordmark button (nav) — mirrors the homepage logo */
+  .brand {
+    font-family: "Baloo 2", sans-serif; font-weight: 800; font-size: 21px;
+    letter-spacing: -.5px; line-height: 1; color: var(--ink);
+    text-decoration: none; padding: 5px 9px; border-radius: 10px;
+    transition: background .14s ease;
+  }
+  .brand:hover { background: #f3f3f5; }
+  .brand .org { color: #ff5a5f; }
+
+  /* segmented control */
+  .seg {
+    display: inline-flex; width: 100%; gap: 3px; padding: 3px;
+    background: #f1f1f3; border: 1px solid var(--line-2); border-radius: 11px;
+  }
+  .seg button {
+    flex: 1; border: none; background: transparent; cursor: pointer;
+    font-family: var(--ui); font-size: 13px; font-weight: 600; color: var(--muted);
+    padding: 9px 10px; border-radius: 8px; transition: all .15s ease; letter-spacing: -.01em;
+  }
+  .seg button:hover { color: var(--ink-2); }
+  .seg button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.10); }
+
+  /* active preset stays highlighted until another is picked */
+  .preset.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .preset.active:hover { background: var(--accent-press); color: #fff; border-color: var(--accent-press); }
+
+  /* scientific function keys */
+  .key.sci {
+    background: var(--fn-bg, #d4d4d8); color: var(--fn-fg, #1f2937);
+    font-size: calc(var(--btn-size, 20px) * 0.68); font-weight: 600;
+  }
 </style>
 </head>
 <body>
   <nav class="nav">
-    <a class="back" href="/">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-      Randomthing.org
-    </a>
+    <a class="brand" href="/">Randomthing<span class="org">.org</span></a>
     <div class="crumb"><span class="sep">/</span><h1>Calculator</h1></div>
     <span class="spacer"></span>
     <button class="util ghost" id="resetBtn">Reset</button>
@@ -322,6 +352,14 @@
         <h2>Design your calculator</h2>
         <p>Every control is live and always visible. Adjust anything and watch it update instantly.</p>
       </div>
+
+      <section class="sec">
+        <div class="sec-title">Type</div>
+        <div class="seg" id="typeSeg">
+          <button type="button" data-type="basic" class="on">Basic</button>
+          <button type="button" data-type="scientific">Scientific</button>
+        </div>
+      </section>
 
       <section class="sec">
         <div class="sec-title">Presets</div>
@@ -484,6 +522,8 @@
 <script>
   const calc = document.getElementById('calc');
   const stage = document.getElementById('stage');
+  let calcType = 'basic';
+  const typeSeg = document.getElementById('typeSeg');
 
   /* ---------- generic var-binding for inputs/selects ---------- */
   function applyInput(el) {
@@ -605,9 +645,14 @@
   presets.forEach(p => {
     const b = document.createElement('button');
     b.className='preset'; b.textContent=p.label;
-    b.onclick = p.apply;
+    b.onclick = () => {
+      p.apply();
+      presetWrap.querySelectorAll('.preset').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+    };
     presetWrap.appendChild(b);
   });
+  function clearActivePreset(){ presetWrap.querySelectorAll('.preset').forEach(x => x.classList.remove('active')); }
 
   /* helpers used by presets */
   function setRange(id, v){ const el=document.getElementById(id); if(el){ el.value=v; el.dispatchEvent(new Event('input')); } }
@@ -635,6 +680,14 @@
 
     const ops = ['×','−','+']; const opVals=['*','-','+'];
     const seq = [];
+    if (calcType === 'scientific') {
+      const sci = [
+        {t:'sin',c:'sci',a:'func',v:'sin'}, {t:'cos',c:'sci',a:'func',v:'cos'}, {t:'tan',c:'sci',a:'func',v:'tan'}, {t:'π',c:'sci',a:'const',v:'pi'},
+        {t:'ln',c:'sci',a:'func',v:'ln'},   {t:'log',c:'sci',a:'func',v:'log'}, {t:'√',c:'sci',a:'func',v:'sqrt'}, {t:'e',c:'sci',a:'const',v:'e'},
+        {t:'x²',c:'sci',a:'func',v:'sq'},   {t:'xʸ',c:'sci',a:'op',v:'^'},      {t:'1/x',c:'sci',a:'func',v:'inv'}, {t:'⌫',c:'sci',a:'back'},
+      ];
+      sci.forEach(k => seq.push(k));
+    }
     top.forEach(k => seq.push(k));
     rows123.forEach((r, i) => {
       r.forEach(n => seq.push({t:n,c:'num',a:'num',v:n}));
@@ -647,7 +700,7 @@
     keys.innerHTML='';
     seq.forEach(k => {
       const b=document.createElement('button');
-      b.className = 'key ' + (k.c.includes('op')?'op':'') + (k.c.includes('fn')?'fn':'') + (k.c.includes('eq')?'eq':'');
+      b.className = 'key ' + (k.c.includes('op')?'op ':'') + (k.c.includes('fn')?'fn ':'') + (k.c.includes('eq')?'eq ':'') + (k.c.includes('sci')?'sci ':'');
       if (k.wide) { b.classList.add('zero-wide'); calc.style.setProperty('--zero-span','2'); }
       b.textContent = k.t;
       b.dataset.a = k.a; if (k.v!==undefined) b.dataset.v = k.v;
@@ -658,6 +711,15 @@
   }
   ['keypadOrder','wideZero','showNeg','showPct'].forEach(id =>
     document.getElementById(id).addEventListener('change', rebuildKeys));
+
+  // Basic / Scientific type switch
+  typeSeg.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      calcType = btn.dataset.type;
+      typeSeg.querySelectorAll('button').forEach(b => b.classList.toggle('on', b === btn));
+      rebuildKeys();
+    });
+  });
 
   document.getElementById('showExpr').addEventListener('change', e => {
     document.getElementById('expr').style.display = e.target.checked ? '' : 'none';
@@ -691,6 +753,23 @@
       case 'clear': cur='0'; prev=null; op=null; justEvaled=false; break;
       case 'neg': cur = (parseFloat(cur)* -1).toString(); break;
       case 'pct': cur = (parseFloat(cur)/100).toString(); break;
+      case 'back': cur = cur.length>1 ? cur.slice(0,-1) : '0'; break;
+      case 'const': cur = fmt(v==='pi' ? Math.PI : Math.E); justEvaled=true; break;
+      case 'func': {
+        const x = parseFloat(cur); let r;
+        switch(v){
+          case 'sin': r = Math.sin(x*Math.PI/180); break;
+          case 'cos': r = Math.cos(x*Math.PI/180); break;
+          case 'tan': r = Math.tan(x*Math.PI/180); break;
+          case 'ln':  r = Math.log(x); break;
+          case 'log': r = Math.log10(x); break;
+          case 'sqrt':r = Math.sqrt(x); break;
+          case 'sq':  r = x*x; break;
+          case 'inv': r = 1/x; break;
+        }
+        if (Math.abs(r) < 1e-12) r = 0;
+        cur = fmt(r); justEvaled=true; break;
+      }
       case 'op':
         if (op && prev!==null && !justEvaled) compute();
         prev = parseFloat(cur); op = v; justEvaled=true;
@@ -704,7 +783,7 @@
   function compute(){
     const a=prev, b=parseFloat(cur);
     let r=0;
-    switch(op){ case '+':r=a+b;break; case '-':r=a-b;break; case '*':r=a*b;break; case '/':r=b===0?NaN:a/b;break; }
+    switch(op){ case '+':r=a+b;break; case '-':r=a-b;break; case '*':r=a*b;break; case '/':r=b===0?NaN:a/b;break; case '^':r=Math.pow(a,b);break; }
     cur = fmt(r); prev = r; justEvaled=true;
   }
 
@@ -739,7 +818,13 @@
     document.getElementById('showPct').checked=true;
     if (rebuild) rebuildKeys();
   }
-  document.getElementById('resetBtn').onclick = () => resetAll(true);
+  document.getElementById('resetBtn').onclick = () => {
+    resetAll(true);
+    clearActivePreset();
+    calcType = 'basic';
+    typeSeg.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.type === 'basic'));
+    rebuildKeys();
+  };
 
   function rand(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
   function randColor(){ return '#'+Array.from({length:3},()=>rand(0,255).toString(16).padStart(2,'0')).join(''); }
@@ -753,6 +838,7 @@
     });
     document.getElementById('keypadOrder').selectedIndex = rand(0,1);
     document.getElementById('wideZero').checked = Math.random()>.5;
+    clearActivePreset();
     rebuildKeys();
   };
 
