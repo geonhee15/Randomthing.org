@@ -82,14 +82,16 @@
      vertically and the text takes the full width. This avoids BOTH the
      container-query feedback collapse and the vw/multi-column mismatch.
      Reuse this exact structure for every future card. */
-  .calc-card {
-    background: radial-gradient(120% 120% at 80% 0%, #3b4a63 0%, #1f2937 55%, #131a24 100%);
+  /* shared card shell + text — every item card uses .art-card */
+  .art-card {
     display: flex;
     align-items: center;
     gap: 20px;
     padding: 24px 26px;
     min-width: 0;
   }
+  .calc-card { background: radial-gradient(120% 120% at 80% 0%, #3b4a63 0%, #1f2937 55%, #131a24 100%); }
+  .bg-card   { background: radial-gradient(120% 120% at 18% 8%, #243089 0%, #141a44 52%, #0a0a1a 100%); }
   .calc-card .mini {
     flex: 0 0 auto;
     width: 92px;
@@ -129,8 +131,8 @@
   .calc-card .mini .pad i.op { background: #ff9500; }
   .calc-card .mini .pad i.eq { background: #4f46e5; }
 
-  .calc-card .txt { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
-  .calc-card .kicker {
+  .art-card .txt { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
+  .art-card .kicker {
     font-family: "Space Grotesk", sans-serif;
     text-transform: uppercase;
     letter-spacing: .15em;
@@ -139,23 +141,41 @@
     color: #7dd3fc;
     margin-bottom: 6px;
   }
-  .calc-card .name {
+  .bg-card .kicker { color: #a5b4fc; }
+  .art-card .name {
     font-family: "Baloo 2", sans-serif;
     font-weight: 800;
     font-size: 27px;
     line-height: 1.02;
   }
-  .calc-card .desc {
+  .art-card .desc {
     margin-top: 8px;
     font-size: 13.5px;
     font-weight: 600;
     color: rgba(255,255,255,.62);
     line-height: 1.4;
   }
+
+  /* Background card artwork: a shader-like gradient tile */
+  .bg-card .mini {
+    flex: 0 0 auto;
+    width: 92px; height: 92px;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 10px 22px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.06);
+    transform: rotate(-4deg);
+    transition: transform .2s ease;
+    background:
+      radial-gradient(circle at 28% 30%, #22d3ee 0%, transparent 42%),
+      radial-gradient(circle at 78% 38%, #a855f7 0%, transparent 46%),
+      radial-gradient(circle at 58% 82%, #ec4899 0%, transparent 48%),
+      conic-gradient(from 210deg at 60% 45%, #6366f1, #06b6d4, #a855f7, #ec4899, #6366f1);
+  }
+
   @media (max-width: 380px) {
-    .calc-card { flex-direction: column; text-align: center; gap: 16px; padding: 24px 20px; }
-    .calc-card .txt { align-items: center; }
-    .calc-card .name { font-size: 30px; }
+    .art-card { flex-direction: column; text-align: center; gap: 16px; padding: 24px 20px; }
+    .art-card .txt { align-items: center; }
+    .art-card .name { font-size: 30px; }
   }
 
   footer {
@@ -174,7 +194,7 @@
 
   <main>
     <div class="grid">
-      <a class="card calc-card" href="/Calculator/">
+      <a class="card art-card calc-card" href="/Calculator/">
         <div class="mini" aria-hidden="true">
           <div class="screen">42</div>
           <div class="pad">
@@ -188,6 +208,15 @@
           <span class="kicker">Construction kit</span>
           <span class="name">Calculator</span>
           <span class="desc">A simple calculator with a&nbsp;LOT of knobs. Build your dream one.</span>
+        </div>
+      </a>
+
+      <a class="card art-card bg-card" href="/Background/">
+        <div class="mini" aria-hidden="true"></div>
+        <div class="txt">
+          <span class="kicker">Interactive shaders</span>
+          <span class="name">Background</span>
+          <span class="desc">Five shader wallpapers that react to your&nbsp;mouse.</span>
         </div>
       </a>
     </div>
