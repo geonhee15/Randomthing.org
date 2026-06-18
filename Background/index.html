@@ -18,19 +18,6 @@
   body { font-family: var(--ui); -webkit-font-smoothing: antialiased; }
 
   #gl { position:fixed; inset:0; width:100vw; height:100vh; display:block; touch-action:none; z-index:1; }
-  /* Spline scene rendered straight into our own canvas via @splinetool/runtime
-     — no embed badge, no iframe. */
-  #splineHost { position:fixed; inset:0; z-index:2; display:none; background:#0b0d16; }
-  #spline3d { width:100%; height:100%; display:block; }
-  /* Spline free plan renders its badge into the canvas pixels (not the DOM),
-     so it can only be hidden with an overlay. Frosted chip matches the UI. */
-  .spline-badge-cover { position:absolute; right:14px; bottom:14px; width:178px; height:46px; z-index:3;
-    pointer-events:none; border-radius:14px;
-    background: rgba(10,12,20,.62);
-    backdrop-filter: blur(12px) saturate(140%);
-    -webkit-backdrop-filter: blur(12px) saturate(140%);
-    border:1px solid rgba(255,255,255,.12);
-    box-shadow: 0 8px 30px rgba(0,0,0,.35); }
 
   /* ----- floating UI ----- */
   .ui { position:fixed; inset:0; pointer-events:none; z-index:5;
@@ -91,7 +78,6 @@
 </head>
 <body>
   <canvas id="gl"></canvas>
-  <div id="splineHost"><canvas id="spline3d"></canvas><div class="spline-badge-cover"></div></div>
 
   <div class="ui" id="ui">
     <div class="topbar">
@@ -281,13 +267,110 @@ void main(){
   gl_FragColor = vec4(clamp(col,0.0,1.0),1.0);
 }`;
 
+// ---------- Cubes — raymarched isometric cube grid (native, no Spline) ----------
+const F_CUBES = PRELUDE + `
+const float S = 0.62;
+float sdRoundBox(vec3 p, vec3 b, float r){
+  vec3 q = abs(p) - b + r;
+  return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0) - r;
+}
+float cubeH(vec2 id, vec2 mg, vec2 cg){
+  vec2 c = id*S;
+  float h = 0.16;
+  float dm = length(c - mg);
+  h += (0.34 + 0.55*u_press) * exp(-dm*dm*1.9);                 // rise toward cursor
+  float dc = length(c - cg);
+  h += 0.42 * sin(dc*5.0 - u_clickAge*6.0) * exp(-dc*1.3) * exp(-u_clickAge*1.5); // click ripple
+  h += 0.025*sin(u_time*1.3 + dot(id, vec2(1.7,1.1)));          // idle shimmer
+  return max(h, 0.04);
+}
+float map(vec3 p, vec2 mg, vec2 cg){
+  float d = p.y;
+  vec2 base = floor(p.xz/S + 0.5);
+  for(int j=-1;j<=1;j++){
+    for(int i=-1;i<=1;i++){
+      vec2 id = base + vec2(float(i), float(j));
+      vec2 c = id*S;
+      float h = cubeH(id, mg, cg);
+      vec3 q = vec3(p.x - c.x, p.y - h*0.5, p.z - c.y);
+      d = min(d, sdRoundBox(q, vec3(0.255, h*0.5, 0.255), 0.06));
+    }
+  }
+  return d;
+}
+vec3 calcN(vec3 p, vec2 mg, vec2 cg){
+  vec2 e = vec2(0.0014, 0.0);
+  return normalize(vec3(
+    map(p+e.xyy,mg,cg)-map(p-e.xyy,mg,cg),
+    map(p+e.yxy,mg,cg)-map(p-e.yxy,mg,cg),
+    map(p+e.yyx,mg,cg)-map(p-e.yyx,mg,cg)));
+}
+float calcAO(vec3 p, vec3 n, vec2 mg, vec2 cg){
+  float occ=0.0, sca=1.0;
+  for(int i=0;i<5;i++){
+    float hr = 0.012 + 0.10*float(i);
+    occ += (hr - map(p + n*hr, mg, cg))*sca;
+    sca *= 0.82;
+  }
+  return clamp(1.0 - 1.6*occ, 0.0, 1.0);
+}
+float shadow(vec3 ro, vec3 rd, vec2 mg, vec2 cg){
+  float res=1.0, t=0.03;
+  for(int i=0;i<18;i++){
+    float h = map(ro + rd*t, mg, cg);
+    res = min(res, 9.0*h/t);
+    t += clamp(h, 0.02, 0.18);
+    if(res<0.005 || t>5.0) break;
+  }
+  return clamp(res, 0.0, 1.0);
+}
+void main(){
+  vec3 fwd = normalize(vec3(-1.0, -1.85, -1.0));
+  vec3 rgt = normalize(cross(vec3(0.0,1.0,0.0), fwd));
+  vec3 upv = cross(fwd, rgt);
+  float zoom = 5.2;
+  float asp = u_res.x/u_res.y;
+  vec2 suv = P()*zoom;
+  vec3 ro = rgt*suv.x + upv*suv.y - fwd*14.0;
+  vec3 rd = fwd;
+  vec2 muv = (u_mouse-0.5)*vec2(asp,1.0)*zoom;
+  vec3 mro = rgt*muv.x + upv*muv.y - fwd*14.0;
+  vec2 mg = (mro + rd*(-mro.y/rd.y)).xz;
+  vec2 cuv = (u_click-0.5)*vec2(asp,1.0)*zoom;
+  vec3 cro = rgt*cuv.x + upv*cuv.y - fwd*14.0;
+  vec2 cg = (cro + rd*(-cro.y/rd.y)).xz;
+
+  float t=0.0, d=0.0; bool hit=false;
+  for(int i=0;i<80;i++){
+    d = map(ro + rd*t, mg, cg);
+    if(d < 0.0015){ hit=true; break; }
+    t += d;
+    if(t > 30.0) break;
+  }
+  vec3 col = vec3(1.0,0.965,0.96);
+  if(hit){
+    vec3 pos = ro + rd*t;
+    vec3 n = calcN(pos, mg, cg);
+    vec3 L = normalize(vec3(0.35, 0.92, 0.28));
+    float dif = clamp(dot(n,L),0.0,1.0);
+    float sh = shadow(pos + n*0.02, L, mg, cg);
+    float ao = calcAO(pos, n, mg, cg);
+    vec3 mat = mix(vec3(1.0,0.72,0.76), vec3(1.0,0.98,0.975), smoothstep(0.28,0.95,n.y));
+    vec3 c = mat * (0.52 + 0.62*dif*sh);
+    c *= 0.62 + 0.38*ao;
+    c += (1.0-ao)*vec3(0.95,0.45,0.55)*0.34;
+    c += pow(clamp(dot(reflect(-L,n), -rd),0.0,1.0), 24.0)*0.22;
+    col = mix(c, vec3(1.0,0.95,0.95), smoothstep(16.0, 28.0, t));
+  }
+  col = pow(clamp(col,0.0,1.0), vec3(0.92));
+  gl_FragColor = vec4(col, 1.0);
+}`;
+
 // F_DRIFT, F_RIPPLE and F_VORONOI above are kept for easy re-enabling later.
 const WALLPAPERS = [
   { name:'Nebula',   label:'Nebula',   frag:F_NEBULA, hint:'Move to warm the gas · press and hold to ignite it' },
   { name:'Liquid',   label:'Liquid',   frag:F_LIQUID, hint:'Move to push the blobs around · click for a pulse' },
-  { name:'Cubes', label:'Cubes', type:'spline',
-    code:'https://prod.spline.design/XflGhneWvlE1aZ9h/scene.splinecode',
-    hint:'A field of cubes — hover to push them around' },
+  { name:'Cubes', label:'Cubes', frag:F_CUBES, hint:'Move to raise the cubes · press and hold to push harder' },
 ];
 
 let programs = [];
@@ -326,7 +409,7 @@ function makeProgram(frag){
 
 let buf;
 function initGL(){
-  programs = WALLPAPERS.map(w => w.type ? null : makeProgram(w.frag));
+  programs = WALLPAPERS.map(w => makeProgram(w.frag));
   buf = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, buf);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);
@@ -378,36 +461,12 @@ WALLPAPERS.forEach((w, i) => {
   dock.appendChild(b);
 });
 const slug = w => w.name.toLowerCase().replace(/\s+/g, '-');
-const splineHost = document.getElementById('splineHost');
-const splineCanvas = document.getElementById('spline3d');
-let splineApp = null, splineState = 'idle';   // idle | loading | ready | error
-async function showSpline(url){
-  splineHost.style.display = 'block';
-  canvas.style.display = 'none';
-  if (splineState === 'idle'){
-    splineState = 'loading';
-    try {
-      const { Application } = await import('https://esm.sh/@splinetool/runtime@1');
-      splineApp = new Application(splineCanvas);
-      await splineApp.load(url);
-      splineState = 'ready';
-    } catch (e) {
-      console.error('Spline runtime failed to load:', e);
-      splineState = 'error';
-    }
-  }
-}
-function hideSpline(){
-  splineHost.style.display = 'none';
-  canvas.style.display = 'block';
-}
 function selectWallpaper(i, fromURL){
   current = i;
   const w = WALLPAPERS[i];
   [...dock.children].forEach((b,bi)=> b.classList.toggle('on', bi===i));
   capName.textContent = w.name;
   if (capHint) capHint.textContent = w.hint;
-  if (w.type === 'spline') showSpline(w.code); else hideSpline();
   if (!fromURL) history.replaceState(null, '', '#' + slug(w));
 }
 function wallpaperFromURL(){
@@ -441,7 +500,7 @@ function frame(){
   if (now - lastMove > 2600) ui.classList.add('idle');
 
   const P = programs[current];
-  if (P && !WALLPAPERS[current].type) {
+  if (P) {
     gl.useProgram(P.pr);
     gl.bindBuffer(gl.ARRAY_BUFFER, buf);
     gl.enableVertexAttribArray(P.a);
