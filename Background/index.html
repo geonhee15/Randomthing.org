@@ -276,12 +276,10 @@ float sdRoundBox(vec3 p, vec3 b, float r){
 }
 float cubeH(vec2 id, vec2 mg, vec2 cg){
   vec2 c = id*S;
-  float h = 0.16;
+  float h = 0.14;
   float dm = length(c - mg);
-  h += (0.34 + 0.55*u_press) * exp(-dm*dm*1.9);                 // rise toward cursor
-  float dc = length(c - cg);
-  h += 0.42 * sin(dc*5.0 - u_clickAge*6.0) * exp(-dc*1.3) * exp(-u_clickAge*1.5); // click ripple
-  h += 0.025*sin(u_time*1.3 + dot(id, vec2(1.7,1.1)));          // idle shimmer
+  h += 0.74 * exp(-dm*dm*0.80);                        // hover raises a wide, smooth mound
+  h += 0.02*sin(u_time*1.0 + dot(id, vec2(1.7,1.1)));  // gentle idle drift
   return max(h, 0.04);
 }
 float map(vec3 p, vec2 mg, vec2 cg){
@@ -293,7 +291,7 @@ float map(vec3 p, vec2 mg, vec2 cg){
       vec2 c = id*S;
       float h = cubeH(id, mg, cg);
       vec3 q = vec3(p.x - c.x, p.y - h*0.5, p.z - c.y);
-      d = min(d, sdRoundBox(q, vec3(0.255, h*0.5, 0.255), 0.06));
+      d = min(d, sdRoundBox(q, vec3(0.255, h*0.5, 0.255), 0.085));
     }
   }
   return d;
@@ -347,22 +345,21 @@ void main(){
     t += d;
     if(t > 30.0) break;
   }
-  vec3 col = vec3(1.0,0.965,0.96);
+  vec3 col = vec3(1.0,0.98,0.98);
   if(hit){
     vec3 pos = ro + rd*t;
     vec3 n = calcN(pos, mg, cg);
-    vec3 L = normalize(vec3(0.35, 0.92, 0.28));
+    vec3 L = normalize(vec3(0.30, 0.95, 0.22));
     float dif = clamp(dot(n,L),0.0,1.0);
-    float sh = shadow(pos + n*0.02, L, mg, cg);
     float ao = calcAO(pos, n, mg, cg);
-    vec3 mat = mix(vec3(1.0,0.72,0.76), vec3(1.0,0.98,0.975), smoothstep(0.28,0.95,n.y));
-    vec3 c = mat * (0.52 + 0.62*dif*sh);
-    c *= 0.62 + 0.38*ao;
-    c += (1.0-ao)*vec3(0.95,0.45,0.55)*0.34;
-    c += pow(clamp(dot(reflect(-L,n), -rd),0.0,1.0), 24.0)*0.22;
-    col = mix(c, vec3(1.0,0.95,0.95), smoothstep(16.0, 28.0, t));
+    // soft matte: white tops, gentle pink seams, no hard shadows / specular
+    vec3 mat = mix(vec3(1.0,0.75,0.79), vec3(1.0,0.99,0.985), smoothstep(0.22,0.95,n.y));
+    vec3 c = mat * (0.78 + 0.28*dif);
+    c *= 0.74 + 0.26*ao;
+    c += (1.0-ao)*vec3(1.0,0.55,0.63)*0.18;
+    col = mix(c, vec3(1.0,0.98,0.98), smoothstep(17.0, 30.0, t));
   }
-  col = pow(clamp(col,0.0,1.0), vec3(0.92));
+  col = pow(clamp(col,0.0,1.0), vec3(0.95));
   gl_FragColor = vec4(col, 1.0);
 }`;
 
@@ -370,7 +367,7 @@ void main(){
 const WALLPAPERS = [
   { name:'Nebula',   label:'Nebula',   frag:F_NEBULA, hint:'Move to warm the gas · press and hold to ignite it' },
   { name:'Liquid',   label:'Liquid',   frag:F_LIQUID, hint:'Move to push the blobs around · click for a pulse' },
-  { name:'Cubes', label:'Cubes', frag:F_CUBES, hint:'Move to raise the cubes · press and hold to push harder' },
+  { name:'Cubes', label:'Cubes', frag:F_CUBES, hint:'Move your mouse to raise the cubes' },
 ];
 
 let programs = [];
