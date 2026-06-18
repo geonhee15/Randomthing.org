@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Randomthing.org — random things, made for fun</title>
+<meta name="description" content="A collection of random things to play with." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #ffffff;
+    --ink: #1d1d1f;
+    --muted: #8a8a8e;
+    --card-radius: 18px;
+    --maxw: 1180px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Nunito", system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+
+  header.hero {
+    text-align: center;
+    padding: 54px 20px 30px;
+  }
+  .logo {
+    font-family: "Baloo 2", sans-serif;
+    font-weight: 800;
+    font-size: clamp(36px, 6.4vw, 70px);
+    letter-spacing: -1px;
+    line-height: 1;
+    margin: 0;
+  }
+  .logo .org { color: #ff5a5f; }
+  .tagline {
+    color: var(--muted);
+    font-size: clamp(15px, 2vw, 19px);
+    font-weight: 600;
+    margin-top: 12px;
+  }
+
+  main {
+    max-width: var(--maxw);
+    margin: 0 auto;
+    padding: 0 20px 80px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 22px;
+  }
+  @media (max-width: 860px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 560px) { .grid { grid-template-columns: 1fr; } }
+
+  .card {
+    position: relative;
+    display: block;
+    aspect-ratio: 16 / 9;
+    border-radius: var(--card-radius);
+    text-decoration: none;
+    color: #fff;
+    overflow: hidden;
+    border: 1px solid rgba(0,0,0,.06);
+    box-shadow: 0 2px 10px rgba(0,0,0,.06);
+    transition: transform .14s ease, box-shadow .14s ease;
+  }
+  .card:hover {
+    transform: translateY(-5px) rotate(-.5deg);
+    box-shadow: 0 16px 34px rgba(0,0,0,.18);
+  }
+
+  /* ---------- Calculator card artwork ---------- */
+  .calc-card {
+    background: radial-gradient(120% 120% at 80% 0%, #3b4a63 0%, #1f2937 55%, #131a24 100%);
+    display: flex;
+    align-items: center;
+    gap: 26px;
+    padding: 26px 30px;
+  }
+  .calc-card .mini {
+    flex: 0 0 auto;
+    width: 116px;
+    background: #0f1620;
+    border-radius: 16px;
+    padding: 12px;
+    box-shadow: 0 10px 22px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.05);
+    transform: rotate(-4deg);
+    transition: transform .2s ease;
+  }
+  .card:hover .mini { transform: rotate(-2deg) translateY(-2px); }
+  .calc-card .mini .screen {
+    background: linear-gradient(180deg, #1b2735, #0c1119);
+    border-radius: 8px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0 9px;
+    margin-bottom: 9px;
+    font-family: "Space Grotesk", monospace;
+    font-weight: 700;
+    font-size: 18px;
+    color: #7dd3fc;
+    box-shadow: inset 0 0 10px rgba(0,0,0,.6);
+  }
+  .calc-card .mini .pad {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 5px;
+  }
+  .calc-card .mini .pad i {
+    height: 14px;
+    border-radius: 4px;
+    background: #2a3645;
+  }
+  .calc-card .mini .pad i.op { background: #ff9500; }
+  .calc-card .mini .pad i.eq { background: #4f46e5; }
+
+  .calc-card .txt { display: flex; flex-direction: column; }
+  .calc-card .kicker {
+    font-family: "Space Grotesk", sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 2.5px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #7dd3fc;
+    margin-bottom: 4px;
+  }
+  .calc-card .name {
+    font-family: "Baloo 2", sans-serif;
+    font-weight: 800;
+    font-size: clamp(30px, 4.2vw, 46px);
+    line-height: 1;
+  }
+  .calc-card .desc {
+    margin-top: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: rgba(255,255,255,.62);
+    max-width: 230px;
+    line-height: 1.35;
+  }
+  @media (max-width: 380px) {
+    .calc-card { flex-direction: column; text-align: center; align-items: center; gap: 16px; }
+    .calc-card .desc { max-width: none; }
+  }
+
+  footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+    padding: 0 20px 50px;
+  }
+</style>
+</head>
+<body>
+  <header class="hero">
+    <h1 class="logo">Randomthing<span class="org">.org</span></h1>
+    <div class="tagline">random things, made for fun</div>
+  </header>
+
+  <main>
+    <div class="grid">
+      <a class="card calc-card" href="/Calculator/">
+        <div class="mini" aria-hidden="true">
+          <div class="screen">42</div>
+          <div class="pad">
+            <i></i><i></i><i></i><i class="op"></i>
+            <i></i><i></i><i></i><i class="op"></i>
+            <i></i><i></i><i></i><i class="op"></i>
+            <i></i><i></i><i></i><i class="eq"></i>
+          </div>
+        </div>
+        <div class="txt">
+          <span class="kicker">Construction kit</span>
+          <span class="name">Calculator</span>
+          <span class="desc">A simple calculator with a&nbsp;LOT of knobs. Build your dream one.</span>
+        </div>
+      </a>
+    </div>
+  </main>
+
+  <footer>© <span id="yr"></span> Randomthing.org</footer>
+  <script>document.getElementById('yr').textContent = new Date().getFullYear();</script>
+</body>
+</html>

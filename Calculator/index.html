@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Calculator — Random Thing</title>
+<meta name="description" content="A simple calculator with a LOT of tweaks. Build your dream calculator." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;600;700;800&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@500;700&family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root { --site-ink:#1d1d1f; }
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; }
+  body {
+    font-family: "Nunito", system-ui, -apple-system, sans-serif;
+    color: var(--site-ink);
+    background: #f4f4f5;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .nav {
+    display:flex; align-items:center; gap:14px;
+    padding: 14px 22px;
+    background:#fff;
+    border-bottom:1px solid #e8e8ec;
+    position: sticky; top:0; z-index: 20;
+  }
+  .nav a.back { text-decoration:none; color:#6b7280; font-weight:700; font-size:15px; }
+  .nav a.back:hover { color:#111; }
+  .nav h1 { font-family:"Baloo 2",sans-serif; font-size:22px; margin:0; }
+  .nav .spacer { flex:1; }
+  .nav button.util {
+    border:1px solid #e4e4e7; background:#fff; border-radius:9px;
+    padding:7px 12px; font-weight:700; font-size:13px; cursor:pointer; color:#374151;
+  }
+  .nav button.util:hover { background:#f4f4f5; }
+
+  .layout {
+    display:grid;
+    grid-template-columns: 1fr 420px;
+    gap: 0;
+    min-height: calc(100vh - 53px);
+  }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+
+  /* ---- Left: preview stage ---- */
+  .stage {
+    display:flex; align-items:center; justify-content:center;
+    padding: 40px 24px;
+    background:
+      radial-gradient(circle at 20% 20%, rgba(0,0,0,.03), transparent 40%),
+      var(--stage-bg, #e9e9ee);
+    transition: background .2s ease;
+  }
+
+  /* ---- The calculator itself (driven by CSS vars) ---- */
+  .calc {
+    width: var(--calc-w, 320px);
+    background: var(--calc-bg, #ffffff);
+    border-radius: var(--calc-radius, 22px);
+    padding: var(--calc-pad, 18px);
+    box-shadow: var(--calc-shadow, 0 18px 40px rgba(0,0,0,.18));
+    border: var(--calc-border-w, 0px) solid var(--calc-border-c, #000);
+    font-family: var(--btn-font, "Nunito", sans-serif);
+    transition: all .15s ease;
+  }
+  .display {
+    background: var(--disp-bg, #0f172a);
+    color: var(--disp-fg, #ffffff);
+    border-radius: var(--disp-radius, 14px);
+    padding: var(--disp-pad, 16px);
+    margin-bottom: var(--grid-gap, 12px);
+    min-height: var(--disp-h, 84px);
+    display:flex; flex-direction:column;
+    justify-content: var(--disp-justify, flex-end);
+    align-items: var(--disp-align, flex-end);
+    overflow:hidden;
+    transition: all .15s ease;
+  }
+  .display .expr {
+    font-family: var(--disp-font, "Space Mono", monospace);
+    font-size: var(--expr-size, 15px);
+    opacity:.55;
+    min-height: 18px;
+    word-break: break-all;
+    text-align: var(--disp-text-align, right);
+    width:100%;
+  }
+  .display .out {
+    font-family: var(--disp-font, "Space Mono", monospace);
+    font-size: var(--disp-size, 40px);
+    font-weight: var(--disp-weight, 700);
+    line-height: 1.1;
+    word-break: break-all;
+    text-align: var(--disp-text-align, right);
+    width:100%;
+  }
+  .keys {
+    display:grid;
+    grid-template-columns: repeat(var(--cols, 4), 1fr);
+    gap: var(--grid-gap, 12px);
+  }
+  .key {
+    border:none;
+    cursor:pointer;
+    font-family: inherit;
+    font-weight: var(--btn-weight, 700);
+    font-size: var(--btn-size, 20px);
+    color: var(--btn-fg, #1f2937);
+    background: var(--btn-bg, #eef0f4);
+    border-radius: var(--btn-radius, 14px);
+    height: var(--btn-h, 58px);
+    box-shadow: var(--btn-shadow, 0 1px 0 rgba(0,0,0,.06));
+    transition: transform .05s ease, filter .12s ease;
+    user-select:none;
+    border: var(--btn-border-w, 0px) solid var(--btn-border-c, transparent);
+  }
+  .key:hover { filter: brightness(.97); }
+  .key:active { transform: translateY(1px) scale(.98); }
+  .key.op { background: var(--op-bg, #ff9500); color: var(--op-fg,#fff); }
+  .key.fn { background: var(--fn-bg, #d4d4d8); color: var(--fn-fg,#1f2937); }
+  .key.eq { background: var(--eq-bg, #4f46e5); color: var(--eq-fg,#fff); }
+  .key.zero-wide { grid-column: span var(--zero-span, 1); }
+
+  /* ---- Right: control panel ---- */
+  .panel {
+    background:#fff;
+    border-left:1px solid #e8e8ec;
+    padding: 18px 20px 60px;
+    overflow-y:auto;
+    max-height: calc(100vh - 53px);
+  }
+  .panel h2 { font-family:"Baloo 2",sans-serif; font-size:18px; margin:6px 0 2px; }
+  .panel .sub { color:#9ca3af; font-size:13px; margin:0 0 14px; }
+
+  details.group {
+    border:1px solid #ececf0; border-radius:12px; margin-bottom:12px; overflow:hidden;
+    background:#fcfcfd;
+  }
+  details.group > summary {
+    cursor:pointer; list-style:none; padding:12px 14px;
+    font-weight:800; font-size:14px; color:#374151;
+    display:flex; align-items:center; gap:8px;
+  }
+  details.group > summary::-webkit-details-marker { display:none; }
+  details.group > summary .chev { margin-left:auto; transition: transform .15s; color:#9ca3af; }
+  details.group[open] > summary .chev { transform: rotate(90deg); }
+  .group-body { padding: 4px 14px 14px; }
+
+  .ctrl { margin-bottom: 13px; }
+  .ctrl:last-child { margin-bottom:4px; }
+  .ctrl label { display:flex; justify-content:space-between; align-items:center;
+    font-size:13px; font-weight:700; color:#4b5563; margin-bottom:6px; }
+  .ctrl label .val { font-weight:700; color:#6366f1; font-variant-numeric: tabular-nums; }
+  .ctrl input[type=range] { width:100%; accent-color:#6366f1; }
+  .ctrl input[type=color] {
+    width:100%; height:34px; border:1px solid #e4e4e7; border-radius:8px; background:#fff; cursor:pointer; padding:2px;
+  }
+  .ctrl select, .ctrl input[type=text] {
+    width:100%; padding:8px 10px; border:1px solid #e4e4e7; border-radius:8px;
+    font-family:inherit; font-size:13px; font-weight:600; background:#fff; cursor:pointer;
+  }
+  .row2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .swatches { display:flex; flex-wrap:wrap; gap:8px; margin-top:2px; }
+  .swatch {
+    width:30px; height:30px; border-radius:8px; cursor:pointer;
+    border:2px solid #fff; box-shadow:0 0 0 1px #e4e4e7;
+  }
+  .swatch:hover { transform: scale(1.08); }
+  .toggle { display:flex; align-items:center; justify-content:space-between; }
+  .toggle .sw {
+    width:42px; height:24px; border-radius:999px; background:#d4d4d8; position:relative;
+    cursor:pointer; transition:background .15s; flex:0 0 auto;
+  }
+  .toggle .sw::after {
+    content:""; position:absolute; top:2px; left:2px; width:20px; height:20px;
+    background:#fff; border-radius:50%; transition:left .15s; box-shadow:0 1px 3px rgba(0,0,0,.25);
+  }
+  .toggle input { display:none; }
+  .toggle input:checked + .sw { background:#6366f1; }
+  .toggle input:checked + .sw::after { left:20px; }
+
+  .preset-row { display:flex; flex-wrap:wrap; gap:8px; }
+  .preset {
+    border:1px solid #e4e4e7; background:#fff; border-radius:999px;
+    padding:6px 13px; font-weight:800; font-size:12px; cursor:pointer; color:#374151;
+  }
+  .preset:hover { background:#6366f1; color:#fff; border-color:#6366f1; }
+</style>
+</head>
+<body>
+  <nav class="nav">
+    <a class="back" href="/">← Randomthing.org</a>
+    <h1>Calculator</h1>
+    <span class="spacer"></span>
+    <button class="util" id="randomBtn">🎲 Randomize</button>
+    <button class="util" id="resetBtn">↺ Reset</button>
+  </nav>
+
+  <div class="layout">
+    <!-- LEFT: live preview -->
+    <div class="stage" id="stage">
+      <div class="calc" id="calc">
+        <div class="display" id="display">
+          <div class="expr" id="expr"></div>
+          <div class="out" id="out">0</div>
+        </div>
+        <div class="keys" id="keys"><!-- buttons injected by JS --></div>
+      </div>
+    </div>
+
+    <!-- RIGHT: always-on tweak panel -->
+    <aside class="panel">
+      <h2>Construction kit</h2>
+      <p class="sub">Every knob stays on screen. Tweak away — it updates live.</p>
+
+      <details class="group" open>
+        <summary>✨ Presets <span class="chev">›</span></summary>
+        <div class="group-body">
+          <div class="preset-row" id="presets"></div>
+        </div>
+      </details>
+
+      <details class="group" open>
+        <summary>🎨 Colors <span class="chev">›</span></summary>
+        <div class="group-body">
+          <div class="ctrl"><label>Stage background</label>
+            <input type="color" data-var="--stage-bg" data-target="stage" value="#e9e9ee"></div>
+          <div class="ctrl"><label>Calculator body</label>
+            <input type="color" data-var="--calc-bg" value="#ffffff"></div>
+          <div class="row2">
+            <div class="ctrl"><label>Display bg</label>
+              <input type="color" data-var="--disp-bg" value="#0f172a"></div>
+            <div class="ctrl"><label>Display text</label>
+              <input type="color" data-var="--disp-fg" value="#ffffff"></div>
+          </div>
+          <div class="row2">
+            <div class="ctrl"><label>Number keys</label>
+              <input type="color" data-var="--btn-bg" value="#eef0f4"></div>
+            <div class="ctrl"><label>Number text</label>
+              <input type="color" data-var="--btn-fg" value="#1f2937"></div>
+          </div>
+          <div class="row2">
+            <div class="ctrl"><label>Operators</label>
+              <input type="color" data-var="--op-bg" value="#ff9500"></div>
+            <div class="ctrl"><label>Equals</label>
+              <input type="color" data-var="--eq-bg" value="#4f46e5"></div>
+          </div>
+          <div class="ctrl"><label>Function keys (AC, %, ±)</label>
+            <input type="color" data-var="--fn-bg" value="#d4d4d8"></div>
+          <div class="ctrl"><label>Quick palettes</label>
+            <div class="swatches" id="palettes"></div>
+          </div>
+        </div>
+      </details>
+
+      <details class="group" open>
+        <summary>📐 Shape &amp; size <span class="chev">›</span></summary>
+        <div class="group-body">
+          <div class="ctrl"><label>Calculator width <span class="val" id="v-cw">320px</span></label>
+            <input type="range" data-var="--calc-w" data-unit="px" id="r-cw" min="240" max="520" value="320"></div>
+          <div class="ctrl"><label>Body roundness <span class="val" id="v-cr">22px</span></label>
+            <input type="range" data-var="--calc-radius" data-unit="px" id="r-cr" min="0" max="60" value="22"></div>
+          <div class="ctrl"><label>Body padding <span class="val" id="v-cp">18px</span></label>
+            <input type="range" data-var="--calc-pad" data-unit="px" id="r-cp" min="0" max="40" value="18"></div>
+          <div class="ctrl"><label>Key gap <span class="val" id="v-gg">12px</span></label>
+            <input type="range" data-var="--grid-gap" data-unit="px" id="r-gg" min="0" max="26" value="12"></div>
+          <div class="ctrl"><label>Key height <span class="val" id="v-bh">58px</span></label>
+            <input type="range" data-var="--btn-h" data-unit="px" id="r-bh" min="36" max="90" value="58"></div>
+          <div class="ctrl"><label>Key roundness <span class="val" id="v-br">14px</span></label>
+            <input type="range" data-var="--btn-radius" data-unit="px" id="r-br" min="0" max="45" value="14"></div>
+          <div class="ctrl"><label>Body border <span class="val" id="v-cbw">0px</span></label>
+            <input type="range" data-var="--calc-border-w" data-unit="px" id="r-cbw" min="0" max="12" value="0"></div>
+          <div class="ctrl"><label>Border color</label>
+            <input type="color" data-var="--calc-border-c" value="#000000"></div>
+        </div>
+      </details>
+
+      <details class="group">
+        <summary>🖥 Display <span class="chev">›</span></summary>
+        <div class="group-body">
+          <div class="ctrl"><label>Display height <span class="val" id="v-dh">84px</span></label>
+            <input type="range" data-var="--disp-h" data-unit="px" id="r-dh" min="50" max="180" value="84"></div>
+          <div class="ctrl"><label>Result size <span class="val" id="v-ds">40px</span></label>
+            <input type="range" data-var="--disp-size" data-unit="px" id="r-ds" min="20" max="72" value="40"></div>
+          <div class="ctrl"><label>Display roundness <span class="val" id="v-dr">14px</span></label>
+            <input type="range" data-var="--disp-radius" data-unit="px" id="r-dr" min="0" max="40" value="14"></div>
+          <div class="ctrl"><label>Text alignment</label>
+            <select data-var="--disp-text-align" data-justify>
+              <option value="right">Right</option>
+              <option value="center">Center</option>
+              <option value="left">Left</option>
+            </select></div>
+          <div class="ctrl"><label>Display font</label>
+            <select data-var="--disp-font">
+              <option value='"Space Mono", monospace'>Space Mono</option>
+              <option value='"JetBrains Mono", monospace'>JetBrains Mono</option>
+              <option value='"Orbitron", sans-serif'>Orbitron (digital)</option>
+              <option value='"Inter", sans-serif'>Inter</option>
+              <option value='"Nunito", sans-serif'>Nunito</option>
+            </select></div>
+        </div>
+      </details>
+
+      <details class="group">
+        <summary>🔤 Typography <span class="chev">›</span></summary>
+        <div class="group-body">
+          <div class="ctrl"><label>Button font</label>
+            <select data-var="--btn-font">
+              <option value='"Nunito", sans-serif'>Nunito</option>
+              <option value='"Inter", sans-serif'>Inter</option>
+              <option value='"Fredoka", sans-serif'>Fredoka</option>
+              <option value='"Baloo 2", sans-serif'>Baloo 2</option>
+              <option value='"Space Mono", monospace'>Space Mono</option>
+              <option value='"JetBrains Mono", monospace'>JetBrains Mono</option>
+            </select></div>
+          <div class="ctrl"><label>Button text size <span class="val" id="v-bs">20px</span></label>
+            <input type="range" data-var="--btn-size" data-unit="px" id="r-bs" min="12" max="34" value="20"></div>
+          <div class="ctrl"><label>Button weight</label>
+            <select data-var="--btn-weight">
+              <option value="400">Regular</option>
+              <option value="600">Semibold</option>
+              <option value="700" selected>Bold</option>
+              <option value="800">Extra bold</option>
+            </select></div>
+        </div>
+      </details>
+
+      <details class="group">
+        <summary>🧩 Layout <span class="chev">›</span></summary>
+        <div class="group-body">
+          <div class="ctrl"><label>Keypad order</label>
+            <select id="keypadOrder">
+              <option value="calc">Calculator (7-8-9 top)</option>
+              <option value="phone">Phone (1-2-3 top)</option>
+            </select></div>
+          <div class="ctrl toggle">
+            <label style="margin:0">Wide zero (spans 2)</label>
+            <label class="sw-wrap"><input type="checkbox" id="wideZero"><span class="sw"></span></label>
+          </div>
+          <div class="ctrl toggle">
+            <label style="margin:0">Show expression line</label>
+            <label class="sw-wrap"><input type="checkbox" id="showExpr" checked><span class="sw"></span></label>
+          </div>
+          <div class="ctrl toggle">
+            <label style="margin:0">Show ± key</label>
+            <label class="sw-wrap"><input type="checkbox" id="showNeg" checked><span class="sw"></span></label>
+          </div>
+          <div class="ctrl toggle">
+            <label style="margin:0">Show % key</label>
+            <label class="sw-wrap"><input type="checkbox" id="showPct" checked><span class="sw"></span></label>
+          </div>
+        </div>
+      </details>
+
+      <details class="group">
+        <summary>🌑 Depth <span class="chev">›</span></summary>
+        <div class="group-body">
+          <div class="ctrl"><label>Body shadow</label>
+            <select data-var="--calc-shadow">
+              <option value="none">None</option>
+              <option value="0 6px 18px rgba(0,0,0,.12)">Soft</option>
+              <option value="0 18px 40px rgba(0,0,0,.18)" selected>Lifted</option>
+              <option value="0 28px 60px rgba(0,0,0,.30)">Dramatic</option>
+              <option value="8px 8px 0 rgba(0,0,0,.85)">Hard (neo)</option>
+            </select></div>
+          <div class="ctrl"><label>Button shadow</label>
+            <select data-var="--btn-shadow">
+              <option value="none">Flat</option>
+              <option value="0 1px 0 rgba(0,0,0,.06)" selected>Subtle</option>
+              <option value="0 4px 0 rgba(0,0,0,.18)">3D lift</option>
+              <option value="inset 0 -3px 0 rgba(0,0,0,.18)">Inset</option>
+              <option value="3px 3px 0 rgba(0,0,0,.85)">Hard (neo)</option>
+            </select></div>
+        </div>
+      </details>
+    </aside>
+  </div>
+
+<script>
+  const calc = document.getElementById('calc');
+  const stage = document.getElementById('stage');
+
+  /* ---------- generic var-binding for inputs/selects ---------- */
+  function applyInput(el) {
+    const cssVar = el.dataset.var;
+    const unit = el.dataset.unit || '';
+    const targetEl = el.dataset.target === 'stage' ? stage : calc;
+    let value = el.value + unit;
+    targetEl.style.setProperty(cssVar, value);
+    // keep ± aligned label in sync when display alignment chosen
+    if (el.dataset.justify) {
+      const map = { left:'flex-start', center:'center', right:'flex-end' };
+      calc.style.setProperty('--disp-justify', map[el.value] || 'flex-end');
+      calc.style.setProperty('--disp-align', map[el.value] || 'flex-end');
+    }
+    // live label
+    const lab = el.previousElementSibling || (el.parentElement.querySelector('label'));
+  }
+
+  // wire every [data-var] control
+  document.querySelectorAll('[data-var]').forEach(el => {
+    el.addEventListener('input', () => {
+      applyInput(el);
+      updateValLabel(el);
+    });
+    applyInput(el); // initialize
+  });
+
+  function updateValLabel(el){
+    const valSpan = el.closest('.ctrl')?.querySelector('.val');
+    if (valSpan && el.type === 'range') valSpan.textContent = el.value + (el.dataset.unit||'');
+  }
+  document.querySelectorAll('input[type=range][data-var]').forEach(updateValLabel);
+
+  /* ---------- quick color palettes ---------- */
+  const palettes = [
+    { name:'Classic',  calc:'#ffffff', disp:'#0f172a', dfg:'#fff', btn:'#eef0f4', bfg:'#1f2937', op:'#ff9500', eq:'#4f46e5', fn:'#d4d4d8', stage:'#e9e9ee', swatch:'#ff9500' },
+    { name:'Midnight', calc:'#1e293b', disp:'#0b1220', dfg:'#7dd3fc', btn:'#334155', bfg:'#e2e8f0', op:'#38bdf8', eq:'#22d3ee', fn:'#475569', stage:'#0f172a', swatch:'#38bdf8' },
+    { name:'Candy',    calc:'#fff0f6', disp:'#ff4d8d', dfg:'#ffffff', btn:'#ffe0ec', bfg:'#d6336c', op:'#ff8cc6', eq:'#7048e8', fn:'#ffd6e8', stage:'#ffe3ef', swatch:'#ff4d8d' },
+    { name:'Mono',     calc:'#111111', disp:'#000000', dfg:'#00ff66', btn:'#1c1c1c', bfg:'#e5e5e5', op:'#444444', eq:'#00ff66', fn:'#2a2a2a', stage:'#222222', swatch:'#00ff66' },
+    { name:'Sunset',   calc:'#2d1b2e', disp:'#1a0f1f', dfg:'#ffd166', btn:'#3e2740', bfg:'#ffe8b8', op:'#ef476f', eq:'#ff9e00', fn:'#52344f', stage:'#3a1f3d', swatch:'#ef476f' },
+    { name:'Paper',    calc:'#faf7f0', disp:'#e8e2d4', dfg:'#3b3a36', btn:'#f1ece0', bfg:'#3b3a36', op:'#b08968', eq:'#7f5539', fn:'#e6dfce', stage:'#efe9dc', swatch:'#b08968' },
+  ];
+  function setColor(cssVar, val, target){ (target||calc).style.setProperty(cssVar, val); }
+  function applyPalette(p){
+    setColor('--calc-bg', p.calc); setColor('--disp-bg', p.disp); setColor('--disp-fg', p.dfg);
+    setColor('--btn-bg', p.btn);   setColor('--btn-fg', p.bfg);   setColor('--op-bg', p.op);
+    setColor('--eq-bg', p.eq);     setColor('--fn-bg', p.fn);     setColor('--stage-bg', p.stage, stage);
+    // sync color inputs
+    syncColor('--calc-bg',p.calc); syncColor('--disp-bg',p.disp); syncColor('--disp-fg',p.dfg);
+    syncColor('--btn-bg',p.btn);   syncColor('--btn-fg',p.bfg);   syncColor('--op-bg',p.op);
+    syncColor('--eq-bg',p.eq);     syncColor('--fn-bg',p.fn);     syncColor('--stage-bg',p.stage);
+  }
+  function syncColor(cssVar, val){
+    const inp = document.querySelector(`input[type=color][data-var="${cssVar}"]`);
+    if (inp && /^#([0-9a-f]{6})$/i.test(val)) inp.value = val;
+  }
+  const palWrap = document.getElementById('palettes');
+  palettes.forEach(p => {
+    const s = document.createElement('div');
+    s.className='swatch'; s.style.background=p.swatch; s.title=p.name;
+    s.onclick = () => applyPalette(p);
+    palWrap.appendChild(s);
+  });
+
+  /* ---------- presets (full looks) ---------- */
+  const presets = [
+    { label:'iOS', apply(){ resetAll(false);
+      applyPalette(palettes[0]);
+      setRange('r-cr',40); setRange('r-br',999>45?45:45); setRange('r-bh',64);
+      setColor('--op-bg','#ff9500'); syncColor('--op-bg','#ff9500');
+      document.getElementById('wideZero').checked=true; rebuildKeys();
+    }},
+    { label:'Neo-brutal', apply(){ resetAll(false);
+      setColor('--calc-bg','#ffe600'); syncColor('--calc-bg','#ffe600');
+      setColor('--disp-bg','#ffffff'); syncColor('--disp-bg','#ffffff');
+      setColor('--disp-fg','#000000'); syncColor('--disp-fg','#000000');
+      setColor('--btn-bg','#ffffff'); syncColor('--btn-bg','#ffffff');
+      setColor('--btn-fg','#000000'); syncColor('--btn-fg','#000000');
+      setColor('--op-bg','#ff5c00'); syncColor('--op-bg','#ff5c00');
+      setColor('--eq-bg','#2b00ff'); syncColor('--eq-bg','#2b00ff');
+      setColor('--fn-bg','#00e0b8'); syncColor('--fn-bg','#00e0b8');
+      setColor('--stage-bg','#b8f') ; syncColor('--stage-bg','#bb88ff');
+      setColor('--stage-bg','#bb88ff', stage);
+      setRange('r-cr',6); setRange('r-br',6);
+      setSelect('--calc-shadow','8px 8px 0 rgba(0,0,0,.85)');
+      setSelect('--btn-shadow','3px 3px 0 rgba(0,0,0,.85)');
+      setRangeVar('--calc-border-w','r-cbw',4);
+      setColor('--calc-border-c','#000000'); syncColor('--calc-border-c','#000000');
+    }},
+    { label:'Terminal', apply(){ resetAll(false);
+      applyPalette(palettes[3]);
+      setSelect('--disp-font','"JetBrains Mono", monospace');
+      setSelect('--btn-font','"JetBrains Mono", monospace');
+      setRange('r-cr',8); setRange('r-br',6); setRange('r-gg',6);
+    }},
+    { label:'Pastel', apply(){ resetAll(false);
+      applyPalette(palettes[2]);
+      setRange('r-cr',34); setRange('r-br',26); setSelect('--btn-font','"Fredoka", sans-serif');
+    }},
+    { label:'Retro LCD', apply(){ resetAll(false);
+      setColor('--calc-bg','#9aa37a'); syncColor('--calc-bg','#9aa37a');
+      setColor('--disp-bg','#b6c08a'); syncColor('--disp-bg','#b6c08a');
+      setColor('--disp-fg','#1f2a14'); syncColor('--disp-fg','#1f2a14');
+      setColor('--btn-bg','#3a3a38'); syncColor('--btn-bg','#3a3a38');
+      setColor('--btn-fg','#f0f0e6'); syncColor('--btn-fg','#f0f0e6');
+      setColor('--op-bg','#5a5a55'); syncColor('--op-bg','#5a5a55');
+      setColor('--eq-bg','#7a2e2e'); syncColor('--eq-bg','#7a2e2e');
+      setColor('--fn-bg','#4a4a46'); syncColor('--fn-bg','#4a4a46');
+      setColor('--stage-bg','#6e7355', stage); syncColor('--stage-bg','#6e7355');
+      setSelect('--disp-font','"Orbitron", sans-serif');
+      setRange('r-cr',12); setRange('r-br',6);
+    }},
+  ];
+  const presetWrap = document.getElementById('presets');
+  presets.forEach(p => {
+    const b = document.createElement('button');
+    b.className='preset'; b.textContent=p.label;
+    b.onclick = p.apply;
+    presetWrap.appendChild(b);
+  });
+
+  /* helpers used by presets */
+  function setRange(id, v){ const el=document.getElementById(id); if(el){ el.value=v; el.dispatchEvent(new Event('input')); } }
+  function setRangeVar(cssVar,id,v){ setRange(id,v); }
+  function setSelect(cssVar, val){
+    const el=document.querySelector(`select[data-var="${cssVar}"]`);
+    if(el){ el.value=val; el.dispatchEvent(new Event('input')); }
+  }
+
+  /* ---------- keypad build + calculator logic ---------- */
+  const keys = document.getElementById('keys');
+  function rebuildKeys(){
+    const order = document.getElementById('keypadOrder').value;
+    const wideZero = document.getElementById('wideZero').checked;
+    const showNeg = document.getElementById('showNeg').checked;
+    const showPct = document.getElementById('showPct').checked;
+
+    // function row: AC, +/-, %, /
+    const top = [ {t:'AC',c:'fn',a:'clear'} ];
+    if (showNeg) top.push({t:'±',c:'fn',a:'neg'});
+    if (showPct) top.push({t:'%',c:'fn',a:'pct'});
+    top.push({t:'÷',c:'op',a:'op',v:'/'});
+
+    const rows123 = order === 'phone'
+      ? [['1','2','3'],['4','5','6'],['7','8','9']]
+      : [['7','8','9'],['4','5','6'],['1','2','3']];
+
+    const ops = ['×','−','+']; const opVals=['*','-','+'];
+    const seq = [];
+    top.forEach(k => seq.push(k));
+    rows123.forEach((r, i) => {
+      r.forEach(n => seq.push({t:n,c:'num',a:'num',v:n}));
+      seq.push({t:ops[i], c:'op', a:'op', v:opVals[i]});
+    });
+    // bottom: 0, ., =
+    seq.push({t:'0',c:'num zero',a:'num',v:'0', wide:wideZero});
+    seq.push({t:'.',c:'num',a:'dot'});
+    seq.push({t:'=',c:'eq',a:'eq'});
+
+    keys.innerHTML='';
+    seq.forEach(k => {
+      const b=document.createElement('button');
+      b.className = 'key ' + (k.c.includes('op')?'op':'') + (k.c.includes('fn')?'fn':'') + (k.c.includes('eq')?'eq':'');
+      if (k.wide) { b.classList.add('zero-wide'); calc.style.setProperty('--zero-span','2'); }
+      b.textContent = k.t;
+      b.dataset.a = k.a; if (k.v!==undefined) b.dataset.v = k.v;
+      b.addEventListener('click', () => handle(k.a, k.v));
+      keys.appendChild(b);
+    });
+    if (!wideZero) calc.style.setProperty('--zero-span','1');
+  }
+  ['keypadOrder','wideZero','showNeg','showPct'].forEach(id =>
+    document.getElementById(id).addEventListener('change', rebuildKeys));
+
+  // show/hide expression line
+  document.getElementById('showExpr').addEventListener('change', e => {
+    document.getElementById('expr').style.display = e.target.checked ? '' : 'none';
+  });
+
+  /* calculator state machine */
+  const outEl = document.getElementById('out');
+  const exprEl = document.getElementById('expr');
+  let cur='0', prev=null, op=null, justEvaled=false;
+
+  function fmt(n){
+    if (n===Infinity||n===-Infinity||Number.isNaN(n)) return 'Error';
+    let s = parseFloat(n.toPrecision(12)).toString();
+    return s;
+  }
+  function render(){
+    outEl.textContent = cur.length>12 ? (+cur).toExponential(6) : cur;
+    exprEl.textContent = (prev!==null && op) ? `${prev} ${symOf(op)}` : '';
+  }
+  function symOf(o){ return ({'+':'+','-':'−','*':'×','/':'÷'})[o]||o; }
+
+  function handle(a, v){
+    switch(a){
+      case 'num':
+        if (cur==='0' || justEvaled) { cur = v; justEvaled=false; }
+        else if (cur.length < 14) cur += v;
+        break;
+      case 'dot':
+        if (justEvaled){ cur='0'; justEvaled=false; }
+        if (!cur.includes('.')) cur += '.';
+        break;
+      case 'clear': cur='0'; prev=null; op=null; justEvaled=false; break;
+      case 'neg': cur = (parseFloat(cur)* -1).toString(); break;
+      case 'pct': cur = (parseFloat(cur)/100).toString(); break;
+      case 'op':
+        if (op && prev!==null && !justEvaled) compute();
+        prev = parseFloat(cur); op = v; justEvaled=true;
+        render(); return;
+      case 'eq':
+        if (op && prev!==null){ compute(); op=null; prev=null; }
+        justEvaled=true; break;
+    }
+    render();
+  }
+  function compute(){
+    const a=prev, b=parseFloat(cur);
+    let r=0;
+    switch(op){ case '+':r=a+b;break; case '-':r=a-b;break; case '*':r=a*b;break; case '/':r=b===0?NaN:a/b;break; }
+    cur = fmt(r); prev = r; justEvaled=true;
+  }
+
+  // keyboard support
+  window.addEventListener('keydown', e => {
+    const k=e.key;
+    if (/[0-9]/.test(k)) handle('num',k);
+    else if (k==='.') handle('dot');
+    else if (k==='+'||k==='-') handle('op',k);
+    else if (k==='*') handle('op','*');
+    else if (k==='/') { e.preventDefault(); handle('op','/'); }
+    else if (k==='Enter'||k==='=') { e.preventDefault(); handle('eq'); }
+    else if (k==='Escape') handle('clear');
+    else if (k==='Backspace'){ cur = cur.length>1?cur.slice(0,-1):'0'; render(); }
+    else if (k==='%') handle('pct');
+  });
+
+  /* ---------- reset / randomize ---------- */
+  const DEFAULTS = {};
+  document.querySelectorAll('[data-var]').forEach(el => DEFAULTS[el.id||el.dataset.var] = el.defaultValue ?? el.value);
+
+  function resetAll(rebuild=true){
+    document.querySelectorAll('input[type=range][data-var], input[type=color][data-var], select[data-var]').forEach(el => {
+      // restore to original markup default
+      if (el.tagName==='SELECT'){
+        const def = el.querySelector('option[selected]') || el.options[0];
+        el.value = def.value;
+      } else {
+        el.value = el.defaultValue;
+      }
+      el.dispatchEvent(new Event('input'));
+    });
+    // toggles back to default
+    document.getElementById('keypadOrder').value='calc';
+    document.getElementById('wideZero').checked=false;
+    document.getElementById('showExpr').checked=true; document.getElementById('expr').style.display='';
+    document.getElementById('showNeg').checked=true;
+    document.getElementById('showPct').checked=true;
+    if (rebuild) rebuildKeys();
+  }
+  document.getElementById('resetBtn').onclick = () => resetAll(true);
+
+  function rand(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+  function randColor(){ return '#'+Array.from({length:3},()=>rand(0,255).toString(16).padStart(2,'0')).join(''); }
+  document.getElementById('randomBtn').onclick = () => {
+    document.querySelectorAll('input[type=color][data-var]').forEach(el => { el.value=randColor(); el.dispatchEvent(new Event('input')); });
+    document.querySelectorAll('input[type=range][data-var]').forEach(el => {
+      const min=+el.min,max=+el.max; el.value=rand(min,max); el.dispatchEvent(new Event('input'));
+    });
+    document.querySelectorAll('select[data-var]').forEach(el => {
+      el.selectedIndex = rand(0, el.options.length-1); el.dispatchEvent(new Event('input'));
+    });
+    document.getElementById('keypadOrder').selectedIndex = rand(0,1);
+    document.getElementById('wideZero').checked = Math.random()>.5;
+    rebuildKeys();
+  };
+
+  // init
+  rebuildKeys();
+  render();
+</script>
+</body>
+</html>
