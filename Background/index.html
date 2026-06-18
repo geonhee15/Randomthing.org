@@ -291,7 +291,7 @@ float map(vec3 p, vec2 mg, vec2 cg){
       vec2 c = id*S;
       float h = cubeH(id, mg, cg);
       vec3 q = vec3(p.x - c.x, p.y - h*0.5, p.z - c.y);
-      d = min(d, sdRoundBox(q, vec3(0.255, h*0.5, 0.255), 0.085));
+      d = min(d, sdRoundBox(q, vec3(0.285, h*0.5, 0.285), 0.05));
     }
   }
   return d;
