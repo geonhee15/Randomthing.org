@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Reaction Time — Randomthing.org</title>
+<meta name="description" content="How fast can you react? Click the moment it turns green." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+<style>
+  :root { --ui: "Inter", system-ui, -apple-system, sans-serif; --ink:#1b1b20; --muted:#8a8a93; --line:#e8e8ec; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; padding:0; height:100%; }
+  body { font-family:var(--ui); color:var(--ink); background:#f6f6f8; min-height:100vh;
+    -webkit-font-smoothing:antialiased; overflow:hidden; touch-action:manipulation; -webkit-user-select:none; user-select:none; }
+  .nav { position:fixed; top:0; left:0; right:0; display:flex; align-items:center; gap:12px; padding:14px 20px; z-index:10; }
+  .brand { font-family:"Baloo 2",sans-serif; font-weight:800; font-size:20px; letter-spacing:-.4px; color:var(--ink);
+    text-decoration:none; padding:5px 8px; border-radius:10px; }
+  .brand:hover { background:rgba(0,0,0,.05); }
+  .brand .org { color:#ff5a5f; }
+  .nav .sep { color:#cfcfd4; } .nav h1 { font-size:15px; font-weight:600; margin:0; color:#56565e; }
+
+  .pad { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; cursor:pointer; transition: background .08s; padding:24px; }
+  .pad .big { font-family:"Baloo 2",sans-serif; font-weight:800; font-size:clamp(34px,8vw,64px); line-height:1.05; }
+  .pad .sub { font-size:clamp(15px,2.6vw,20px); font-weight:500; margin-top:14px; opacity:.92; }
+  .pad .ms { font-family:"Space Grotesk",var(--ui); font-weight:700; font-size:clamp(56px,16vw,128px); line-height:1; }
+  .pad .hint { margin-top:18px; font-size:14px; opacity:.8; }
+
+  /* states */
+  .pad.idle  { background:#eef0ff; color:#3b3b6b; }
+  .pad.wait  { background:#e8554e; color:#fff; }
+  .pad.go    { background:#27c281; color:#fff; }
+  .pad.early { background:#f0a000; color:#fff; }
+  .pad.result{ background:#eef0ff; color:#2a2a44; }
+
+  .stats { position:fixed; bottom:0; left:0; right:0; display:flex; justify-content:center; gap:34px;
+    padding:18px; z-index:10; pointer-events:none; }
+  .stats .s { display:flex; flex-direction:column; align-items:center; gap:2px; color:var(--muted); }
+  .stats .s .n { font-family:"Space Grotesk",monospace; font-size:20px; font-weight:700; color:var(--ink); }
+  .stats .s .t { font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; }
+  .pad.wait .ico, .pad.go .ico { font-size:clamp(40px,10vw,72px); margin-bottom:6px; }
+</style>
+</head>
+<body>
+  <nav class="nav">
+    <a class="brand" href="/">Randomthing<span class="org">.org</span></a>
+    <span class="sep">/</span><h1>Reaction Time</h1>
+  </nav>
+
+  <div class="pad idle" id="pad">
+    <div class="big" id="big">Reaction Time</div>
+    <div class="sub" id="sub">Click anywhere to start</div>
+    <div class="hint" id="hint">When the screen turns <b>green</b>, click as fast as you can.</div>
+  </div>
+
+  <div class="stats">
+    <div class="s"><span class="n" id="last">—</span><span class="t">Last</span></div>
+    <div class="s"><span class="n" id="best">—</span><span class="t">Best</span></div>
+    <div class="s"><span class="n" id="avg">—</span><span class="t">Avg 5</span></div>
+  </div>
+
+<script>
+  const pad = document.getElementById('pad');
+  const big = document.getElementById('big'), sub = document.getElementById('sub'), hint = document.getElementById('hint');
+  const lastEl = document.getElementById('last'), bestEl = document.getElementById('best'), avgEl = document.getElementById('avg');
+
+  let state = 'idle';          // idle | wait | go | result | early
+  let greenAt = 0, timer = null, recent = [];
+  let best = +(localStorage.getItem('rt_best') || 0) || null;
+  if (best) bestEl.textContent = best + ' ms';
+
+  function setState(s){ pad.className = 'pad ' + s; state = s; }
+
+  function startWait(){
+    setState('wait');
+    big.innerHTML = '<span class="ico">✋</span>';
+    sub.textContent = 'Wait for green…';
+    hint.textContent = 'Don’t click yet';
+    const delay = 1200 + Math.random()*3200;
+    timer = setTimeout(goGreen, delay);
+  }
+  function goGreen(){
+    setState('go');
+    big.innerHTML = '<span class="ico">⚡</span>';
+    sub.textContent = 'CLICK!';
+    hint.textContent = '';
+    greenAt = performance.now();
+  }
+  function tooSoon(){
+    clearTimeout(timer);
+    setState('early');
+    big.textContent = 'Too soon!';
+    sub.textContent = 'You clicked before it turned green.';
+    hint.textContent = 'Click to try again';
+  }
+  function record(ms){
+    setState('result');
+    big.innerHTML = ms + '<span style="font-size:.4em; font-weight:700"> ms</span>';
+    big.className = 'big ms';
+    sub.textContent = verdict(ms);
+    hint.textContent = 'Click to go again';
+    recent.push(ms); if (recent.length > 5) recent.shift();
+    lastEl.textContent = ms + ' ms';
+    if (!best || ms < best){ best = ms; localStorage.setItem('rt_best', best); }
+    bestEl.textContent = best + ' ms';
+    const avg = Math.round(recent.reduce((a,b)=>a+b,0)/recent.length);
+    avgEl.textContent = avg + ' ms';
+  }
+  function verdict(ms){
+    if (ms < 180) return 'Lightning reflexes! ⚡';
+    if (ms < 230) return 'Super fast.';
+    if (ms < 300) return 'Nice and quick.';
+    if (ms < 400) return 'Solid.';
+    return 'Keep practicing!';
+  }
+  function resetBig(){ big.className = 'big'; }
+
+  function tap(){
+    if (state === 'idle' || state === 'result' || state === 'early'){ resetBig(); startWait(); }
+    else if (state === 'wait'){ tooSoon(); }
+    else if (state === 'go'){ const ms = Math.round(performance.now() - greenAt); resetBig(); record(ms); }
+  }
+
+  pad.addEventListener('pointerdown', e => { e.preventDefault(); tap(); });
+  window.addEventListener('keydown', e => { if (e.code === 'Space'){ e.preventDefault(); tap(); } });
+</script>
+</body>
+</html>

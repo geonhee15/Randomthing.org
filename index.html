@@ -95,6 +95,8 @@
   .bg-card   { background: radial-gradient(120% 120% at 18% 8%, #243089 0%, #141a44 52%, #0a0a1a 100%); }
   .bb-card   { background: radial-gradient(120% 120% at 82% 8%, #3a1d52 0%, #1c1330 52%, #0c0a18 100%); }
   .clk-card  { background: radial-gradient(120% 120% at 20% 10%, #4a3a1c 0%, #2a2113 52%, #14110a 100%); }
+  .cg-card   { background: linear-gradient(125deg, #ff7e5f 0%, #845ec2 50%, #2c73d2 100%); }
+  .rt-card   { background: radial-gradient(120% 120% at 78% 12%, #1f9e6a 0%, #146a47 52%, #0a2c1e 100%); }
   .calc-card .mini {
     flex: 0 0 auto;
     width: 92px;
@@ -147,6 +149,26 @@
   .bg-card .kicker { color: #a5b4fc; }
   .bb-card .kicker { color: #ff9aa2; }
   .clk-card .kicker { color: #e6c07a; }
+  .cg-card .kicker { color: rgba(255,255,255,.85); }
+  .rt-card .kicker { color: #7ee0b0; }
+
+  /* Color Guesser card artwork */
+  .cg-card .mini {
+    flex: 0 0 auto; width: 92px; height: 92px; border-radius: 16px; overflow: hidden;
+    display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
+    box-shadow: 0 10px 22px rgba(0,0,0,.4), inset 0 0 0 1px rgba(255,255,255,.15);
+    transform: rotate(-4deg); transition: transform .2s ease;
+  }
+  .cg-card .mini i { display:block; }
+  /* Reaction Time card artwork */
+  .rt-card .mini {
+    flex: 0 0 auto; width: 92px; height: 92px; border-radius: 50%;
+    background: radial-gradient(circle at 38% 34%, #3ff0a0, #16b06a 60%, #0c7a48);
+    box-shadow: 0 10px 22px rgba(0,0,0,.4), inset 0 0 0 3px rgba(255,255,255,.18), 0 0 26px rgba(45,220,140,.5);
+    display:flex; align-items:center; justify-content:center;
+    transform: rotate(-4deg); transition: transform .2s ease;
+  }
+  .rt-card .mini b { font-family:"Space Grotesk", sans-serif; font-weight:700; color:#063; font-size:22px; }
 
   /* Clocks card artwork */
   .clk-card .mini {
@@ -296,6 +318,27 @@
           <span class="kicker">Timekeeping</span>
           <span class="name">Clocks</span>
           <span class="desc">Eight clocks &amp; timers, drawn with&nbsp;code.</span>
+        </div>
+      </a>
+
+      <a class="card art-card cg-card" href="/Color-Guesser/">
+        <div class="mini" aria-hidden="true">
+          <i style="background:#ff5a5f"></i><i style="background:#ffd93d"></i>
+          <i style="background:#51cf66"></i><i style="background:#4dabf7"></i>
+        </div>
+        <div class="txt">
+          <span class="kicker">Eye test</span>
+          <span class="name">Color Guesser</span>
+          <span class="desc">Read a color, guess its HEX&nbsp;code.</span>
+        </div>
+      </a>
+
+      <a class="card art-card rt-card" href="/Reaction-Time/">
+        <div class="mini" aria-hidden="true"><b>⚡</b></div>
+        <div class="txt">
+          <span class="kicker">Reflexes</span>
+          <span class="name">Reaction Time</span>
+          <span class="desc">Click the instant it turns&nbsp;green.</span>
         </div>
       </a>
     </div>
