@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- isometric die: top = 1 (dark), left = 2 (dark), right = 3 (pink) -->
+  <g stroke="#141414" stroke-width="17" stroke-linejoin="round" stroke-linecap="round">
+    <polygon points="430,150 256,246 256,416 430,320" fill="#ffffff"/>
+    <polygon points="82,150 256,246 256,416 82,320" fill="#ecedf1"/>
+    <polygon points="256,56 430,150 256,246 82,150" fill="#f6f6f9"/>
+  </g>
+
+  <!-- top face: 1 -->
+  <g transform="matrix(174,-94,174,96,82,150)">
+    <circle cx="0.5" cy="0.5" r="0.145" fill="#3a4048"/>
+  </g>
+
+  <!-- left face: 2 -->
+  <g transform="matrix(174,96,0,170,82,150)" fill="#3a4048">
+    <circle cx="0.34" cy="0.33" r="0.13"/>
+    <circle cx="0.66" cy="0.67" r="0.13"/>
+  </g>
+
+  <!-- right face: 3 -->
+  <g transform="matrix(-174,96,0,170,430,150)" fill="#f4818e" stroke="#d76b7a" stroke-width="0.026">
+    <circle cx="0.66" cy="0.26" r="0.12"/>
+    <circle cx="0.5" cy="0.5" r="0.12"/>
+    <circle cx="0.34" cy="0.74" r="0.12"/>
+  </g>
+</svg>
