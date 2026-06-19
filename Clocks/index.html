@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Clocks — Randomthing.org</title>
+<meta name="description" content="A handful of clocks, drawn with code, all telling the real time." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/dseg@0.46.0/css/dseg.css" />
+<style>
+  :root {
+    --ui: "Inter", system-ui, -apple-system, sans-serif;
+    --ink: #20201d;
+    --muted: #8a8779;
+    --line: #e7e3d6;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; height:100%; }
+  body {
+    font-family: var(--ui);
+    /* very, very slightly warm off-white */
+    background: #f7f3e9;
+    color: var(--ink);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+
+  .topbar {
+    position: fixed; top: 18px; left: 18px; z-index: 20;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .brand {
+    font-family: "Baloo 2", sans-serif; font-weight: 800; font-size: 19px;
+    letter-spacing: -.4px; line-height: 1; color: var(--ink); text-decoration: none;
+    padding: 5px 8px; border-radius: 10px; transition: background .14s ease;
+  }
+  .brand:hover { background: rgba(0,0,0,.05); }
+  .brand .org { color: #ff5a5f; }
+
+  .menu { position: relative; }
+  .menu-btn {
+    display:inline-flex; align-items:center; gap:9px;
+    font-family: var(--ui); font-size: 14px; font-weight: 600; color: var(--ink);
+    background: #fffdf7; border: 1px solid var(--line); border-radius: 11px;
+    padding: 9px 13px; cursor: pointer; transition: border-color .14s, box-shadow .14s;
+    box-shadow: 0 1px 2px rgba(0,0,0,.04);
+  }
+  .menu-btn:hover { border-color: #d8d2c2; }
+  .menu-btn svg { transition: transform .18s ease; color: var(--muted); }
+  .menu.open .menu-btn svg { transform: rotate(180deg); }
+  .menu-list {
+    position: absolute; top: calc(100% + 8px); left: 0; min-width: 220px;
+    background: #fffdf7; border: 1px solid var(--line); border-radius: 13px;
+    box-shadow: 0 18px 44px rgba(40,36,24,.18); padding: 6px; margin: 0; list-style: none;
+    opacity: 0; transform: translateY(-6px) scale(.98); transform-origin: top left;
+    pointer-events: none; transition: opacity .15s ease, transform .15s ease;
+  }
+  .menu.open .menu-list { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+  .menu-list li {
+    display:flex; align-items:center; gap:10px;
+    font-size: 14px; font-weight: 600; color: var(--ink);
+    padding: 10px 12px; border-radius: 9px; cursor: pointer;
+  }
+  .menu-list li:hover { background: #f3efe2; }
+  .menu-list li.active { color: #6a5acd; }
+  .menu-list li .tick { margin-left:auto; opacity:0; color:#6a5acd; }
+  .menu-list li.active .tick { opacity:1; }
+
+  .stage {
+    height: 100vh; display: flex; align-items: center; justify-content: center;
+    padding: 78px 24px 40px;
+  }
+  .stage .holder { width: min(72vmin, 540px); }
+  .clockwrap { width: 100%; display:flex; align-items:center; justify-content:center; }
+  svg.clock { width: 100%; height: auto; display:block; overflow: visible; }
+
+  .caption { position: fixed; bottom: 20px; left: 0; right: 0; text-align: center;
+    color: var(--muted); font-size: 13px; font-weight: 500; }
+  .caption b { color: var(--ink); font-weight: 600; }
+
+  /* Digital clock (HTML) */
+  .device {
+    width: 100%; background: linear-gradient(180deg,#ffffff,#f2efe6);
+    border-radius: 26px; padding: 30px 30px 34px;
+    box-shadow: 0 24px 60px rgba(40,36,24,.18), inset 0 1px 0 #fff;
+    border: 1px solid #ece7da;
+  }
+  .lcd {
+    background: linear-gradient(180deg,#dfe3d6,#cdd2c2);
+    border-radius: 14px; padding: 22px 24px 18px;
+    box-shadow: inset 0 2px 10px rgba(60,66,48,.35);
+    position: relative;
+  }
+  .lcd .row { display:flex; align-items:flex-end; justify-content:space-between; gap:18px; }
+  .lcd .seg { position: relative; line-height: 1; }
+  .lcd .ghost, .lcd .val {
+    font-family: "DSEG7 Classic", "Space Grotesk", monospace; font-weight: 700;
+    letter-spacing: 2px;
+  }
+  .lcd .big .ghost, .lcd .big .val { font-size: clamp(54px, 16vmin, 96px); }
+  .lcd .val { position: relative; color: #20271a; }
+  .lcd .ghost { display: none; }
+  .lcd .side { display:flex; flex-direction:column; align-items:flex-end; gap:10px; padding-bottom:6px; }
+  .lcd .side .label { font-size:11px; font-weight:700; letter-spacing:.12em; color:rgba(40,48,30,.55); }
+  .lcd .small { font-family:"DSEG7 Classic","Space Grotesk",monospace; font-weight:700; }
+  .lcd .small .ghost, .lcd .small .val { font-size: clamp(20px, 5vmin, 30px); }
+  .lcd .ampm { font-family: var(--ui); font-weight:800; font-size:14px; color:#20271a; letter-spacing:.08em; }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <a class="brand" href="/">Randomthing<span class="org">.org</span></a>
+    <div class="menu" id="menu">
+      <button class="menu-btn" id="menuBtn">
+        <span id="menuLabel">Wall Clock</span>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <ul class="menu-list" id="menuList"></ul>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="holder">
+      <div class="clockwrap" id="clockwrap"></div>
+    </div>
+  </div>
+
+  <div class="caption" id="caption"></div>
+
+<script>
+const CX = 200, CY = 200;
+const clockwrap = document.getElementById('clockwrap');
+
+// ---------- helpers ----------
+function pol(cx, cy, r, deg){
+  const a = (deg - 90) * Math.PI / 180;
+  return [cx + r*Math.cos(a), cy + r*Math.sin(a)];
+}
+function ticksSVG(rOuter, rMinor, rMajor, colMinor, colMajor){
+  let s = '';
+  for (let i = 0; i < 60; i++){
+    const major = i % 5 === 0;
+    const [x1,y1] = pol(CX,CY, rOuter, i*6);
+    const [x2,y2] = pol(CX,CY, major ? rMajor : rMinor, i*6);
+    s += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${major?colMajor:colMinor}" stroke-width="${major?3:1.4}" stroke-linecap="round"/>`;
+  }
+  return s;
+}
+function numeralsSVG(r, opts){
+  let s = '';
+  for (let i = 1; i <= 12; i++){
+    const [x,y] = pol(CX,CY, r, i*30);
+    const label = opts.label ? opts.label(i) : String(i);
+    s += `<text x="${x.toFixed(1)}" y="${y.toFixed(1)}" text-anchor="middle" dominant-baseline="central"
+      font-family="${opts.family}" font-size="${opts.size}" font-weight="${opts.weight||600}"
+      font-style="${opts.italic?'italic':'normal'}" fill="${opts.fill}">${label}</text>`;
+  }
+  return s;
+}
+function handsSVG(cfg){
+  // cfg: {hour:{len,w,fill,tail}, min:{...}, sec:{len,w,fill,tail}|null, cap}
+  const H = cfg.hour, M = cfg.min, S = cfg.sec;
+  let s = '';
+  s += `<g id="hour"><line x1="${CX}" y1="${CY+H.tail}" x2="${CX}" y2="${CY-H.len}" stroke="${H.fill}" stroke-width="${H.w}" stroke-linecap="round"/></g>`;
+  s += `<g id="min"><line x1="${CX}" y1="${CY+M.tail}" x2="${CX}" y2="${CY-M.len}" stroke="${M.fill}" stroke-width="${M.w}" stroke-linecap="round"/></g>`;
+  if (S) s += `<g id="sec"><line x1="${CX}" y1="${CY+S.tail}" x2="${CX}" y2="${CY-S.len}" stroke="${S.fill}" stroke-width="${S.w}" stroke-linecap="round"/></g>`;
+  s += `<circle cx="${CX}" cy="${CY}" r="${cfg.capR||7}" fill="${cfg.cap}"/>`;
+  if (cfg.capDot) s += `<circle cx="${CX}" cy="${CY}" r="2.4" fill="${cfg.capDot}"/>`;
+  return s;
+}
+function svgEl(inner, vb){
+  return `<svg class="clock" viewBox="${vb||'0 0 400 400'}" xmlns="http://www.w3.org/2000/svg">${inner}</svg>`;
+}
+
+// ---------- clock builders ----------
+function buildWall(){
+  let s = '';
+  s += `<circle cx="${CX}" cy="${CY}" r="196" fill="#2a2d33"/>`;
+  s += `<circle cx="${CX}" cy="${CY}" r="183" fill="#15171b"/>`;
+  s += `<circle cx="${CX}" cy="${CY}" r="176" fill="#fbfaf7"/>`;
+  s += ticksSVG(168, 158, 150, '#bdbdbd', '#222');
+  s += numeralsSVG(132, { family:'"Space Grotesk", sans-serif', size:30, weight:500, fill:'#1b1b1b' });
+  s += handsSVG({
+    hour:{len:96,w:9,fill:'#1b1b1b',tail:24}, min:{len:138,w:6,fill:'#1b1b1b',tail:28},
+    sec:{len:150,w:2,fill:'#1b1b1b',tail:42}, cap:'#1b1b1b', capR:8 });
+  clockwrap.innerHTML = svgEl(s);
+  return basicUpdate;
+}
+
+function buildAlarm(){
+  let s = '';
+  // bells + handle behind
+  s += `<g stroke="#0c0c0c" stroke-width="6" fill="#0c0c0c">
+    <ellipse cx="118" cy="58" rx="46" ry="34" fill="#111"/>
+    <ellipse cx="282" cy="58" rx="46" ry="34" fill="#111"/>
+    <path d="M118 40 Q200 -20 282 40" fill="none" stroke="#9aa0a6" stroke-width="9"/>
+    <circle cx="118" cy="40" r="7" fill="#c7ccd1" stroke="none"/>
+    <circle cx="282" cy="40" r="7" fill="#c7ccd1" stroke="none"/>
+    <rect x="190" y="34" width="20" height="20" rx="5" fill="#c7ccd1" stroke="none"/>
+  </g>`;
+  // feet
+  s += `<g stroke="#9aa0a6" stroke-width="8" stroke-linecap="round">
+    <line x1="120" y1="372" x2="92" y2="398"/>
+    <line x1="280" y1="372" x2="308" y2="398"/>
+  </g>`;
+  s += `<circle cx="${CX}" cy="${CY}" r="184" fill="#0c0c0c"/>`;
+  s += `<circle cx="${CX}" cy="${CY}" r="168" fill="#f7f4ea"/>`;
+  s += `<circle cx="${CX}" cy="${CY}" r="168" fill="none" stroke="#0c0c0c" stroke-width="2"/>`;
+  s += ticksSVG(160, 152, 146, '#3a3a3a', '#0c0c0c');
+  s += numeralsSVG(128, { family:'"Space Grotesk", sans-serif', size:27, weight:600, fill:'#161616' });
+  // little seconds subdial (decorative, also live)
+  s += `<g transform="translate(0,-46)">
+    <circle cx="${CX}" cy="${CY}" r="34" fill="#f1ede2" stroke="#999" stroke-width="1.5"/>
+    <g id="sec"><line x1="${CX}" y1="${CY+8}" x2="${CX}" y2="${CY-30}" stroke="#0c0c0c" stroke-width="1.6" stroke-linecap="round"/></g>
+    <circle cx="${CX}" cy="${CY}" r="3" fill="#0c0c0c"/>
+  </g>`;
+  s += handsSVG({
+    hour:{len:92,w:8,fill:'#0c0c0c',tail:20}, min:{len:132,w:5,fill:'#0c0c0c',tail:24},
+    sec:null, cap:'#0c0c0c', capR:7 });
+  clockwrap.innerHTML = svgEl(s);
+  // custom update: subdial sec rotates around offset center (CX, CY-46)
+  return function(now){
+    setHand('hour', hourAngle(now)); setHand('min', minAngle(now));
+    const e = document.getElementById('sec');
+    if (e) e.setAttribute('transform', `rotate(${secAngle(now)} ${CX} ${CY-46})`);
+  };
+}
+
+function buildWatch(){
+  let s = '';
+  s += `<defs>
+    <linearGradient id="steel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f1f2f4"/><stop offset=".5" stop-color="#c4c7cc"/><stop offset="1" stop-color="#e9ebee"/>
+    </linearGradient>
+    <linearGradient id="strap" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#23211f"/><stop offset="1" stop-color="#15140f"/>
+    </linearGradient></defs>`;
+  // straps
+  s += `<rect x="150" y="-40" width="100" height="150" rx="20" fill="url(#strap)"/>`;
+  s += `<rect x="150" y="290" width="100" height="150" rx="20" fill="url(#strap)"/>`;
+  s += `<g stroke="#5a544a" stroke-width="2" stroke-dasharray="6 6">
+    <line x1="166" y1="6" x2="166" y2="96"/><line x1="234" y1="6" x2="234" y2="96"/>
+    <line x1="166" y1="306" x2="166" y2="394"/><line x1="234" y1="306" x2="234" y2="394"/></g>`;
+  // crown
+  s += `<rect x="372" y="186" width="20" height="28" rx="4" fill="url(#steel)" stroke="#9a9da2"/>`;
+  // case
+  s += `<circle cx="${CX}" cy="${CY}" r="170" fill="url(#steel)" stroke="#9a9da2" stroke-width="2"/>`;
+  s += `<circle cx="${CX}" cy="${CY}" r="150" fill="#ffffff" stroke="#dadde0" stroke-width="2"/>`;
+  s += ticksSVG(143, 136, 130, '#b9bdc2', '#1a1a1a');
+  s += numeralsSVG(116, { family:'"Space Grotesk", sans-serif', size:24, weight:700, fill:'#101114' });
+  s += handsSVG({
+    hour:{len:82,w:9,fill:'#101114',tail:18}, min:{len:120,w:6,fill:'#101114',tail:22},
+    sec:{len:128,w:2,fill:'#2b3a8f',tail:34}, cap:'#101114', capR:7 });
+  clockwrap.innerHTML = svgEl(s);
+  return basicUpdate;
+}
+
+function buildMath(){
+  const EXPR = {1:'tan45°',2:'√4',3:'Round π',4:'2²',5:'√25',6:'3!',7:'⌈2π⌉',8:'2³',9:'3²',10:'1010₂',11:'√121',12:'1100₂'};
+  let s = '';
+  s += `<circle cx="${CX}" cy="${CY}" r="192" fill="#ffffff" stroke="#eceadf" stroke-width="2"/>`;
+  s += numeralsSVG(150, { family:'Georgia, "Times New Roman", serif', size:21, weight:600, italic:true, fill:'#16181d', label:(i)=>EXPR[i] });
+  s += `<text x="${CX}" y="${CY+44}" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-size="10" fill="#9a9a9a">Science &amp; Maths</text>`;
+  s += handsSVG({
+    hour:{len:94,w:11,fill:'#0c0c0c',tail:22}, min:{len:140,w:8,fill:'#0c0c0c',tail:26},
+    sec:{len:150,w:1.6,fill:'#0c0c0c',tail:44}, cap:'#0c0c0c', capR:8 });
+  clockwrap.innerHTML = svgEl(s);
+  return basicUpdate;
+}
+
+function buildSundial(){
+  let s = '';
+  s += `<defs>
+    <radialGradient id="dial" cx=".4" cy=".35" r=".8">
+      <stop offset="0" stop-color="#efe6cf"/><stop offset="1" stop-color="#cdbf9b"/>
+    </radialGradient>
+    <linearGradient id="gno" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#b9923f"/><stop offset="1" stop-color="#7d5e22"/>
+    </linearGradient></defs>`;
+  s += `<circle cx="${CX}" cy="${CY}" r="192" fill="#b69b63"/>`;
+  s += `<circle cx="${CX}" cy="${CY}" r="182" fill="url(#dial)" stroke="#8c7641" stroke-width="2"/>`;
+  // hour lines + roman numerals
+  const RN = ['','I','II','III','IIII','V','VI','VII','VIII','IX','X','XI','XII'];
+  for (let i = 1; i <= 12; i++){
+    const [x1,y1] = pol(CX,CY,150,i*30), [x2,y2] = pol(CX,CY,176,i*30);
+    s += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="#6f5a2c" stroke-width="2.4"/>`;
+    const [tx,ty] = pol(CX,CY,134,i*30);
+    s += `<text x="${tx.toFixed(1)}" y="${ty.toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-family="Georgia, serif" font-size="20" font-weight="700" fill="#5a481f">${RN[i]}</text>`;
+  }
+  // minor ticks
+  for (let i = 0; i < 60; i++){ if (i%5===0) continue; const [x1,y1]=pol(CX,CY,164,i*6),[x2,y2]=pol(CX,CY,176,i*6); s+=`<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="#8c7641" stroke-width="1"/>`; }
+  // shadow (rotates to current hour) + gnomon
+  s += `<g id="shadow"><polygon points="${CX-10},${CY} ${CX+10},${CY} ${CX+3},${CY-152} ${CX-3},${CY-152}" fill="rgba(60,45,15,.30)"/></g>`;
+  s += `<polygon points="${CX-11},${CY+8} ${CX+11},${CY+8} ${CX},${CY-58}" fill="url(#gno)" stroke="#6b5020" stroke-width="1"/>`;
+  s += `<circle cx="${CX}" cy="${CY}" r="7" fill="#7d5e22"/>`;
+  clockwrap.innerHTML = svgEl(s);
+  return function(now){
+    const e = document.getElementById('shadow');
+    // the cast shadow falls on the current hour numeral
+    if (e) e.setAttribute('transform', `rotate(${hourAngle(now)} ${CX} ${CY})`);
+  };
+}
+
+function buildDigital(){
+  const html = `
+    <div class="device">
+      <div class="lcd">
+        <div class="row">
+          <div class="seg big"><span class="ghost">88:88</span><span class="val" id="d_time">10:09</span></div>
+          <div class="side">
+            <div class="ampm" id="d_ampm">AM</div>
+            <div><span class="label">SEC</span></div>
+            <div class="seg small"><span class="ghost">88</span><span class="val" id="d_sec">00</span></div>
+          </div>
+        </div>
+        <div class="row" style="margin-top:14px; align-items:center;">
+          <div class="seg small"><span class="ghost">88:88</span><span class="val" id="d_date" style="letter-spacing:1px;">01:01</span></div>
+          <div class="label" id="d_day">MON</div>
+        </div>
+      </div>
+    </div>`;
+  clockwrap.innerHTML = html;
+  const days = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+  return function(now){
+    let h = now.getHours();
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12; if (h === 0) h = 12;
+    const mm = String(now.getMinutes()).padStart(2,'0');
+    const ss = String(now.getSeconds()).padStart(2,'0');
+    const colon = now.getSeconds() % 2 === 0 ? ':' : ' ';
+    document.getElementById('d_time').textContent = String(h).padStart(2,' ') + colon + mm;
+    document.getElementById('d_sec').textContent = ss;
+    document.getElementById('d_ampm').textContent = ampm;
+    document.getElementById('d_date').textContent =
+      String(now.getMonth()+1).padStart(2,'0') + ':' + String(now.getDate()).padStart(2,'0');
+    document.getElementById('d_day').textContent = days[now.getDay()];
+  };
+}
+
+// ---------- time + shared updates ----------
+function secAngle(n){ return (n.getSeconds() + n.getMilliseconds()/1000) * 6; }
+function minAngle(n){ return (n.getMinutes() + n.getSeconds()/60) * 6; }
+function hourAngle(n){ return ((n.getHours()%12) + n.getMinutes()/60) * 30; }
+function setHand(id, a){ const e = document.getElementById(id); if (e) e.setAttribute('transform', `rotate(${a} ${CX} ${CY})`); }
+function basicUpdate(now){
+  setHand('hour', hourAngle(now));
+  setHand('min', minAngle(now));
+  setHand('sec', secAngle(now));
+}
+
+// ---------- registry / menu ----------
+const CLOCKS = [
+  { id:'wall',    name:'Wall Clock',         build: buildWall },
+  { id:'alarm',   name:'Alarm Clock',        build: buildAlarm },
+  { id:'watch',   name:'Wrist Watch',        build: buildWatch },
+  { id:'digital', name:'Digital Clock',      build: buildDigital },
+  { id:'math',    name:'Mathematical Clock', build: buildMath },
+  { id:'sundial', name:'Sundial',            build: buildSundial },
+];
+
+let currentUpdate = () => {};
+const menu = document.getElementById('menu');
+const menuBtn = document.getElementById('menuBtn');
+const menuLabel = document.getElementById('menuLabel');
+const menuList = document.getElementById('menuList');
+const caption = document.getElementById('caption');
+
+CLOCKS.forEach(c => {
+  const li = document.createElement('li');
+  li.dataset.id = c.id;
+  li.innerHTML = `<span>${c.name}</span><svg class="tick" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+  li.addEventListener('click', () => { select(c.id); closeMenu(); });
+  menuList.appendChild(li);
+});
+
+function select(id){
+  const c = CLOCKS.find(x => x.id === id) || CLOCKS[0];
+  currentUpdate = c.build() || (() => {});
+  menuLabel.textContent = c.name;
+  caption.innerHTML = `<b>${c.name}</b> — drawn with code, showing your local time`;
+  [...menuList.children].forEach(li => li.classList.toggle('active', li.dataset.id === id));
+  currentUpdate(new Date());
+  try { localStorage.setItem('clocks_pick', id); } catch(e){}
+}
+function openMenu(){ menu.classList.add('open'); }
+function closeMenu(){ menu.classList.remove('open'); }
+menuBtn.addEventListener('click', e => { e.stopPropagation(); menu.classList.toggle('open'); });
+document.addEventListener('click', () => closeMenu());
+
+// ---------- loop ----------
+function tick(){ currentUpdate(new Date()); requestAnimationFrame(tick); }
+
+// authentic 7-segment ghost only when the DSEG font actually loads
+if (document.fonts && document.fonts.ready){
+  document.fonts.ready.then(() => { try { if (document.fonts.check('24px "DSEG7 Classic"')) document.body.classList.add('dseg'); } catch(e){} });
+}
+
+const saved = (function(){ try { return localStorage.getItem('clocks_pick'); } catch(e){ return null; } })();
+select(CLOCKS.some(c => c.id === saved) ? saved : 'wall');
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>

@@ -93,6 +93,7 @@
   .calc-card { background: radial-gradient(120% 120% at 80% 0%, #3b4a63 0%, #1f2937 55%, #131a24 100%); }
   .bg-card   { background: radial-gradient(120% 120% at 18% 8%, #243089 0%, #141a44 52%, #0a0a1a 100%); }
   .bb-card   { background: radial-gradient(120% 120% at 82% 8%, #3a1d52 0%, #1c1330 52%, #0c0a18 100%); }
+  .clk-card  { background: radial-gradient(120% 120% at 20% 10%, #4a3a1c 0%, #2a2113 52%, #14110a 100%); }
   .calc-card .mini {
     flex: 0 0 auto;
     width: 92px;
@@ -144,6 +145,19 @@
   }
   .bg-card .kicker { color: #a5b4fc; }
   .bb-card .kicker { color: #ff9aa2; }
+  .clk-card .kicker { color: #e6c07a; }
+
+  /* Clocks card artwork */
+  .clk-card .mini {
+    flex: 0 0 auto;
+    width: 92px; height: 92px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: #fbfaf5;
+    box-shadow: 0 10px 22px rgba(0,0,0,.45), inset 0 0 0 4px #1b1b1b;
+    transform: rotate(-4deg);
+    transition: transform .2s ease;
+  }
 
   /* Brick Break card artwork */
   .bb-card .mini {
@@ -254,6 +268,27 @@
           <span class="kicker">Arcade</span>
           <span class="name">Brick Break</span>
           <span class="desc">Bounce the ball, clear the&nbsp;wall.</span>
+        </div>
+      </a>
+
+      <a class="card art-card clk-card" href="/Clocks/">
+        <div class="mini" aria-hidden="true">
+          <svg viewBox="0 0 100 100" width="92" height="92">
+            <g stroke="#1b1b1b" stroke-width="3" stroke-linecap="round">
+              <line x1="50" y1="14" x2="50" y2="20"/>
+              <line x1="86" y1="50" x2="80" y2="50"/>
+              <line x1="50" y1="86" x2="50" y2="80"/>
+              <line x1="14" y1="50" x2="20" y2="50"/>
+            </g>
+            <line x1="50" y1="50" x2="50" y2="30" stroke="#1b1b1b" stroke-width="4" stroke-linecap="round"/>
+            <line x1="50" y1="50" x2="68" y2="58" stroke="#1b1b1b" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="50" cy="50" r="3.4" fill="#1b1b1b"/>
+          </svg>
+        </div>
+        <div class="txt">
+          <span class="kicker">Timekeeping</span>
+          <span class="name">Clocks</span>
+          <span class="desc">Six clocks, drawn with code, on the real&nbsp;time.</span>
         </div>
       </a>
     </div>
