@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Audio Player — Randomthing.org</title>
+<meta name="description" content="Load or record a track, then scratch the disc like a turntable." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Inter:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ui: "Inter", system-ui, -apple-system, sans-serif;
+    --mono: "Space Mono", ui-monospace, monospace;
+    --body: #ededeb;
+    --body2: #dcdcd8;
+    --key: #f4f4f2;
+    --keyEdge: #c9c9c4;
+    --ink: #2a2a2c;
+    --muted: #8d8d88;
+    --red: #e23b2e;
+    --brass: #c8a96a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; }
+  body {
+    font-family: var(--ui); color: #25241f; min-height: 100vh;
+    background: radial-gradient(120% 90% at 50% -5%, #ddd2bd 0%, #c8bca3 55%, #b6a98e 100%);
+    -webkit-font-smoothing: antialiased;
+    -webkit-user-select: none; user-select: none;
+  }
+  .nav { display:flex; align-items:center; gap:12px; padding:14px 20px; }
+  .brand { font-family:"Baloo 2",sans-serif; font-weight:800; font-size:20px; letter-spacing:-.4px;
+    color:#2a2620; text-decoration:none; padding:5px 8px; border-radius:10px; }
+  .brand:hover { background: rgba(0,0,0,.06); }
+  .brand .org { color:#ff5a5f; }
+  .nav .sep { color:#9a917f; } .nav h1 { font-size:15px; font-weight:600; margin:0; color:#5e5849; }
+
+  .stage { display:flex; align-items:flex-start; justify-content:center; padding: 8px 16px 50px; }
+
+  /* ---------- device ---------- */
+  .device {
+    width: min(430px, 94vw);
+    background: linear-gradient(155deg, #efefec 0%, #e2e2de 60%, #d6d6d1 100%);
+    border-radius: 26px;
+    padding: 20px 20px 22px;
+    box-shadow: 0 40px 90px rgba(40,34,22,.40), 0 6px 0 #c4c4bd, inset 0 1px 0 #fff, inset 0 0 0 1px rgba(0,0,0,.04);
+    position: relative;
+  }
+
+  /* header */
+  .head { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  .logo { display:flex; align-items:baseline; gap:9px; }
+  .logo .name { font-family:var(--mono); font-weight:700; font-size:18px; letter-spacing:1px; color:#3a3a3c; }
+  .logo .dots { display:flex; gap:6px; align-items:center; }
+  .logo .dots i { width:7px; height:7px; border-radius:50%; background:#bdbdb6; }
+  .logo .dots i.on { background:var(--red); box-shadow:0 0 8px rgba(226,59,46,.7); }
+  .oled {
+    font-family:var(--mono); background:#0c0d0f; color:#d8e8c8; border-radius:8px;
+    padding:7px 12px; min-width:128px; text-align:right; letter-spacing:1px;
+    box-shadow: inset 0 0 10px rgba(0,0,0,.8), 0 1px 0 #fff;
+    border:1px solid #2a2a2a;
+  }
+  .oled .t { font-size:17px; font-weight:700; }
+  .oled .st { font-size:9px; letter-spacing:2px; color:#7fa86a; }
+
+  /* load slot */
+  .slot {
+    display:flex; align-items:center; gap:12px;
+    border:2px dashed #b9b9b2; border-radius:14px; padding:11px 14px; margin-bottom:18px;
+    background:#e7e7e3; cursor:pointer; transition:border-color .15s, background .15s;
+  }
+  .slot:hover, .slot.drag { border-color:#8f8f88; background:#eeeeea; }
+  .slot .ic { width:34px; height:34px; flex:0 0 auto; border-radius:9px; background:#d7d7d1; display:flex; align-items:center; justify-content:center; color:#56564f; }
+  .slot .txt { display:flex; flex-direction:column; line-height:1.2; min-width:0; }
+  .slot .txt .a { font-size:13px; font-weight:700; color:#3a3a36; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .slot .txt .b { font-family:var(--mono); font-size:10px; color:#9a9a92; letter-spacing:.5px; }
+
+  /* platter */
+  .platter-wrap { display:flex; justify-content:center; margin-bottom:20px; position:relative; }
+  .platter {
+    width: min(280px, 72vw); aspect-ratio:1; border-radius:50%; position:relative;
+    cursor:grab; touch-action:none;
+    background:
+      radial-gradient(circle at 50% 50%, #f0f0ec 0 30%, transparent 30.2%),
+      repeating-radial-gradient(circle at 50% 50%, #dfdfd9 0 2px, #e9e9e4 2px 4px),
+      radial-gradient(circle at 38% 32%, #f6f6f3, #d7d7d1 75%);
+    box-shadow: 0 10px 26px rgba(0,0,0,.22), inset 0 0 0 2px rgba(255,255,255,.6), inset 0 0 0 8px rgba(0,0,0,.03);
+  }
+  .platter:active { cursor:grabbing; }
+  .platter .spin { position:absolute; inset:0; border-radius:50%; will-change:transform; }
+  .platter .mark { position:absolute; top:7%; left:50%; width:5px; height:13%; margin-left:-2.5px; border-radius:3px; background:#b9b9b2; }
+  .platter .label { position:absolute; top:26%; left:26%; width:48%; height:48%; border-radius:50%;
+    background: radial-gradient(circle at 40% 35%, #e9cf95, #c8a96a 70%, #a98a4d);
+    box-shadow: inset 0 0 0 2px rgba(255,255,255,.3), 0 2px 6px rgba(0,0,0,.25);
+    display:flex; align-items:center; justify-content:center; }
+  .platter .label::after { content:""; width:10px; height:10px; border-radius:50%; background:#7a5f2c; box-shadow: inset 0 1px 2px rgba(0,0,0,.5); }
+  .platter .tick { position:absolute; width:4px; height:4px; border-radius:50%; background:#b6b6af; }
+
+  /* controls row */
+  .controls { display:flex; align-items:flex-end; gap:10px; }
+  .keys { display:flex; gap:9px; }
+  .key {
+    width:62px; height:58px; border-radius:13px; border:none; cursor:pointer;
+    background: linear-gradient(180deg, #f6f6f4, #e4e4df);
+    box-shadow: 0 3px 0 #c6c6bf, 0 6px 12px rgba(0,0,0,.12), inset 0 1px 0 #fff;
+    display:flex; align-items:center; justify-content:center; transition: transform .05s, box-shadow .05s;
+    color:#2a2a2c;
+  }
+  .key:active, .key.active { transform: translateY(2px); box-shadow: 0 1px 0 #c6c6bf, 0 3px 7px rgba(0,0,0,.12), inset 0 1px 0 #fff; }
+  .key.rec .dot { width:20px; height:20px; border-radius:50%; background:var(--red); box-shadow:0 0 0 0 rgba(226,59,46,.5); }
+  .key.rec.on { background:linear-gradient(180deg,#ffe3e0,#ffd0cc); }
+  .key.rec.on .dot { animation: pulse 1s infinite; }
+  @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(226,59,46,.6)} 70%{box-shadow:0 0 0 10px rgba(226,59,46,0)} 100%{box-shadow:0 0 0 0 rgba(226,59,46,0)} }
+  .key svg { display:block; }
+  .key .lab { position:absolute; }
+
+  .spacer { flex:1; }
+
+  /* meters + volume */
+  .right-cluster { display:flex; align-items:flex-end; gap:14px; }
+  .meters { display:flex; gap:8px; align-items:flex-end; }
+  .meter { display:flex; flex-direction:column; align-items:center; gap:5px; }
+  .meter .track { width:10px; height:60px; border-radius:6px; background:#d3d3cd; box-shadow: inset 0 1px 3px rgba(0,0,0,.25);
+    position:relative; overflow:hidden; display:flex; flex-direction:column-reverse; }
+  .meter .fill { width:100%; height:0%; background: linear-gradient(0deg,#3fb56a 0%, #8ec63f 55%, #f0c419 80%, #e23b2e 100%); transition: height .05s linear; }
+  .meter .k { font-family:var(--mono); font-size:10px; font-weight:700; color:#8a8a82; }
+  .vol { display:flex; flex-direction:column; gap:6px; }
+  .vol button { width:34px; height:26px; border-radius:8px; border:none; cursor:pointer; font-size:16px; font-weight:700; color:#3a3a3c;
+    background:linear-gradient(180deg,#f6f6f4,#e4e4df); box-shadow:0 2px 0 #c6c6bf, inset 0 1px 0 #fff; }
+  .vol button:active { transform:translateY(1px); }
+  .vol .lab { font-family:var(--mono); font-size:9px; text-align:center; color:#9a9a92; letter-spacing:1px; }
+
+  .hint { text-align:center; color:#6a6354; font-size:13px; font-weight:500; margin-top:22px; max-width:430px; margin-left:auto; margin-right:auto; }
+  .hint b { color:#43403a; }
+  input[type=file] { display:none; }
+</style>
+</head>
+<body>
+  <nav class="nav">
+    <a class="brand" href="/">Randomthing<span class="org">.org</span></a>
+    <span class="sep">/</span><h1>Audio Player</h1>
+  </nav>
+
+  <div class="stage">
+    <div class="device">
+      <div class="head">
+        <div class="logo">
+          <span class="name">AP&middot;1</span>
+          <span class="dots"><i id="dotPower"></i><i id="dotRec"></i></span>
+        </div>
+        <div class="oled"><div class="t" id="oledTime">0:00</div><div class="st" id="oledStatus">NO MEDIA</div></div>
+      </div>
+
+      <label class="slot" id="slot">
+        <span class="ic">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M5 20h14"/></svg>
+        </span>
+        <span class="txt">
+          <span class="a" id="slotName">Load audio file</span>
+          <span class="b" id="slotFmt">WAV &middot; MP3 &middot; AIFF &middot; OGG &middot; AAC &middot; or drag &amp; drop</span>
+        </span>
+        <input type="file" id="file" accept=".wav,.mp3,.aiff,.aif,.ogg,.aac,.m4a,audio/*" />
+      </label>
+
+      <div class="platter-wrap">
+        <div class="platter" id="platter">
+          <div class="spin" id="spin">
+            <div class="mark"></div>
+            <div class="tick" style="top:48%;left:14%"></div>
+            <div class="tick" style="top:48%;left:84%"></div>
+            <div class="tick" style="top:14%;left:48%"></div>
+            <div class="tick" style="top:84%;left:48%"></div>
+            <div class="label"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="keys">
+          <button class="key rec" id="btnRec" title="Record (mic)"><span class="dot"></span></button>
+          <button class="key" id="btnPlay" title="Play">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="#222"><path d="M7 5v14l12-7z"/></svg>
+          </button>
+          <button class="key" id="btnPause" title="Pause">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="#222"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+          </button>
+          <button class="key" id="btnRev" title="Reverse play">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="#222"><path d="M17 5v14L5 12z"/></svg>
+          </button>
+        </div>
+        <div class="spacer"></div>
+        <div class="right-cluster">
+          <div class="vol">
+            <button id="volUp">+</button>
+            <button id="volDn">&minus;</button>
+            <div class="lab">VOL</div>
+          </div>
+          <div class="meters">
+            <div class="meter"><div class="track"><div class="fill" id="mL"></div></div><div class="k">L</div></div>
+            <div class="meter"><div class="track"><div class="fill" id="mR"></div></div><div class="k">R</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hint">Grab the <b>disc</b> and spin it to scratch &amp; scrub — whip it back for reverse. Press <b>◀</b> to play backward, or hit the <b>red</b> button to record from your mic.</div>
+
+<script>
+  const $ = id => document.getElementById(id);
+  let ctx = null, master = null, proc = null;
+  let buf = null, chData = [null, null], len = 0, sr = 44100;
+  let playhead = 0, scratchHead = 0, transportRate = 0, scratching = false;
+  let SEC_PER_REV = 1.8, samplesPerRev = SEC_PER_REV * sr, SAMPLES_PER_RAD = samplesPerRev / (2*Math.PI);
+  let vol = 0.85;
+  let meterTL = 0, meterTR = 0, meterL = 0, meterR = 0;
+
+  function ensureAudio(){
+    if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    master = ctx.createGain(); master.gain.value = vol;
+    proc = ctx.createScriptProcessor(2048, 0, 2);
+    proc.onaudioprocess = onProcess;
+    proc.connect(master); master.connect(ctx.destination);
+  }
+
+  function onProcess(e){
+    const o0 = e.outputBuffer.getChannelData(0);
+    const o1 = e.outputBuffer.getChannelData(1);
+    const N = o0.length;
+    if (!buf){ o0.fill(0); o1.fill(0); meterTL = meterTR = 0; return; }
+
+    let target = scratching ? scratchHead : (playhead + transportRate * N);
+    if (target <= 0){ target = 0; if (!scratching && transportRate < 0){ transportRate = 0; markStopped(); } }
+    if (target >= len - 1){ target = len - 1; if (!scratching && transportRate > 0){ transportRate = 0; markStopped(); } }
+
+    const step = (target - playhead) / N;
+    const c0 = chData[0], c1 = chData[1];
+    let pos = playhead, pL = 0, pR = 0;
+    for (let i = 0; i < N; i++){
+      const idx = Math.floor(pos), fr = pos - idx;
+      let s0 = 0, s1 = 0;
+      if (idx >= 0 && idx < len - 1){ s0 = c0[idx]*(1-fr) + c0[idx+1]*fr; s1 = c1[idx]*(1-fr) + c1[idx+1]*fr; }
+      else if (idx >= 0 && idx < len){ s0 = c0[idx]; s1 = c1[idx]; }
+      o0[i] = s0; o1[i] = s1;
+      const a0 = s0 < 0 ? -s0 : s0, a1 = s1 < 0 ? -s1 : s1;
+      if (a0 > pL) pL = a0; if (a1 > pR) pR = a1;
+      pos += step;
+    }
+    playhead = target;
+    meterTL = pL; meterTR = pR;
+  }
+
+  let stoppedFlag = false;
+  function markStopped(){ stoppedFlag = true; }
+
+  function setBuffer(audioBuffer, label){
+    buf = audioBuffer; len = buf.length; sr = buf.sampleRate;
+    chData[0] = buf.getChannelData(0);
+    chData[1] = buf.numberOfChannels > 1 ? buf.getChannelData(1) : buf.getChannelData(0);
+    samplesPerRev = SEC_PER_REV * sr; SAMPLES_PER_RAD = samplesPerRev / (2*Math.PI);
+    playhead = 0; scratchHead = 0; transportRate = 0;
+    $('slotName').textContent = label || 'Loaded';
+    $('slotFmt').textContent = fmtTime(len/sr) + ' loaded — ready';
+    $('dotPower').classList.add('on'); $('dotPower').classList.remove('on');
+    setStatus('READY');
+  }
+
+  function fmtTime(sec){ sec = Math.max(0, sec|0); const m = (sec/60)|0, s = sec%60; return m + ':' + String(s).padStart(2,'0'); }
+  function setStatus(s){ $('oledStatus').textContent = s; }
+
+  // ---------- file load ----------
+  async function loadFile(f){
+    if (!f) return;
+    ensureAudio();
+    setStatus('LOADING…');
+    try {
+      const arr = await f.arrayBuffer();
+      const ab = await ctx.decodeAudioData(arr.slice(0));
+      setBuffer(ab, f.name);
+    } catch (err){
+      setStatus('CANT DECODE');
+      $('slotFmt').textContent = "Couldn't read that file — try WAV / MP3 / OGG / AAC";
+      console.error(err);
+    }
+  }
+  $('file').addEventListener('change', e => loadFile(e.target.files[0]));
+  const slot = $('slot');
+  ['dragenter','dragover'].forEach(ev => slot.addEventListener(ev, e => { e.preventDefault(); slot.classList.add('drag'); }));
+  ['dragleave','drop'].forEach(ev => slot.addEventListener(ev, e => { e.preventDefault(); slot.classList.remove('drag'); }));
+  slot.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) loadFile(f); });
+
+  // ---------- record ----------
+  let recorder = null, recChunks = [], recording = false, micStream = null;
+  async function toggleRecord(){
+    ensureAudio();
+    if (!recording){
+      try {
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch(err){ setStatus('MIC DENIED'); return; }
+      recChunks = [];
+      recorder = new MediaRecorder(micStream);
+      recorder.ondataavailable = e => { if (e.data.size) recChunks.push(e.data); };
+      recorder.onstop = async () => {
+        micStream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(recChunks, { type: recorder.mimeType || 'audio/webm' });
+        try {
+          const ab = await ctx.decodeAudioData(await blob.arrayBuffer());
+          setBuffer(ab, 'Mic recording');
+        } catch(err){ setStatus('REC ERROR'); console.error(err); }
+      };
+      recorder.start();
+      recording = true;
+      $('btnRec').classList.add('on'); $('dotRec').classList.add('on');
+      setStatus('● REC');
+    } else {
+      recorder.stop();
+      recording = false;
+      $('btnRec').classList.remove('on'); $('dotRec').classList.remove('on');
+    }
+  }
+  $('btnRec').addEventListener('click', toggleRecord);
+
+  // ---------- transport ----------
+  function play(){ ensureAudio(); if (!buf) return; if (playhead >= len - 1) playhead = 0; transportRate = 1; setStatus('▶ PLAY'); }
+  function pause(){ transportRate = 0; if (buf) setStatus('❚❚ PAUSE'); }
+  function reverse(){ ensureAudio(); if (!buf) return; if (playhead <= 0) playhead = len - 1; transportRate = -1; setStatus('◀ REV'); }
+  $('btnPlay').addEventListener('click', play);
+  $('btnPause').addEventListener('click', pause);
+  $('btnRev').addEventListener('click', reverse);
+
+  // volume
+  function setVol(v){ vol = Math.max(0, Math.min(1.5, v)); if (master) master.gain.value = vol; }
+  $('volUp').addEventListener('click', () => setVol(vol + 0.12));
+  $('volDn').addEventListener('click', () => setVol(vol - 0.12));
+
+  // ---------- scratch (disc) ----------
+  const platter = $('platter');
+  let lastAngle = 0;
+  function angleAt(e){ const r = platter.getBoundingClientRect(); return Math.atan2(e.clientY - (r.top + r.height/2), e.clientX - (r.left + r.width/2)); }
+  platter.addEventListener('pointerdown', e => {
+    ensureAudio(); if (!buf) { setStatus('LOAD A FILE'); return; }
+    e.preventDefault();
+    scratching = true; scratchHead = playhead; lastAngle = angleAt(e);
+    platter.setPointerCapture(e.pointerId);
+    setStatus('✦ SCRATCH');
+  });
+  platter.addEventListener('pointermove', e => {
+    if (!scratching) return;
+    const a = angleAt(e); let d = a - lastAngle;
+    if (d > Math.PI) d -= 2*Math.PI; else if (d < -Math.PI) d += 2*Math.PI;
+    lastAngle = a;
+    scratchHead = Math.max(0, Math.min(len - 1, scratchHead + d * SAMPLES_PER_RAD));
+  });
+  function endScratch(e){
+    if (!scratching) return;
+    scratching = false;
+    setStatus(transportRate > 0 ? '▶ PLAY' : transportRate < 0 ? '◀ REV' : '❚❚ PAUSE');
+  }
+  platter.addEventListener('pointerup', endScratch);
+  platter.addEventListener('pointercancel', endScratch);
+
+  // keyboard niceties
+  window.addEventListener('keydown', e => {
+    if (e.code === 'Space'){ e.preventDefault(); transportRate === 1 ? pause() : play(); }
+    else if (e.key === 'r' || e.key === 'R'){ reverse(); }
+  });
+
+  // ---------- render loop ----------
+  const spin = $('spin'), mL = $('mL'), mR = $('mR'), oledTime = $('oledTime');
+  function frame(){
+    // disc rotation tied to the playhead
+    const deg = (playhead / samplesPerRev) * 360;
+    spin.style.transform = 'rotate(' + deg.toFixed(2) + 'deg)';
+    // meters (fast attack, slow release)
+    meterL = Math.max(meterTL, meterL * 0.86);
+    meterR = Math.max(meterTR, meterR * 0.86);
+    mL.style.height = Math.min(100, meterL * 135) + '%';
+    mR.style.height = Math.min(100, meterR * 135) + '%';
+    // oled time
+    if (buf) oledTime.textContent = fmtTime(playhead / sr) + ' / ' + fmtTime(len / sr);
+    if (stoppedFlag){ stoppedFlag = false; setStatus(transportRate === 0 ? (buf ? 'END' : 'NO MEDIA') : ''); }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>
