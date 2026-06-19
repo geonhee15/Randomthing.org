@@ -414,18 +414,18 @@ function buildHourglass(){
     <linearGradient id="wood" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#caa46a"/><stop offset="1" stop-color="#9c7a44"/></linearGradient>
     <linearGradient id="sand" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f0cd80"/><stop offset="1" stop-color="#d8a951"/></linearGradient>
   </defs>`;
-  s += `<rect x="56" y="56" width="288" height="18" rx="7" fill="url(#wood)"/>`;
-  s += `<rect x="56" y="326" width="288" height="18" rx="7" fill="url(#wood)"/>`;
-  s += `<rect x="62" y="66" width="12" height="268" rx="6" fill="url(#wood)"/>`;
-  s += `<rect x="326" y="66" width="12" height="268" rx="6" fill="url(#wood)"/>`;
-  s += `<path d="M86 74 L314 74 L200 198 Z" fill="rgba(150,170,190,.10)"/>`;
-  s += `<path d="M200 202 L314 326 L86 326 Z" fill="rgba(150,170,190,.10)"/>`;
+  s += `<rect x="96" y="56" width="208" height="18" rx="7" fill="url(#wood)"/>`;
+  s += `<rect x="96" y="326" width="208" height="18" rx="7" fill="url(#wood)"/>`;
+  s += `<rect x="104" y="66" width="11" height="268" rx="5" fill="url(#wood)"/>`;
+  s += `<rect x="285" y="66" width="11" height="268" rx="5" fill="url(#wood)"/>`;
+  s += `<path d="M122 74 L278 74 L200 198 Z" fill="rgba(150,170,190,.10)"/>`;
+  s += `<path d="M200 202 L278 326 L122 326 Z" fill="rgba(150,170,190,.10)"/>`;
   s += `<polygon id="sandTop" points="" fill="url(#sand)"/>`;
   s += `<polygon id="sandBottom" points="" fill="url(#sand)"/>`;
   s += `<line id="stream" x1="200" y1="196" x2="200" y2="320" stroke="#e3b85f" stroke-width="3" stroke-linecap="round" opacity="0"/>`;
-  s += `<path d="M86 74 L314 74 L200 198 Z" fill="none" stroke="#aeb6bd" stroke-width="2.5"/>`;
-  s += `<path d="M200 202 L314 326 L86 326 Z" fill="none" stroke="#aeb6bd" stroke-width="2.5"/>`;
-  s += `<rect x="192" y="194" width="16" height="12" rx="3" fill="#aeb6bd"/>`;
+  s += `<path d="M122 74 L278 74 L200 198 Z" fill="none" stroke="#aeb6bd" stroke-width="2.5"/>`;
+  s += `<path d="M200 202 L278 326 L122 326 Z" fill="none" stroke="#aeb6bd" stroke-width="2.5"/>`;
+  s += `<rect x="193" y="194" width="14" height="12" rx="3" fill="#aeb6bd"/>`;
   clockwrap.innerHTML = svgEl(s);
   return function(){
     let elapsed = hgElapsed();
@@ -436,14 +436,14 @@ function buildHourglass(){
   };
 }
 function renderHourglass(p){
-  const tApex = 198, tTop = 74, half = 114, topF = 1 - p;
+  const tApex = 198, tTop = 74, half = 76, topF = 1 - p;
   const tSurf = tApex - topF*(tApex - tTop), tw = half*topF;
   const sandTop = document.getElementById('sandTop');
   if (sandTop) sandTop.setAttribute('points', `200,${tApex} ${(200-tw).toFixed(1)},${tSurf.toFixed(1)} ${(200+tw).toFixed(1)},${tSurf.toFixed(1)}`);
   const bApex = 202, bBot = 326;
   const bSurf = bBot - p*(bBot - bApex), bw = half*(1 - p);
   const sandBot = document.getElementById('sandBottom');
-  if (sandBot) sandBot.setAttribute('points', `86,${bBot} 314,${bBot} ${(200+bw).toFixed(1)},${bSurf.toFixed(1)} ${(200-bw).toFixed(1)},${bSurf.toFixed(1)}`);
+  if (sandBot) sandBot.setAttribute('points', `124,${bBot} 276,${bBot} ${(200+bw).toFixed(1)},${bSurf.toFixed(1)} ${(200-bw).toFixed(1)},${bSurf.toFixed(1)}`);
   const stream = document.getElementById('stream');
   if (stream){ stream.setAttribute('y2', bSurf.toFixed(1)); stream.setAttribute('opacity', (hg.running && p>0 && p<1) ? 1 : 0); }
 }
