@@ -170,8 +170,9 @@
 <script>
 const CX = 200, CY = 200;
 const clockwrap = document.getElementById('clockwrap');
-let hg = { duration: 60, elapsed: 0, running: false, lastT: 0 };
+let hg = { duration: 60, accum: 0, startedAt: 0, running: false };
 let hgEls = {};
+function hgElapsed(){ return hg.accum + (hg.running ? (Date.now() - hg.startedAt)/1000 : 0); }
 
 // ---------- helpers ----------
 function pol(cx, cy, r, deg){
@@ -426,16 +427,12 @@ function buildHourglass(){
   s += `<path d="M200 202 L314 326 L86 326 Z" fill="none" stroke="#aeb6bd" stroke-width="2.5"/>`;
   s += `<rect x="192" y="194" width="16" height="12" rx="3" fill="#aeb6bd"/>`;
   clockwrap.innerHTML = svgEl(s);
-  return function(now){
-    const t = now.getTime();
-    if (hg.running){
-      if (hg.lastT) hg.elapsed += (t - hg.lastT)/1000;
-      hg.lastT = t;
-      if (hg.elapsed >= hg.duration){ hg.elapsed = hg.duration; hg.running = false; refreshHgControls(); }
-    } else { hg.lastT = t; }
-    const p = hg.duration > 0 ? Math.min(1, hg.elapsed/hg.duration) : 1;
+  return function(){
+    let elapsed = hgElapsed();
+    if (hg.running && elapsed >= hg.duration){ hg.accum = hg.duration; hg.running = false; elapsed = hg.duration; refreshHgControls(); }
+    const p = hg.duration > 0 ? Math.min(1, elapsed/hg.duration) : 1;
     renderHourglass(p);
-    updateHgProgress(p);
+    updateHgProgress(p, elapsed);
   };
 }
 function renderHourglass(p){
@@ -480,20 +477,26 @@ function showHourglassOptions(){
 function sliderToSec(v){ return Math.max(5, Math.min(10800, Math.round(5 * Math.pow(10800/5, v/1000)))); }
 function secToSlider(sec){ return Math.round(1000 * Math.log(sec/5) / Math.log(10800/5)); }
 function setDuration(sec, fromPreset){
+  const cur = hgElapsed();
   hg.duration = sec;
-  if (hg.elapsed > sec) hg.elapsed = sec;
-  if (fromPreset){ hg.elapsed = 0; hg.running = false; if (hgEls.range) hgEls.range.value = secToSlider(sec); }
+  if (fromPreset){ hg.accum = 0; hg.running = false; if (hgEls.range) hgEls.range.value = secToSlider(sec); }
+  else if (cur > sec){ hg.accum = sec; hg.running = false; }
   refreshHgControls();
 }
-function toggleHg(){ if (hg.elapsed >= hg.duration) hg.elapsed = 0; hg.running = !hg.running; hg.lastT = Date.now(); refreshHgControls(); }
-function resetHg(){ hg.elapsed = 0; hg.running = false; refreshHgControls(); }
-function refreshHgControls(){
-  if (hgEls.dur) hgEls.dur.textContent = fmtDur(hg.duration);
-  if (hgEls.go) hgEls.go.textContent = hg.running ? 'Pause' : ((hg.elapsed > 0 && hg.elapsed < hg.duration) ? 'Resume' : 'Start');
+function toggleHg(){
+  if (hg.running){ hg.accum = hgElapsed(); hg.running = false; }
+  else { if (hg.accum >= hg.duration) hg.accum = 0; hg.startedAt = Date.now(); hg.running = true; }
+  refreshHgControls();
 }
-function updateHgProgress(p){
+function resetHg(){ hg.accum = 0; hg.running = false; refreshHgControls(); }
+function refreshHgControls(){
+  const e = hgElapsed();
+  if (hgEls.dur) hgEls.dur.textContent = fmtDur(hg.duration);
+  if (hgEls.go) hgEls.go.textContent = hg.running ? 'Pause' : ((e > 0 && e < hg.duration) ? 'Resume' : 'Start');
+}
+function updateHgProgress(p, elapsed){
   if (hgEls.remain){
-    const rem = Math.max(0, hg.duration - hg.elapsed);
+    const rem = Math.max(0, hg.duration - elapsed);
     hgEls.remain.textContent = p >= 1 ? 'Done' : fmtDur(Math.ceil(rem)) + ' left';
   }
 }
@@ -546,7 +549,7 @@ CLOCKS.forEach(c => {
 function select(id){
   const c = CLOCKS.find(x => x.id === id) || CLOCKS[0];
   clearOptions();
-  if (c.id === 'hourglass') hg = { duration: hg.duration || 60, elapsed: 0, running: false, lastT: 0 };
+  if (c.id === 'hourglass') hg = { duration: hg.duration || 60, accum: 0, startedAt: 0, running: false };
   currentUpdate = c.build() || (() => {});
   menuLabel.textContent = c.name;
   caption.innerHTML = c.id === 'hourglass'
