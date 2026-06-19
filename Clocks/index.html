@@ -73,8 +73,8 @@
     height: 100vh; display: flex; align-items: center; justify-content: center;
     padding: 78px 24px 40px;
   }
-  .stage .holder { width: min(72vmin, 540px); }
-  .clockwrap { width: 100%; display:flex; align-items:center; justify-content:center; }
+  .stage .holder { display:flex; flex-wrap:wrap; gap:30px; align-items:center; justify-content:center; width: min(94vw, 860px); }
+  .clockwrap { flex: 0 1 min(72vmin, 520px); width:100%; display:flex; align-items:center; justify-content:center; }
   svg.clock { width: 100%; height: auto; display:block; overflow: visible; }
 
   .caption { position: fixed; bottom: 20px; left: 0; right: 0; text-align: center;
@@ -108,6 +108,42 @@
   .lcd .small { font-family:"DSEG7 Classic","Space Grotesk",monospace; font-weight:700; }
   .lcd .small .ghost, .lcd .small .val { font-size: clamp(20px, 5vmin, 30px); }
   .lcd .ampm { font-family: var(--ui); font-weight:800; font-size:14px; color:#20271a; letter-spacing:.08em; }
+
+  /* optional side panel (hourglass) */
+  .options { flex: 0 0 auto; width: 250px; }
+  .options:empty { display: none; }
+  .opt-card { background:#fffdf7; border:1px solid var(--line); border-radius:16px; padding:18px 18px 16px; box-shadow:0 12px 30px rgba(40,36,24,.10); }
+  .opt-card h3 { margin:0 0 6px; font-size:12px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
+  .opt-dur { font-family:"Space Grotesk", var(--ui); font-size:30px; font-weight:700; color:var(--ink); margin-bottom:12px; }
+  .opt-card input[type=range]{ width:100%; accent-color:#6a5acd; cursor:pointer; }
+  .opt-presets { display:flex; flex-wrap:wrap; gap:6px; margin:12px 0; }
+  .opt-presets button { font:600 12px var(--ui); border:1px solid var(--line); background:#fff; border-radius:999px; padding:5px 11px; cursor:pointer; color:var(--ink); }
+  .opt-presets button:hover { border-color:#6a5acd; color:#6a5acd; }
+  .opt-actions { display:flex; gap:8px; }
+  .opt-actions button { flex:1; font:700 13px var(--ui); border:none; border-radius:10px; padding:11px; cursor:pointer; }
+  .opt-actions .go { background:#6a5acd; color:#fff; }
+  .opt-actions .go:hover { background:#5a4ab8; }
+  .opt-actions .rst { background:#efece2; color:var(--ink); }
+  .opt-remain { margin-top:12px; font-size:13px; font-weight:600; color:var(--muted); text-align:center; }
+
+  /* flip clock */
+  .flipclock { display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:nowrap; }
+  .flip-group { display:flex; gap:6px; }
+  .flip-digit { perspective: 320px; }
+  .flip-digit .face {
+    width: clamp(34px, 8.8vmin, 66px); height: clamp(50px, 13vmin, 96px);
+    background: linear-gradient(180deg,#26272d,#1a1b20); color:#f4f1e8;
+    border-radius: 10px; position:relative; transform-style: preserve-3d;
+    display:flex; align-items:center; justify-content:center;
+    font-family:"Space Grotesk", var(--ui); font-weight:700; font-size: clamp(30px, 8vmin, 60px);
+    box-shadow: 0 10px 26px rgba(30,26,16,.30), inset 0 0 0 1px rgba(255,255,255,.05);
+  }
+  .flip-digit .face::after { content:""; position:absolute; left:6px; right:6px; top:50%; height:2px; transform:translateY(-1px); background:rgba(0,0,0,.45); }
+  .flip-digit.flipping .face { animation: flipdown .42s ease-in; }
+  @keyframes flipdown { 0%{transform:rotateX(0deg)} 49.99%{transform:rotateX(-90deg)} 50%{transform:rotateX(90deg)} 100%{transform:rotateX(0deg)} }
+  .flip-colon { font-family:"Space Grotesk"; font-weight:700; font-size: clamp(22px,5.5vmin,44px); color:#b8b1a0; }
+
+  @media (max-width: 560px){ .options { width: min(92vw, 320px); } }
 </style>
 </head>
 <body>
@@ -125,6 +161,7 @@
   <div class="stage">
     <div class="holder">
       <div class="clockwrap" id="clockwrap"></div>
+      <div class="options" id="options"></div>
     </div>
   </div>
 
@@ -133,6 +170,8 @@
 <script>
 const CX = 200, CY = 200;
 const clockwrap = document.getElementById('clockwrap');
+let hg = { duration: 60, elapsed: 0, running: false, lastT: 0 };
+let hgEls = {};
 
 // ---------- helpers ----------
 function pol(cx, cy, r, deg){
@@ -211,12 +250,10 @@ function buildAlarm(){
   s += `<circle cx="${CX}" cy="${CY}" r="168" fill="none" stroke="#0c0c0c" stroke-width="2"/>`;
   s += ticksSVG(160, 152, 146, '#3a3a3a', '#0c0c0c');
   s += numeralsSVG(128, { family:'"Space Grotesk", sans-serif', size:27, weight:600, fill:'#161616' });
-  // little seconds subdial (decorative, also live)
-  s += `<g transform="translate(0,-46)">
-    <circle cx="${CX}" cy="${CY}" r="34" fill="#f1ede2" stroke="#999" stroke-width="1.5"/>
-    <g id="sec"><line x1="${CX}" y1="${CY+8}" x2="${CX}" y2="${CY-30}" stroke="#0c0c0c" stroke-width="1.6" stroke-linecap="round"/></g>
-    <circle cx="${CX}" cy="${CY}" r="3" fill="#0c0c0c"/>
-  </g>`;
+  // little seconds subdial (centred at 200,154 — absolute coords so it spins true)
+  s += `<circle cx="${CX}" cy="154" r="34" fill="#f1ede2" stroke="#999" stroke-width="1.5"/>`;
+  s += `<g id="sec"><line x1="${CX}" y1="166" x2="${CX}" y2="126" stroke="#0c0c0c" stroke-width="1.6" stroke-linecap="round"/></g>`;
+  s += `<circle cx="${CX}" cy="154" r="3" fill="#0c0c0c"/>`;
   s += handsSVG({
     hour:{len:92,w:8,fill:'#0c0c0c',tail:20}, min:{len:132,w:5,fill:'#0c0c0c',tail:24},
     sec:null, cap:'#0c0c0c', capR:7 });
@@ -262,8 +299,8 @@ function buildMath(){
   const EXPR = {1:'tan45°',2:'√4',3:'Round π',4:'2²',5:'√25',6:'3!',7:'⌈2π⌉',8:'2³',9:'3²',10:'1010₂',11:'√121',12:'1100₂'};
   let s = '';
   s += `<circle cx="${CX}" cy="${CY}" r="192" fill="#ffffff" stroke="#eceadf" stroke-width="2"/>`;
-  s += numeralsSVG(150, { family:'Georgia, "Times New Roman", serif', size:21, weight:600, italic:true, fill:'#16181d', label:(i)=>EXPR[i] });
-  s += `<text x="${CX}" y="${CY+44}" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-size="10" fill="#9a9a9a">Science &amp; Maths</text>`;
+  s += numeralsSVG(137, { family:'Georgia, "Times New Roman", serif', size:16, weight:600, italic:true, fill:'#16181d', label:(i)=>EXPR[i] });
+  s += `<text x="${CX}" y="${CY+62}" text-anchor="middle" font-family="Georgia, serif" font-style="italic" font-size="9" fill="#b3b0a4">Science &amp; Maths</text>`;
   s += handsSVG({
     hour:{len:94,w:11,fill:'#0c0c0c',tail:22}, min:{len:140,w:8,fill:'#0c0c0c',tail:26},
     sec:{len:150,w:1.6,fill:'#0c0c0c',tail:44}, cap:'#0c0c0c', capR:8 });
@@ -340,6 +377,134 @@ function buildDigital(){
   };
 }
 
+function buildFlip(){
+  clockwrap.innerHTML = `<div class="flipclock">
+    <div class="flip-group">${flipDigit('h0')}${flipDigit('h1')}</div>
+    <div class="flip-colon">:</div>
+    <div class="flip-group">${flipDigit('m0')}${flipDigit('m1')}</div>
+    <div class="flip-colon">:</div>
+    <div class="flip-group">${flipDigit('s0')}${flipDigit('s1')}</div>
+  </div>`;
+  const last = {};
+  return function(now){
+    const hh = String(now.getHours()).padStart(2,'0');
+    const mm = String(now.getMinutes()).padStart(2,'0');
+    const ss = String(now.getSeconds()).padStart(2,'0');
+    setFlip('h0',hh[0],last); setFlip('h1',hh[1],last);
+    setFlip('m0',mm[0],last); setFlip('m1',mm[1],last);
+    setFlip('s0',ss[0],last); setFlip('s1',ss[1],last);
+  };
+}
+function flipDigit(id){ return `<div class="flip-digit" id="fd_${id}"><div class="face">0</div></div>`; }
+function setFlip(id, ch, last){
+  if (last[id] === ch) return;
+  last[id] = ch;
+  const wrap = document.getElementById('fd_'+id); if (!wrap) return;
+  const face = wrap.querySelector('.face');
+  wrap.classList.remove('flipping'); void wrap.offsetWidth; wrap.classList.add('flipping');
+  setTimeout(() => { if (face) face.textContent = ch; }, 200);
+  setTimeout(() => { if (face) face.textContent = ch; }, 430);
+}
+
+// ---------- hourglass ----------
+function buildHourglass(){
+  let s = '';
+  s += `<defs>
+    <linearGradient id="wood" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#caa46a"/><stop offset="1" stop-color="#9c7a44"/></linearGradient>
+    <linearGradient id="sand" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f0cd80"/><stop offset="1" stop-color="#d8a951"/></linearGradient>
+  </defs>`;
+  s += `<rect x="56" y="56" width="288" height="18" rx="7" fill="url(#wood)"/>`;
+  s += `<rect x="56" y="326" width="288" height="18" rx="7" fill="url(#wood)"/>`;
+  s += `<rect x="62" y="66" width="12" height="268" rx="6" fill="url(#wood)"/>`;
+  s += `<rect x="326" y="66" width="12" height="268" rx="6" fill="url(#wood)"/>`;
+  s += `<path d="M86 74 L314 74 L200 198 Z" fill="rgba(150,170,190,.10)"/>`;
+  s += `<path d="M200 202 L314 326 L86 326 Z" fill="rgba(150,170,190,.10)"/>`;
+  s += `<polygon id="sandTop" points="" fill="url(#sand)"/>`;
+  s += `<polygon id="sandBottom" points="" fill="url(#sand)"/>`;
+  s += `<line id="stream" x1="200" y1="196" x2="200" y2="320" stroke="#e3b85f" stroke-width="3" stroke-linecap="round" opacity="0"/>`;
+  s += `<path d="M86 74 L314 74 L200 198 Z" fill="none" stroke="#aeb6bd" stroke-width="2.5"/>`;
+  s += `<path d="M200 202 L314 326 L86 326 Z" fill="none" stroke="#aeb6bd" stroke-width="2.5"/>`;
+  s += `<rect x="192" y="194" width="16" height="12" rx="3" fill="#aeb6bd"/>`;
+  clockwrap.innerHTML = svgEl(s);
+  return function(now){
+    const t = now.getTime();
+    if (hg.running){
+      if (hg.lastT) hg.elapsed += (t - hg.lastT)/1000;
+      hg.lastT = t;
+      if (hg.elapsed >= hg.duration){ hg.elapsed = hg.duration; hg.running = false; refreshHgControls(); }
+    } else { hg.lastT = t; }
+    const p = hg.duration > 0 ? Math.min(1, hg.elapsed/hg.duration) : 1;
+    renderHourglass(p);
+    updateHgProgress(p);
+  };
+}
+function renderHourglass(p){
+  const tApex = 198, tTop = 74, half = 114, topF = 1 - p;
+  const tSurf = tApex - topF*(tApex - tTop), tw = half*topF;
+  const sandTop = document.getElementById('sandTop');
+  if (sandTop) sandTop.setAttribute('points', `200,${tApex} ${(200-tw).toFixed(1)},${tSurf.toFixed(1)} ${(200+tw).toFixed(1)},${tSurf.toFixed(1)}`);
+  const bApex = 202, bBot = 326;
+  const bSurf = bBot - p*(bBot - bApex), bw = half*(1 - p);
+  const sandBot = document.getElementById('sandBottom');
+  if (sandBot) sandBot.setAttribute('points', `86,${bBot} 314,${bBot} ${(200+bw).toFixed(1)},${bSurf.toFixed(1)} ${(200-bw).toFixed(1)},${bSurf.toFixed(1)}`);
+  const stream = document.getElementById('stream');
+  if (stream){ stream.setAttribute('y2', bSurf.toFixed(1)); stream.setAttribute('opacity', (hg.running && p>0 && p<1) ? 1 : 0); }
+}
+
+// hourglass side options
+function clearOptions(){ const o = document.getElementById('options'); if (o) o.innerHTML = ''; hgEls = {}; }
+function showHourglassOptions(){
+  const o = document.getElementById('options');
+  o.innerHTML = `<div class="opt-card">
+      <h3>Timer</h3>
+      <div class="opt-dur" id="hgDur">1m</div>
+      <input type="range" id="hgRange" min="0" max="1000" value="0">
+      <div class="opt-presets" id="hgPresets"></div>
+      <div class="opt-actions">
+        <button class="go" id="hgGo">Start</button>
+        <button class="rst" id="hgReset">Reset</button>
+      </div>
+      <div class="opt-remain" id="hgRemain"></div>
+    </div>`;
+  const range = document.getElementById('hgRange');
+  const pres = document.getElementById('hgPresets');
+  [['5s',5],['30s',30],['1m',60],['5m',300],['10m',600],['30m',1800],['1h',3600],['3h',10800]]
+    .forEach(([lbl,sec]) => { const b = document.createElement('button'); b.textContent = lbl; b.onclick = () => setDuration(sec, true); pres.appendChild(b); });
+  range.addEventListener('input', () => setDuration(sliderToSec(+range.value), false));
+  document.getElementById('hgGo').addEventListener('click', toggleHg);
+  document.getElementById('hgReset').addEventListener('click', resetHg);
+  hgEls = { dur: document.getElementById('hgDur'), range, go: document.getElementById('hgGo'), remain: document.getElementById('hgRemain') };
+  range.value = secToSlider(hg.duration);
+  refreshHgControls();
+}
+function sliderToSec(v){ return Math.max(5, Math.min(10800, Math.round(5 * Math.pow(10800/5, v/1000)))); }
+function secToSlider(sec){ return Math.round(1000 * Math.log(sec/5) / Math.log(10800/5)); }
+function setDuration(sec, fromPreset){
+  hg.duration = sec;
+  if (hg.elapsed > sec) hg.elapsed = sec;
+  if (fromPreset){ hg.elapsed = 0; hg.running = false; if (hgEls.range) hgEls.range.value = secToSlider(sec); }
+  refreshHgControls();
+}
+function toggleHg(){ if (hg.elapsed >= hg.duration) hg.elapsed = 0; hg.running = !hg.running; hg.lastT = Date.now(); refreshHgControls(); }
+function resetHg(){ hg.elapsed = 0; hg.running = false; refreshHgControls(); }
+function refreshHgControls(){
+  if (hgEls.dur) hgEls.dur.textContent = fmtDur(hg.duration);
+  if (hgEls.go) hgEls.go.textContent = hg.running ? 'Pause' : ((hg.elapsed > 0 && hg.elapsed < hg.duration) ? 'Resume' : 'Start');
+}
+function updateHgProgress(p){
+  if (hgEls.remain){
+    const rem = Math.max(0, hg.duration - hg.elapsed);
+    hgEls.remain.textContent = p >= 1 ? 'Done' : fmtDur(Math.ceil(rem)) + ' left';
+  }
+}
+function fmtDur(s){
+  s = Math.round(s);
+  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), ss = s%60;
+  if (h > 0) return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  if (m > 0) return ss > 0 ? `${m}m ${ss}s` : `${m}m`;
+  return `${ss}s`;
+}
+
 // ---------- time + shared updates ----------
 function secAngle(n){ return (n.getSeconds() + n.getMilliseconds()/1000) * 6; }
 function minAngle(n){ return (n.getMinutes() + n.getSeconds()/60) * 6; }
@@ -359,6 +524,8 @@ const CLOCKS = [
   { id:'digital', name:'Digital Clock',      build: buildDigital },
   { id:'math',    name:'Mathematical Clock', build: buildMath },
   { id:'sundial', name:'Sundial',            build: buildSundial },
+  { id:'flip',    name:'Flip Clock',         build: buildFlip },
+  { id:'hourglass', name:'Hourglass',        build: buildHourglass },
 ];
 
 let currentUpdate = () => {};
@@ -378,10 +545,15 @@ CLOCKS.forEach(c => {
 
 function select(id){
   const c = CLOCKS.find(x => x.id === id) || CLOCKS[0];
+  clearOptions();
+  if (c.id === 'hourglass') hg = { duration: hg.duration || 60, elapsed: 0, running: false, lastT: 0 };
   currentUpdate = c.build() || (() => {});
   menuLabel.textContent = c.name;
-  caption.innerHTML = `<b>${c.name}</b> — drawn with code, showing your local time`;
+  caption.innerHTML = c.id === 'hourglass'
+    ? `<b>Hourglass</b> — set a duration, then let the sand run`
+    : `<b>${c.name}</b> — drawn with code, showing your local time`;
   [...menuList.children].forEach(li => li.classList.toggle('active', li.dataset.id === id));
+  if (c.id === 'hourglass') showHourglassOptions();
   currentUpdate(new Date());
   try { localStorage.setItem('clocks_pick', id); } catch(e){}
 }
