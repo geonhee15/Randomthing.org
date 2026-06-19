@@ -41,7 +41,6 @@
   .stats .s { display:flex; flex-direction:column; align-items:center; gap:2px; color:var(--muted); }
   .stats .s .n { font-family:"Space Grotesk",monospace; font-size:20px; font-weight:700; color:var(--ink); }
   .stats .s .t { font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; }
-  .pad.wait .ico, .pad.go .ico { font-size:clamp(40px,10vw,72px); margin-bottom:6px; }
 </style>
 </head>
 <body>
@@ -76,16 +75,16 @@
 
   function startWait(){
     setState('wait');
-    big.innerHTML = '<span class="ico">✋</span>';
-    sub.textContent = 'Wait for green…';
-    hint.textContent = 'Don’t click yet';
+    big.textContent = 'Wait…';
+    sub.textContent = 'Don’t click yet';
+    hint.textContent = 'Click the moment it turns green';
     const delay = 1200 + Math.random()*3200;
     timer = setTimeout(goGreen, delay);
   }
   function goGreen(){
     setState('go');
-    big.innerHTML = '<span class="ico">⚡</span>';
-    sub.textContent = 'CLICK!';
+    big.textContent = 'CLICK!';
+    sub.textContent = 'Now!';
     hint.textContent = '';
     greenAt = performance.now();
   }
@@ -110,7 +109,7 @@
     avgEl.textContent = avg + ' ms';
   }
   function verdict(ms){
-    if (ms < 180) return 'Lightning reflexes! ⚡';
+    if (ms < 180) return 'Lightning reflexes!';
     if (ms < 230) return 'Super fast.';
     if (ms < 300) return 'Nice and quick.';
     if (ms < 400) return 'Solid.';
