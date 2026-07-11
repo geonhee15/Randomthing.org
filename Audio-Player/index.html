@@ -37,7 +37,7 @@
   .brand .org { color:#ff5a5f; }
   .nav .sep { color:#9a917f; } .nav h1 { font-size:15px; font-weight:600; margin:0; color:#5e5849; }
 
-  .stage { display:flex; align-items:flex-start; justify-content:center; padding: 8px 16px 50px; }
+  .stage { display:flex; flex-direction:column; align-items:center; justify-content:flex-start; padding: 8px 16px 50px; }
 
   /* ---------- device ---------- */
   .device {
@@ -135,6 +135,39 @@
   .hint { text-align:center; color:#6a6354; font-size:13px; font-weight:500; margin-top:22px; max-width:430px; margin-left:auto; margin-right:auto; }
   .hint b { color:#43403a; }
   input[type=file] { display:none; }
+
+  /* playlist */
+  .playlist { width: min(430px, 94vw); margin-top: 16px;
+    background: rgba(255,255,255,.55); border:1px solid rgba(0,0,0,.08); border-radius:16px;
+    padding: 12px 14px; box-shadow: 0 10px 30px rgba(40,34,22,.12); }
+  .playlist .ph { display:flex; align-items:center; justify-content:space-between; margin-bottom:9px; }
+  .playlist .ph .title { font-family:var(--mono); font-size:12px; font-weight:700; letter-spacing:1px; color:#5e5849; }
+  .playlist .ph .clear { border:none; background:#e9ddce; color:#9a5a48; font:700 11px var(--ui); padding:7px 11px; border-radius:9px; cursor:pointer; }
+  .playlist .ph .clear:hover { background:#e6cdbc; }
+  .playlist .ph .clear:disabled { opacity:.45; cursor:default; }
+  .plist { list-style:none; margin:0; padding:0; max-height: 236px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; }
+  .plist li { display:flex; align-items:center; gap:10px; padding:9px 11px; border-radius:11px; background:#efeee9; cursor:pointer; transition:background .12s; }
+  .plist li:hover { background:#e9e8e2; }
+  .plist li.on { background:#e5ddc9; box-shadow: inset 0 0 0 1px #c8b98f; }
+  .plist li .num { font-family:var(--mono); font-size:11px; color:#9a917f; width:22px; flex:0 0 auto; }
+  .plist li .nm { flex:1; min-width:0; font-size:13px; font-weight:600; color:#3a382f; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .plist li .dur { font-family:var(--mono); font-size:11px; color:#9a917f; flex:0 0 auto; }
+  .plist li .rm { border:none; background:transparent; color:#b06a5a; cursor:pointer; font-size:18px; line-height:1; width:28px; height:28px; border-radius:8px; flex:0 0 auto; }
+  .plist li .rm:hover { background:#ecd6ce; color:#9a4634; }
+  .plist .empty { text-align:center; color:#9a917f; font-size:12.5px; padding:16px 8px; }
+
+  /* confirm modal */
+  .confirm { position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+    background:rgba(30,26,18,.44); backdrop-filter:blur(3px); z-index:60; }
+  .confirm.hide { display:none; }
+  .confirm .box { background:#fff; border-radius:20px; padding:26px; max-width:350px; width:90%; text-align:center;
+    box-shadow:0 30px 70px rgba(0,0,0,.32); }
+  .confirm h3 { font-family:"Baloo 2",sans-serif; font-size:22px; margin:0 0 8px; color:#2a2620; }
+  .confirm p { font-size:14px; color:#6a655a; margin:0 0 20px; line-height:1.5; }
+  .confirm .row { display:flex; gap:10px; }
+  .confirm button { flex:1; border:none; border-radius:12px; padding:13px; font:700 14px var(--ui); cursor:pointer; }
+  .confirm .yes { background:#e23b2e; color:#fff; } .confirm .yes:hover { background:#c92e22; }
+  .confirm .no { background:#ecebe5; color:#3a382f; } .confirm .no:hover { background:#e2e1da; }
 </style>
 </head>
 <body>
@@ -158,10 +191,10 @@
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M5 20h14"/></svg>
         </span>
         <span class="txt">
-          <span class="a" id="slotName">Load audio file</span>
+          <span class="a" id="slotName">Add audio files</span>
           <span class="b" id="slotFmt">WAV &middot; MP3 &middot; AIFF &middot; OGG &middot; AAC &middot; or drag &amp; drop</span>
         </span>
-        <input type="file" id="file" accept=".wav,.mp3,.aiff,.aif,.ogg,.aac,.m4a,audio/*" />
+        <input type="file" id="file" multiple accept=".wav,.mp3,.aiff,.aif,.ogg,.aac,.m4a,audio/*" />
       </label>
 
       <div class="platter-wrap">
@@ -204,6 +237,25 @@
         </div>
       </div>
     </div>
+
+    <div class="playlist">
+      <div class="ph">
+        <span class="title" id="plTitle">PLAYLIST 0/99</span>
+        <button class="clear" id="clearAll" disabled>Clear all</button>
+      </div>
+      <ul class="plist" id="plist"><li class="empty">No tracks yet — add files or record one above.</li></ul>
+    </div>
+  </div>
+
+  <div class="confirm hide" id="confirm">
+    <div class="box">
+      <h3>Really reset everything?</h3>
+      <p>This removes every loaded track from the playlist. It can’t be undone.</p>
+      <div class="row">
+        <button class="no" id="cfNo">Cancel</button>
+        <button class="yes" id="cfYes">Reset all</button>
+      </div>
+    </div>
   </div>
 
   <div class="hint">Grab the <b>disc</b> and spin it to scratch &amp; scrub — whip it back for reverse. Press <b>◀</b> to play backward, or hit the <b>red</b> button to record from your mic.</div>
@@ -213,6 +265,9 @@
   let ctx = null, master = null, proc = null;
   let buf = null, chData = [null, null], len = 0, sr = 44100;
   let playhead = 0, scratchHead = 0, transportRate = 0, scratching = false;
+  const MAX_TRACKS = 99;
+  let tracks = [];          // { name, buffer, dur }
+  let currentTrack = -1;
   let SEC_PER_REV = 1.8, samplesPerRev = SEC_PER_REV * sr, SAMPLES_PER_RAD = samplesPerRev / (2*Math.PI);
   let vol = 0.85;
   let meterTL = 0, meterTR = 0, meterL = 0, meterR = 0;
@@ -261,36 +316,90 @@
     chData[0] = buf.getChannelData(0);
     chData[1] = buf.numberOfChannels > 1 ? buf.getChannelData(1) : buf.getChannelData(0);
     samplesPerRev = SEC_PER_REV * sr; SAMPLES_PER_RAD = samplesPerRev / (2*Math.PI);
-    playhead = 0; scratchHead = 0; transportRate = 0;
-    $('slotName').textContent = label || 'Loaded';
-    $('slotFmt').textContent = fmtTime(len/sr) + ' loaded — ready';
-    $('dotPower').classList.add('on'); $('dotPower').classList.remove('on');
+    playhead = 0; scratchHead = 0; transportRate = 0; scratching = false;
+    $('slotName').textContent = 'Add audio files';
+    $('slotFmt').textContent = 'WAV · MP3 · AIFF · OGG · AAC · or drag & drop';
     setStatus('READY');
   }
 
   function fmtTime(sec){ sec = Math.max(0, sec|0); const m = (sec/60)|0, s = sec%60; return m + ':' + String(s).padStart(2,'0'); }
   function setStatus(s){ $('oledStatus').textContent = s; }
 
-  // ---------- file load ----------
-  async function loadFile(f){
-    if (!f) return;
+  // ---------- playlist / file load ----------
+  async function loadFiles(fileList){
     ensureAudio();
-    setStatus('LOADING…');
-    try {
-      const arr = await f.arrayBuffer();
-      const ab = await ctx.decodeAudioData(arr.slice(0));
-      setBuffer(ab, f.name);
-    } catch (err){
-      setStatus('CANT DECODE');
-      $('slotFmt').textContent = "Couldn't read that file — try WAV / MP3 / OGG / AAC";
-      console.error(err);
+    const files = Array.from(fileList || []);
+    for (const f of files){
+      if (tracks.length >= MAX_TRACKS){ playlistFull(); break; }
+      setStatus('LOADING…');
+      try {
+        const ab = await ctx.decodeAudioData((await f.arrayBuffer()).slice(0));
+        addTrack(f.name, ab);
+      } catch (err){
+        setStatus('CANT DECODE');
+        console.error('decode failed for', f.name, err);
+      }
     }
   }
-  $('file').addEventListener('change', e => loadFile(e.target.files[0]));
+  function addTrack(name, buffer){
+    if (tracks.length >= MAX_TRACKS){ playlistFull(); return false; }
+    tracks.push({ name: name, buffer: buffer, dur: buffer.length / buffer.sampleRate });
+    renderPlaylist();
+    if (currentTrack === -1) selectTrack(tracks.length - 1);
+    else setStatus('ADDED');
+    return true;
+  }
+  function playlistFull(){
+    setStatus('LIST FULL');
+    $('slotName').textContent = 'Playlist full — 99 max';
+    $('slotFmt').textContent = 'Remove a track to add more';
+  }
+  function selectTrack(i){
+    if (i < 0 || i >= tracks.length) return;
+    currentTrack = i;
+    setBuffer(tracks[i].buffer, tracks[i].name);
+    renderPlaylist();
+  }
+  function removeTrack(i){
+    tracks.splice(i, 1);
+    if (tracks.length === 0){ clearEngine(); }
+    else if (i === currentTrack){ selectTrack(Math.min(i, tracks.length - 1)); }
+    else { if (i < currentTrack) currentTrack--; renderPlaylist(); }
+  }
+  function clearEngine(){
+    buf = null; chData = [null, null]; len = 0; transportRate = 0; scratching = false; playhead = 0; scratchHead = 0; currentTrack = -1;
+    $('slotName').textContent = 'Add audio files';
+    $('slotFmt').textContent = 'WAV · MP3 · AIFF · OGG · AAC · or drag & drop';
+    $('oledTime').textContent = '0:00';
+    setStatus('NO MEDIA');
+  }
+  function renderPlaylist(){
+    const ul = $('plist');
+    $('plTitle').textContent = 'PLAYLIST ' + tracks.length + '/' + MAX_TRACKS;
+    $('clearAll').disabled = tracks.length === 0;
+    if (tracks.length === 0){ ul.innerHTML = '<li class="empty">No tracks yet — add files or record one above.</li>'; return; }
+    ul.innerHTML = '';
+    tracks.forEach((t, i) => {
+      const li = document.createElement('li');
+      if (i === currentTrack) li.classList.add('on');
+      li.innerHTML = '<span class="num">' + String(i+1).padStart(2,'0') + '</span><span class="nm"></span><span class="dur">' + fmtTime(t.dur) + '</span><button class="rm" title="Remove track">&times;</button>';
+      li.querySelector('.nm').textContent = t.name;
+      li.addEventListener('click', e => { if (e.target.closest('.rm')) return; selectTrack(i); });
+      li.querySelector('.rm').addEventListener('click', e => { e.stopPropagation(); removeTrack(i); });
+      ul.appendChild(li);
+    });
+  }
+  $('file').addEventListener('change', e => { loadFiles(e.target.files); e.target.value = ''; });
   const slot = $('slot');
   ['dragenter','dragover'].forEach(ev => slot.addEventListener(ev, e => { e.preventDefault(); slot.classList.add('drag'); }));
   ['dragleave','drop'].forEach(ev => slot.addEventListener(ev, e => { e.preventDefault(); slot.classList.remove('drag'); }));
-  slot.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) loadFile(f); });
+  slot.addEventListener('drop', e => { if (e.dataTransfer.files.length) loadFiles(e.dataTransfer.files); });
+
+  // clear-all with a confirmation ("Really reset everything?")
+  $('clearAll').addEventListener('click', () => { if (tracks.length) $('confirm').classList.remove('hide'); });
+  $('cfNo').addEventListener('click', () => $('confirm').classList.add('hide'));
+  $('cfYes').addEventListener('click', () => { tracks = []; clearEngine(); renderPlaylist(); $('confirm').classList.add('hide'); });
+  $('confirm').addEventListener('click', e => { if (e.target === $('confirm')) $('confirm').classList.add('hide'); });
 
   // ---------- record ----------
   let recorder = null, recChunks = [], recording = false, micStream = null;
@@ -308,7 +417,8 @@
         const blob = new Blob(recChunks, { type: recorder.mimeType || 'audio/webm' });
         try {
           const ab = await ctx.decodeAudioData(await blob.arrayBuffer());
-          setBuffer(ab, 'Mic recording');
+          if (tracks.length >= MAX_TRACKS) playlistFull();
+          else addTrack('Recording ' + (tracks.length + 1), ab);
         } catch(err){ setStatus('REC ERROR'); console.error(err); }
       };
       recorder.start();
@@ -384,6 +494,7 @@
     if (stoppedFlag){ stoppedFlag = false; setStatus(transportRate === 0 ? (buf ? 'END' : 'NO MEDIA') : ''); }
     requestAnimationFrame(frame);
   }
+  renderPlaylist();
   requestAnimationFrame(frame);
 </script>
 </body>

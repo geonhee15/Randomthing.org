@@ -278,7 +278,7 @@
     <div class="grid">
       <a class="card art-card calc-card" href="/Calculator/">
         <div class="mini" aria-hidden="true">
-          <div class="screen">42</div>
+          <div class="screen" id="calcScreen">42</div>
           <div class="pad">
             <i></i><i></i><i></i><i class="op"></i>
             <i></i><i></i><i></i><i class="op"></i>
@@ -377,6 +377,10 @@
     © <span id="yr"></span> Randomthing.org
     <span class="credit">Developed by Geonhee Kim</span>
   </footer>
-  <script>document.getElementById('yr').textContent = new Date().getFullYear();</script>
+  <script>
+    document.getElementById('yr').textContent = new Date().getFullYear();
+    // easter egg: the calculator thumbnail shows a random 1–99 each visit
+    document.getElementById('calcScreen').textContent = Math.floor(Math.random() * 99) + 1;
+  </script>
 </body>
 </html>
