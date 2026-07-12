@@ -38,7 +38,7 @@
   .seg button:hover { color:var(--ink); }
   .seg button.on { background:#fff; color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,.12); }
 
-  .diff { display:flex; gap:7px; justify-content:center; margin-bottom:14px; height:34px; align-items:center; }
+  .diff { display:flex; flex-wrap:wrap; gap:7px; justify-content:center; align-items:center; margin-bottom:10px; }
   .diff.hide { display:none; }
   .diff button { border:1px solid var(--line); background:#fff; color:var(--muted); cursor:pointer;
     font:600 12.5px var(--ui); padding:7px 14px; border-radius:999px; transition:all .14s; }
@@ -88,7 +88,14 @@
 
     <div class="diff hide" id="diff">
       <button data-diff="easy" class="on">Easy</button>
-      <button data-diff="hard">Impossible</button>
+      <button data-diff="normal">Normal</button>
+      <button data-diff="hard">Hard</button>
+      <button data-diff="impossible">Impossible</button>
+    </div>
+    <div class="diff hide" id="firstSeg">
+      <button data-first="you" class="on">You first</button>
+      <button data-first="cpu">Computer first</button>
+      <button data-first="random">Random</button>
     </div>
 
     <div class="status" id="status"></div>
@@ -115,8 +122,10 @@
 
   let board = Array(9).fill('');
   let current = 'X';
-  let mode = 'friend';       // friend | cpu
-  let diff = 'easy';         // easy | hard   (cpu)
+  let mode = 'friend';           // friend | cpu
+  let level = 'easy';            // easy | normal | hard | impossible
+  let firstChoice = 'you';       // you | cpu | random
+  let humanMark = 'X', cpuMark = 'O';
   let over = false;
   let scores = { X:0, O:0, D:0 };
   const boardEl = $('board');
@@ -144,26 +153,27 @@
       else if (!want && c.firstChild){ c.innerHTML = ''; }
     });
   }
+  function markSpan(m){ return '<span class="who ' + m.toLowerCase() + '">' + m + '</span>'; }
   function setStatus(){
     const st = $('status');
     if (over){
       const w = winnerOf(board);
-      if (w) st.innerHTML = '<span class="who ' + w.player.toLowerCase() + '">' + w.player + '</span> wins!';
+      if (w) st.innerHTML = markSpan(w.player) + ' wins!';
       else st.textContent = "It's a draw.";
       return;
     }
     if (mode === 'cpu'){
-      st.innerHTML = current === 'X'
-        ? 'Your turn <span class="who x">X</span>'
-        : 'Computer <span class="who o">O</span>…';
+      st.innerHTML = current === humanMark
+        ? 'Your turn ' + markSpan(humanMark)
+        : 'Computer ' + markSpan(cpuMark) + '…';
     } else {
-      st.innerHTML = '<span class="who ' + current.toLowerCase() + '">' + current + '</span> to move';
+      st.innerHTML = markSpan(current) + ' to move';
     }
   }
 
   function onCell(i){
     if (over || board[i]) return;
-    if (mode === 'cpu' && current === 'O') return;   // wait for CPU
+    if (mode === 'cpu' && current !== humanMark) return;   // wait for CPU
     place(i, current);
   }
   function place(i, player){
@@ -173,7 +183,7 @@
     if (emptyIdx(board).length === 0){ finish(null); return; }
     current = current === 'X' ? 'O' : 'X';
     render(); setStatus();
-    if (mode === 'cpu' && current === 'O'){ boardEl.classList.add('locked'); setTimeout(cpuMove, 420); }
+    if (mode === 'cpu' && current === cpuMark){ boardEl.classList.add('locked'); setTimeout(cpuMove, 420); }
   }
   function finish(w){
     over = true;
@@ -183,54 +193,67 @@
   }
 
   // ---------- computer ----------
+  function randMove(b){ const e = emptyIdx(b); return e[(Math.random()*e.length)|0]; }
   function cpuMove(){
     boardEl.classList.remove('locked');
     if (over) return;
-    const i = diff === 'hard' ? bestMove(board) : easyMove(board);
-    place(i, 'O');
-  }
-  function easyMove(b){
-    // 60% smart-ish (win/block), else random — beatable
-    if (Math.random() < 0.6){ const s = tacticMove(b); if (s != null) return s; }
-    const e = emptyIdx(b); return e[(Math.random()*e.length)|0];
+    let i;
+    if (level === 'impossible') i = bestMove(board);
+    else if (level === 'hard')   i = Math.random() < 0.82 ? bestMove(board) : (tacticMove(board) ?? randMove(board));
+    else if (level === 'normal') i = Math.random() < 0.55 ? (tacticMove(board) ?? bestMove(board)) : randMove(board);
+    else                         i = Math.random() < 0.25 ? (tacticMove(board) ?? randMove(board)) : randMove(board); // easy
+    place(i, cpuMark);
   }
   function tacticMove(b){
-    for (const p of ['O','X']){         // win, then block
+    for (const p of [cpuMark, humanMark]){    // take a win, else block
       for (const [a,c,d] of LINES){
         const line = [a,c,d], vals = line.map(k => b[k]);
-        if (vals.filter(v => v===p).length === 2 && vals.includes('')) return line[vals.indexOf('')];
+        if (vals.filter(v => v === p).length === 2 && vals.includes('')) return line[vals.indexOf('')];
       }
     }
     return null;
   }
   function bestMove(b){
     let best = -Infinity, move = -1;
-    for (const i of emptyIdx(b)){ b[i] = 'O'; const s = mini(b, false, 0); b[i] = ''; if (s > best){ best = s; move = i; } }
+    for (const i of emptyIdx(b)){ b[i] = cpuMark; const s = mini(b, false, 0); b[i] = ''; if (s > best){ best = s; move = i; } }
     return move;
   }
   function mini(b, isMax, depth){
     const w = winnerOf(b);
-    if (w) return w.player === 'O' ? 10 - depth : depth - 10;
+    if (w) return w.player === cpuMark ? 10 - depth : depth - 10;
     if (emptyIdx(b).length === 0) return 0;
-    if (isMax){ let best = -Infinity; for (const i of emptyIdx(b)){ b[i]='O'; best = Math.max(best, mini(b,false,depth+1)); b[i]=''; } return best; }
-    let best = Infinity; for (const i of emptyIdx(b)){ b[i]='X'; best = Math.min(best, mini(b,true,depth+1)); b[i]=''; } return best;
+    if (isMax){ let best = -Infinity; for (const i of emptyIdx(b)){ b[i]=cpuMark; best = Math.max(best, mini(b,false,depth+1)); b[i]=''; } return best; }
+    let best = Infinity; for (const i of emptyIdx(b)){ b[i]=humanMark; best = Math.min(best, mini(b,true,depth+1)); b[i]=''; } return best;
   }
 
   // ---------- controls ----------
   function newRound(){
     board = Array(9).fill(''); current = 'X'; over = false;
     boardEl.classList.remove('locked');
+    if (mode === 'cpu'){
+      let humanFirst = firstChoice === 'you' ? true : firstChoice === 'cpu' ? false : Math.random() < 0.5;
+      humanMark = humanFirst ? 'X' : 'O';
+      cpuMark   = humanFirst ? 'O' : 'X';
+    } else { humanMark = 'X'; cpuMark = 'O'; }
     render(); setStatus();
+    // X always moves first — if the computer is X, it opens
+    if (mode === 'cpu' && cpuMark === 'X'){ boardEl.classList.add('locked'); setTimeout(cpuMove, 450); }
   }
   $('modeSeg').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
     mode = b.dataset.mode;
     $('modeSeg').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
     $('diff').classList.toggle('hide', mode !== 'cpu');
+    $('firstSeg').classList.toggle('hide', mode !== 'cpu');
     newRound();
   }));
   $('diff').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
-    diff = b.dataset.diff;
+    level = b.dataset.diff;
     $('diff').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    newRound();
+  }));
+  $('firstSeg').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    firstChoice = b.dataset.first;
+    $('firstSeg').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
     newRound();
   }));
   $('newBtn').addEventListener('click', newRound);

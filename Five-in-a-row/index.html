@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Five in a Row — Randomthing.org</title>
+<meta name="description" content="Gomoku / Omok — get five stones in a row. Play a friend or the computer." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+<style>
+  :root { --ui:"Inter",system-ui,-apple-system,sans-serif; --ink:#1b1b20; --muted:#8a8a93; --line:#e8e8ec; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; padding:0; }
+  body { font-family:var(--ui); color:var(--ink); background:#f6f6f8; min-height:100vh;
+    -webkit-font-smoothing:antialiased; -webkit-user-select:none; user-select:none; touch-action:manipulation; }
+  .nav { display:flex; align-items:center; gap:12px; padding:14px 20px; }
+  .brand { font-family:"Baloo 2",sans-serif; font-weight:800; font-size:20px; letter-spacing:-.4px;
+    color:var(--ink); text-decoration:none; padding:5px 8px; border-radius:10px; }
+  .brand:hover { background:rgba(0,0,0,.05); }
+  .brand .org { color:#ff5a5f; }
+  .nav .sep { color:#cfcfd4; } .nav h1 { font-size:15px; font-weight:600; margin:0; color:#56565e; }
+
+  .wrap { max-width:520px; margin:0 auto; padding:6px 16px 60px; text-align:center; }
+  .seg { display:inline-flex; gap:3px; padding:4px; background:#ececf0; border:1px solid var(--line); border-radius:12px; margin:6px 0 10px; }
+  .seg button { border:none; background:transparent; cursor:pointer; font:600 14px var(--ui); color:var(--muted); padding:9px 18px; border-radius:9px; transition:all .15s; }
+  .seg button:hover { color:var(--ink); }
+  .seg button.on { background:#fff; color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,.12); }
+  .diff { display:flex; flex-wrap:wrap; gap:7px; justify-content:center; margin-bottom:12px; }
+  .diff.hide { display:none; }
+  .diff button { border:1px solid var(--line); background:#fff; color:var(--muted); cursor:pointer; font:600 12.5px var(--ui); padding:7px 14px; border-radius:999px; transition:all .14s; }
+  .diff button:hover { color:var(--ink); }
+  .diff button.on { background:#1b1b20; color:#fff; border-color:#1b1b20; }
+
+  .status { font-family:"Baloo 2",sans-serif; font-weight:800; font-size:20px; margin:2px 0 14px; min-height:28px; display:flex; align-items:center; justify-content:center; gap:9px; }
+  .status .dot { width:16px; height:16px; border-radius:50%; box-shadow:inset 0 0 0 1px rgba(0,0,0,.15); }
+  .status .dot.b { background:#1b1b20; } .status .dot.w { background:#fff; box-shadow:inset 0 0 0 1px #c8c8cc; }
+
+  .boardwrap { width:min(92vw, 480px); margin:0 auto; }
+  canvas { width:100%; height:auto; display:block; border-radius:14px; box-shadow:0 18px 40px rgba(60,45,20,.22); cursor:pointer; touch-action:none; }
+
+  .score { display:flex; justify-content:center; gap:12px; margin-top:20px; }
+  .score .s { flex:1; max-width:150px; background:#fff; border:1px solid var(--line); border-radius:14px; padding:12px 8px; display:flex; align-items:center; gap:10px; justify-content:center; }
+  .score .s .st { width:18px; height:18px; border-radius:50%; box-shadow:inset 0 0 0 1px rgba(0,0,0,.15); }
+  .score .s .st.b { background:#1b1b20; } .score .s .st.w { background:#fff; box-shadow:inset 0 0 0 1px #c8c8cc; }
+  .score .s .v { font-family:"Space Grotesk",monospace; font-size:24px; font-weight:700; }
+
+  .actions { display:flex; gap:10px; justify-content:center; margin-top:18px; flex-wrap:wrap; }
+  .btn { font:700 14px var(--ui); border:none; border-radius:11px; padding:12px 18px; cursor:pointer; transition:transform .1s, background .14s; }
+  .btn:active { transform:translateY(1px); }
+  .btn.primary { background:#1b1b20; color:#fff; } .btn.primary:hover { background:#000; }
+  .btn.ghost { background:#fff; color:var(--ink); border:1px solid var(--line); } .btn.ghost:hover { background:#fafafa; }
+</style>
+</head>
+<body>
+  <nav class="nav">
+    <a class="brand" href="/">Randomthing<span class="org">.org</span></a>
+    <span class="sep">/</span><h1>Five in a Row</h1>
+  </nav>
+
+  <div class="wrap">
+    <div class="seg" id="modeSeg">
+      <button data-mode="friend" class="on">2 Players</button>
+      <button data-mode="cpu">vs Computer</button>
+    </div>
+    <div class="diff hide" id="diff">
+      <button data-diff="easy" class="on">Easy</button>
+      <button data-diff="hard">Hard</button>
+    </div>
+
+    <div class="status" id="status"></div>
+
+    <div class="boardwrap"><canvas id="board"></canvas></div>
+
+    <div class="score">
+      <div class="s"><span class="st b"></span><span class="v" id="scoreB">0</span></div>
+      <div class="s"><span class="st w"></span><span class="v" id="scoreW">0</span></div>
+    </div>
+
+    <div class="actions">
+      <button class="btn primary" id="newBtn">New game</button>
+      <button class="btn ghost" id="undoBtn">Undo</button>
+      <button class="btn ghost" id="resetBtn">Reset scores</button>
+    </div>
+  </div>
+
+<script>
+  const $ = id => document.getElementById(id);
+  const N = 15;
+  const canvas = $('board'), ctx = canvas.getContext('2d');
+
+  let grid = new Array(N*N).fill('');   // '' | 'B' | 'W'
+  let current = 'B';                     // black first
+  let mode = 'friend';                   // friend | cpu
+  let level = 'easy';                    // easy | hard
+  let humanColor = 'B';                  // in cpu mode, human is Black (first)
+  let over = false, winCells = null, lastMove = null, history = [];
+  let scores = { B:0, W:0 };
+  const at = (x,y) => grid[y*N+x];
+  const inB = (x,y) => x>=0 && x<N && y>=0 && y<N;
+
+  // ---------- rendering ----------
+  let size = 480, pad = 22, cell = 0, DPR = 1;
+  function fit(){
+    const rect = canvas.getBoundingClientRect();
+    size = rect.width || 480;
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.round(size * DPR); canvas.height = Math.round(size * DPR);
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    pad = size * 0.052; cell = (size - 2*pad) / (N - 1);
+    draw();
+  }
+  const px = i => pad + i * cell;
+  function draw(){
+    ctx.clearRect(0, 0, size, size);
+    // board
+    ctx.fillStyle = '#e7c489'; roundRect(0, 0, size, size, 14); ctx.fill();
+    // grid
+    ctx.strokeStyle = '#a9803f'; ctx.lineWidth = 1;
+    for (let i = 0; i < N; i++){
+      ctx.beginPath(); ctx.moveTo(px(i), px(0)); ctx.lineTo(px(i), px(N-1)); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(px(0), px(i)); ctx.lineTo(px(N-1), px(i)); ctx.stroke();
+    }
+    // star points
+    ctx.fillStyle = '#8a6428';
+    [[3,3],[3,11],[11,3],[11,11],[7,7]].forEach(([x,y]) => { ctx.beginPath(); ctx.arc(px(x), px(y), cell*0.11, 0, 7); ctx.fill(); });
+    // stones
+    const r = cell * 0.42;
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++){
+      const v = at(x,y); if (!v) continue;
+      const cx = px(x), cy = px(y);
+      const g = ctx.createRadialGradient(cx - r*0.35, cy - r*0.35, r*0.2, cx, cy, r);
+      if (v === 'B'){ g.addColorStop(0, '#4a4a52'); g.addColorStop(1, '#141418'); }
+      else { g.addColorStop(0, '#ffffff'); g.addColorStop(1, '#d4d4da'); }
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.fill();
+      if (v === 'W'){ ctx.strokeStyle = 'rgba(0,0,0,.12)'; ctx.lineWidth = 1; ctx.stroke(); }
+    }
+    // last-move marker
+    if (lastMove && !winCells){
+      ctx.strokeStyle = '#e23b2e'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(px(lastMove.x), px(lastMove.y), r*0.45, 0, 7); ctx.stroke();
+    }
+    // winning line
+    if (winCells){
+      ctx.strokeStyle = '#27c281'; ctx.lineWidth = 4;
+      for (const [x,y] of winCells){ ctx.beginPath(); ctx.arc(px(x), px(y), r + 2, 0, 7); ctx.stroke(); }
+    }
+  }
+  function roundRect(x, y, w, h, rad){ ctx.beginPath(); ctx.moveTo(x+rad,y); ctx.arcTo(x+w,y,x+w,y+h,rad); ctx.arcTo(x+w,y+h,x,y+h,rad); ctx.arcTo(x,y+h,x,y,rad); ctx.arcTo(x,y,x+w,y,rad); ctx.closePath(); }
+
+  function setStatus(){
+    const st = $('status');
+    if (over){
+      if (winCells){ const w = at(winCells[0][0], winCells[0][1]); st.innerHTML = '<span class="dot ' + w.toLowerCase() + '"></span>' + (w==='B'?'Black':'White') + ' wins!'; }
+      else st.textContent = 'Draw — board full.';
+      return;
+    }
+    const label = mode === 'cpu' ? (current === humanColor ? 'Your turn' : 'Computer…') : (current === 'B' ? 'Black' : 'White') + ' to move';
+    st.innerHTML = '<span class="dot ' + current.toLowerCase() + '"></span>' + label;
+  }
+
+  // ---------- game flow ----------
+  function place(x, y, color){
+    grid[y*N+x] = color; lastMove = { x, y }; history.push({ x, y, color });
+    const win = checkWin(x, y, color);
+    if (win){ winCells = win; over = true; scores[color]++; $('scoreB').textContent = scores.B; $('scoreW').textContent = scores.W; draw(); setStatus(); return; }
+    if (history.length === N*N){ over = true; draw(); setStatus(); return; }
+    current = current === 'B' ? 'W' : 'B';
+    draw(); setStatus();
+    if (mode === 'cpu' && current !== humanColor && !over){ setTimeout(cpuMove, 260); }
+  }
+  function onPlay(clientX, clientY){
+    if (over) return;
+    if (mode === 'cpu' && current !== humanColor) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = Math.round(((clientX - rect.left) - pad) / cell);
+    const y = Math.round(((clientY - rect.top) - pad) / cell);
+    if (!inB(x,y) || at(x,y)) return;
+    place(x, y, current);
+  }
+  canvas.addEventListener('pointerdown', e => { e.preventDefault(); onPlay(e.clientX, e.clientY); });
+
+  function checkWin(x, y, color){
+    const dirs = [[1,0],[0,1],[1,1],[1,-1]];
+    for (const [dx,dy] of dirs){
+      const cells = [[x,y]];
+      let cx = x+dx, cy = y+dy; while (inB(cx,cy) && at(cx,cy) === color){ cells.push([cx,cy]); cx+=dx; cy+=dy; }
+      cx = x-dx; cy = y-dy; while (inB(cx,cy) && at(cx,cy) === color){ cells.unshift([cx,cy]); cx-=dx; cy-=dy; }
+      if (cells.length >= 5) return cells.slice(0, 5);
+    }
+    return null;
+  }
+
+  // ---------- computer (heuristic) ----------
+  function patVal(count, ends){
+    if (count >= 5) return 1000000;
+    if (count === 4) return ends === 2 ? 50000 : 800;
+    if (count === 3) return ends === 2 ? 1200 : 130;
+    if (count === 2) return ends === 2 ? 110 : 22;
+    return ends === 2 ? 8 : 1;
+  }
+  function cellScore(x, y, color){
+    let total = 0;
+    for (const [dx,dy] of [[1,0],[0,1],[1,1],[1,-1]]){
+      let count = 1, ends = 0;
+      let cx = x+dx, cy = y+dy; while (inB(cx,cy) && at(cx,cy) === color){ count++; cx+=dx; cy+=dy; }
+      if (inB(cx,cy) && !at(cx,cy)) ends++;
+      cx = x-dx; cy = y-dy; while (inB(cx,cy) && at(cx,cy) === color){ count++; cx-=dx; cy-=dy; }
+      if (inB(cx,cy) && !at(cx,cy)) ends++;
+      total += patVal(count, ends);
+    }
+    return total;
+  }
+  function candidates(){
+    const seen = new Set(), out = [];
+    let any = false;
+    for (let i = 0; i < N*N; i++) if (grid[i]) { any = true; break; }
+    if (!any) return [{ x: 7, y: 7 }];
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++){
+      if (at(x,y)) continue;
+      let near = false;
+      for (let dy=-2; dy<=2 && !near; dy++) for (let dx=-2; dx<=2; dx++){ if (inB(x+dx,y+dy) && at(x+dx,y+dy)){ near = true; break; } }
+      if (near){ const k = y*N+x; if (!seen.has(k)){ seen.add(k); out.push({ x, y }); } }
+    }
+    return out;
+  }
+  function cpuMove(){
+    if (over) return;
+    const me = current, opp = me === 'B' ? 'W' : 'B';
+    const cands = candidates();
+    let scored = cands.map(c => {
+      const off = cellScore(c.x, c.y, me), def = cellScore(c.x, c.y, opp);
+      return { c, s: off + def * 1.15, off };
+    });
+    // take an immediate win outright
+    const win = scored.find(o => o.off >= 1000000);
+    scored.sort((a, b) => b.s - a.s);
+    let pick;
+    if (win) pick = win.c;
+    else if (level === 'easy'){
+      // 55% best, else a random-ish decent move
+      if (Math.random() < 0.55) pick = scored[0].c;
+      else { const top = scored.slice(0, Math.min(8, scored.length)); pick = top[(Math.random()*top.length)|0].c; }
+    } else {
+      // hard: best, tiny random tie-break among near-equal
+      const top = scored.filter(o => o.s >= scored[0].s - 1);
+      pick = top[(Math.random()*top.length)|0].c;
+    }
+    place(pick.x, pick.y, me);
+  }
+
+  // ---------- controls ----------
+  function newGame(){
+    grid = new Array(N*N).fill(''); current = 'B'; over = false; winCells = null; lastMove = null; history = [];
+    humanColor = 'B';
+    draw(); setStatus();
+    // human is Black (first); computer waits — no opening move needed
+  }
+  function undo(){
+    if (over){ // undo the winning move
+      const last = history.pop(); if (!last) return;
+      grid[last.y*N+last.x] = ''; scores[last.color] = Math.max(0, scores[last.color]-1);
+      $('scoreB').textContent = scores.B; $('scoreW').textContent = scores.W;
+      over = false; winCells = null; current = last.color; lastMove = history.length ? history[history.length-1] : null;
+      draw(); setStatus(); return;
+    }
+    let steps = (mode === 'cpu') ? 2 : 1;   // undo the pair vs computer
+    while (steps-- > 0 && history.length){
+      const last = history.pop();
+      grid[last.y*N+last.x] = '';
+      current = last.color;
+    }
+    lastMove = history.length ? history[history.length-1] : null;
+    draw(); setStatus();
+  }
+
+  $('modeSeg').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    mode = b.dataset.mode;
+    $('modeSeg').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    $('diff').classList.toggle('hide', mode !== 'cpu');
+    newGame();
+  }));
+  $('diff').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    level = b.dataset.diff;
+    $('diff').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    newGame();
+  }));
+  $('newBtn').addEventListener('click', newGame);
+  $('undoBtn').addEventListener('click', undo);
+  $('resetBtn').addEventListener('click', () => { scores = { B:0, W:0 }; $('scoreB').textContent = 0; $('scoreW').textContent = 0; newGame(); });
+  window.addEventListener('resize', fit);
+
+  fit(); newGame();
+</script>
+  <script defer src="/cookie-consent.js"></script>
+</body>
+</html>
