@@ -128,18 +128,17 @@
 
   async function handleImage(file){
     showLoading('Loading image…');
-    const img = new Image();
-    img.onload = async () => {
-      const person = await cutOutPerson(img);
-      hideLoading();
-      sil.style.display = 'none';
-      canvas.classList.add('on');   // must be visible before startMesh measures it
-      startMesh(person);
-      hint.innerHTML = 'Press <b>Stretch!</b>, then grab the face and fling it';
-    };
-    img.onerror = () => { hideLoading(); alert("Couldn't load that image."); };
-    img.src = URL.createObjectURL(file);
+    let person;
+    try { person = await cutOutPerson(file); }
+    catch (e){ console.warn(e); }
+    hideLoading();
+    if (!person){ alert("Couldn't process that image."); return; }
+    sil.style.display = 'none';
+    canvas.classList.add('on');   // must be visible before startMesh measures it
+    startMesh(person);
+    hint.innerHTML = 'Press <b>Stretch!</b>, then grab the face and fling it';
   }
+  function loadBlob(blob){ return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(blob); }); }
 
   // ---------- AI person cut-out (MediaPipe Selfie Segmentation, with fallback) ----------
   let mpLoaded = false, selfieSeg = null;
@@ -211,18 +210,50 @@
       selfieSeg.send({ image: srcCanvas }).catch(reject);
     });
   }
-  async function cutOutPerson(img){
-    showLoading('Analyzing image…');
-    const src = toCanvas(img, 1100);
+  // 1st choice: @imgly/background-removal — an ISNet model that runs locally in the
+  // browser (no upload, no API key). Much cleaner edges than MediaPipe, esp. on art.
+  let imglyRemove = null;
+  const IMGLY = 'https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.5.8';
+  async function ensureImgly(){
+    if (imglyRemove) return imglyRemove;
+    const mod = await import(IMGLY + '/+esm');
+    imglyRemove = mod.removeBackground || (mod.default && mod.default.removeBackground);
+    if (!imglyRemove) throw new Error('removeBackground not found');
+    return imglyRemove;
+  }
+  async function cutOutPerson(file){
+    // 1) high-quality local background removal
     try {
+      showLoading('Loading the background remover…');
+      const remove = await ensureImgly();
+      const cut = await remove(file, {
+        model: 'isnet_quint8',                 // small, fast model — downloaded once, then cached
+        output: { format: 'image/png' },
+        progress: (key, cur, total) => {
+          const pct = total ? Math.round(cur/total*100) : 0;
+          showLoading(/fetch/.test(key) ? ('Downloading model… ' + pct + '%') : 'Removing background…');
+        }
+      });
+      const img = await loadBlob(cut);
+      const cv = toCanvas(img, 1400);
+      return cropToContent(cv) || cv;
+    } catch (e1){
+      console.warn('@imgly unavailable, falling back to MediaPipe', e1);
+    }
+    // 2) fallback: MediaPipe selfie segmentation (+ fringe clean-up)
+    try {
+      showLoading('Analyzing image…');
+      const img = await loadBlob(file);
+      const src = toCanvas(img, 1100);
       if (!mpLoaded){ await loadScript(MP_BASE + 'selfie_segmentation.js'); mpLoaded = true; }
       const masked = await runSelfie(src);
-      const cropped = cropToContent(masked);
-      return cropped || masked;
-    } catch (e){
-      console.warn('AI cut-out unavailable — using the whole image', e);
-      return src;
+      return cropToContent(masked) || masked;
+    } catch (e2){
+      console.warn('AI cut-out unavailable — using the whole image', e2);
     }
+    // 3) last resort: the original image, uncut
+    try { const img = await loadBlob(file); return toCanvas(img, 1400); }
+    catch (e3){ return null; }
   }
 
   // ================= elastic soft-body mesh (WebGL) =================
