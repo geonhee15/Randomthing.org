@@ -59,6 +59,13 @@
   .spinner { width:42px; height:42px; border-radius:50%; border:4px solid #e0d8c2; border-top-color:#e23b2e; animation:spin .8s linear infinite; }
   @keyframes spin { to { transform:rotate(360deg); } }
   .loading .lt { font-weight:700; font-size:15px; color:#5a5340; }
+
+  /* pins (nails driven into the mesh) */
+  .pin { position:fixed; width:22px; height:22px; margin:-11px 0 0 -11px; border-radius:50%; z-index:6;
+    background: radial-gradient(circle at 38% 30%, #f6f6f7, #bfbfc4 46%, #6b6b71 100%);
+    box-shadow: 0 2px 6px rgba(0,0,0,.45), inset 0 0 0 1.5px rgba(0,0,0,.28); pointer-events:none; }
+  .pin::after { content:""; position:absolute; inset:0; margin:auto; width:5px; height:5px; border-radius:50%;
+    background:#44444a; box-shadow: inset 0 1px 1.5px rgba(0,0,0,.6); }
 </style>
 </head>
 <body>
@@ -105,7 +112,12 @@
     ctxMenu.classList.add('show');
   }
   function hideCtx(){ ctxMenu.classList.remove('show'); }
-  stage.addEventListener('contextmenu', e => { e.preventDefault(); showCtx(e.clientX, e.clientY); });
+  stage.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    const vi = pinNearClient(e.clientX, e.clientY, 20);   // right-click a pin to pull it out
+    if (vi !== -1){ removePin(vi); return; }
+    showCtx(e.clientX, e.clientY);
+  });
   document.addEventListener('click', e => { if (!ctxMenu.contains(e.target)) hideCtx(); });
   $('insertBtn').addEventListener('click', () => { hideCtx(); fileInput.click(); });
   $('insertMini').addEventListener('click', () => fileInput.click());
@@ -286,6 +298,7 @@
 
   function startMesh(personCanvas){
     if (!gl) initGL();
+    clearPins();
     fitCanvas();
     makeTexture(personCanvas);
     buildMesh();
@@ -310,6 +323,7 @@
       x[i]+=vx[i]*dt; y[i]+=vy[i]*dt;
     }
     if (grabbed >= 0){ x[grabbed]=mouse.x; y[grabbed]=mouse.y; vx[grabbed]=0; vy[grabbed]=0; }
+    for (const [vi, p] of pins){ x[vi]=p.x; y[vi]=p.y; vx[vi]=0; vy[vi]=0; }   // pinned points stay put
   }
 
   function draw(){
@@ -330,6 +344,34 @@
     for (let s=0;s<SUB;s++) step(DT);
     draw();
     requestAnimationFrame(loop);
+  }
+
+  // ---------- pins ----------
+  const pins = new Map();   // vertexIndex -> { x, y, el }  (frozen at the driven-in position)
+  function clientFromCanvas(cx, cy){
+    const r = canvas.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    return { left: cx/dpr + r.left, top: cy/dpr + r.top };
+  }
+  function addPin(vi){
+    if (pins.has(vi)) return;
+    const px = x[vi], py = y[vi];                 // freeze at the current (stretched) position
+    const el = document.createElement('div'); el.className = 'pin';
+    const c = clientFromCanvas(px, py); el.style.left = c.left + 'px'; el.style.top = c.top + 'px';
+    document.body.appendChild(el);
+    pins.set(vi, { x:px, y:py, el }); vx[vi]=0; vy[vi]=0;
+  }
+  function removePin(vi){ const p = pins.get(vi); if (!p) return; p.el.remove(); pins.delete(vi); }
+  function clearPins(){ for (const p of pins.values()) p.el.remove(); pins.clear(); }
+  function pinNearClient(cx, cy, rad){
+    let best = -1, bd = rad*rad;
+    for (const [vi, p] of pins){
+      const r = p.el.getBoundingClientRect();
+      const mx = r.left + r.width/2, my = r.top + r.height/2;
+      const d = (mx-cx)*(mx-cx) + (my-cy)*(my-cy);
+      if (d < bd){ bd = d; best = vi; }
+    }
+    return best;
   }
 
   // ---------- mouse / touch interaction ----------
@@ -355,10 +397,11 @@
     canvas.setPointerCapture(e.pointerId);
   });
   window.addEventListener('pointermove', e => {
-    if (!stretchMode || !running) return;
+    if (!running) return;
     const p = toCanvasXY(e.clientX, e.clientY);
     mouse.vx = p.x - mouse.x; mouse.vy = p.y - mouse.y;
     mouse.x = p.x; mouse.y = p.y;
+    if (!stretchMode) return;                 // tracking works anytime; nudging only in stretch mode
     if (grabbed < 0 && mouse.down === false){
       // light-touch: fast passes nudge nearby vertices
       const sp = Math.hypot(mouse.vx, mouse.vy);
@@ -374,6 +417,15 @@
   }
   window.addEventListener('pointerup', releaseGrab);
   window.addEventListener('pointercancel', releaseGrab);
+
+  // press P to drive a pin at the grabbed point (or nearest to the cursor) — works anytime
+  window.addEventListener('keydown', e => {
+    if ((e.key === 'p' || e.key === 'P') && running && !e.repeat){
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const vi = grabbed >= 0 ? grabbed : nearestFree(mouse.x, mouse.y, 120*dpr);
+      if (vi >= 0){ addPin(vi); if (grabbed === vi) grabbed = -1; }
+    }
+  });
 
   // ---------- stretch mode toggle ----------
   const PALM = "<svg xmlns='http://www.w3.org/2000/svg' width='46' height='46' viewBox='0 0 46 46'>" +
@@ -391,10 +443,10 @@
   $('stretchBtn').addEventListener('click', () => {
     if (!running){ hint.innerHTML = 'Insert a photo first — <b>right-click</b> the silhouette'; return; }
     setStretch(!stretchMode);
-    if (stretchMode) hint.innerHTML = 'Grab the face and <b>pull</b> it — then fling it around';
+    if (stretchMode) hint.innerHTML = 'Grab and <b>pull</b> the face · press <b>P</b> to pin a spot · <b>right-click</b> a pin to remove it';
   });
 
-  window.addEventListener('resize', () => { if (running){ fitCanvas(); buildMesh(); } });
+  window.addEventListener('resize', () => { if (running){ clearPins(); fitCanvas(); buildMesh(); } });
 </script>
   <script defer src="/cookie-consent.js"></script>
 </body>
