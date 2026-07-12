@@ -98,6 +98,7 @@
   .cg-card   { background: linear-gradient(125deg, #ff7e5f 0%, #845ec2 50%, #2c73d2 100%); }
   .rt-card   { background: radial-gradient(120% 120% at 78% 12%, #1f9e6a 0%, #146a47 52%, #0a2c1e 100%); }
   .ap-card   { background: radial-gradient(120% 120% at 22% 12%, #4a463f 0%, #2c2924 55%, #16140f 100%); }
+  .ttt-card  { background: radial-gradient(120% 120% at 80% 12%, #2b3350 0%, #1b2036 55%, #0e1120 100%); }
   .calc-card .mini {
     flex: 0 0 auto;
     width: 92px;
@@ -171,6 +172,18 @@
   }
   .rt-card .mini b { font-family:"Space Grotesk", sans-serif; font-weight:700; color:#063; font-size:22px; }
   .ap-card .kicker { color: #d9c9a8; }
+  .ttt-card .kicker { color: #a9b4e6; }
+  /* Tic-Tac-Toe card artwork */
+  .ttt-card .mini {
+    flex: 0 0 auto; width: 92px; height: 92px; border-radius: 16px;
+    background: #0d1020; padding: 11px;
+    display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 5px;
+    box-shadow: 0 10px 22px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.08);
+    transform: rotate(-4deg); transition: transform .2s ease;
+  }
+  .ttt-card .mini i { border-radius: 5px; background: rgba(255,255,255,.06); display:flex; align-items:center; justify-content:center;
+    font-family:"Baloo 2",sans-serif; font-weight:800; font-size:15px; line-height:1; }
+  .ttt-card .mini i.x { color:#8b8fff; } .ttt-card .mini i.o { color:#ff8b8f; }
   /* Audio Player card artwork: a mini turntable */
   .ap-card .mini {
     flex: 0 0 auto; width: 92px; height: 92px; border-radius: 16px;
@@ -419,6 +432,19 @@
           <span class="desc">Load a track, scratch the disc, play it&nbsp;back.</span>
         </div>
       </a>
+
+      <a class="card art-card ttt-card" href="/Tic-tac-toe/">
+        <div class="mini" aria-hidden="true">
+          <i class="x">X</i><i class="o">O</i><i class="x">X</i>
+          <i></i><i class="x">X</i><i></i>
+          <i class="o">O</i><i></i><i class="o">O</i>
+        </div>
+        <div class="txt">
+          <span class="kicker">Two players</span>
+          <span class="name">Tic-Tac-Toe</span>
+          <span class="desc">Beat a friend — or the&nbsp;computer.</span>
+        </div>
+      </a>
     </div>
   </main>
 
@@ -465,6 +491,7 @@
         'The clock thumbnail now tells the real time, and Brick Break got sound effects',
         'Audio Player playlists (up to 99) that save between visits, plus a cookie notice',
         'Added this update log',
+        'Added Tic-Tac-Toe — play a friend or the computer',
       ] },
     ];
 

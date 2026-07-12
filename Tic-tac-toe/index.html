@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tic-Tac-Toe — Randomthing.org</title>
+<meta name="description" content="Classic tic-tac-toe — play a friend or take on the computer." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ui: "Inter", system-ui, -apple-system, sans-serif;
+    --ink: #1b1b20;
+    --muted: #8a8a93;
+    --line: #e8e8ec;
+    --x: #6366f1;
+    --o: #ff5a5f;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; }
+  body { font-family:var(--ui); color:var(--ink); background:#f6f6f8; min-height:100vh;
+    -webkit-font-smoothing:antialiased; -webkit-user-select:none; user-select:none; }
+  .nav { display:flex; align-items:center; gap:12px; padding:14px 20px; }
+  .brand { font-family:"Baloo 2",sans-serif; font-weight:800; font-size:20px; letter-spacing:-.4px;
+    color:var(--ink); text-decoration:none; padding:5px 8px; border-radius:10px; }
+  .brand:hover { background:rgba(0,0,0,.05); }
+  .brand .org { color:#ff5a5f; }
+  .nav .sep { color:#cfcfd4; } .nav h1 { font-size:15px; font-weight:600; margin:0; color:#56565e; }
+
+  .wrap { max-width:420px; margin:0 auto; padding:6px 18px 60px; text-align:center; }
+
+  .seg { display:inline-flex; gap:3px; padding:4px; background:#ececf0; border:1px solid var(--line);
+    border-radius:12px; margin:6px 0 12px; }
+  .seg button { border:none; background:transparent; cursor:pointer; font:600 14px var(--ui);
+    color:var(--muted); padding:9px 18px; border-radius:9px; transition:all .15s; }
+  .seg button:hover { color:var(--ink); }
+  .seg button.on { background:#fff; color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,.12); }
+
+  .diff { display:flex; gap:7px; justify-content:center; margin-bottom:14px; height:34px; align-items:center; }
+  .diff.hide { display:none; }
+  .diff button { border:1px solid var(--line); background:#fff; color:var(--muted); cursor:pointer;
+    font:600 12.5px var(--ui); padding:7px 14px; border-radius:999px; transition:all .14s; }
+  .diff button:hover { color:var(--ink); }
+  .diff button.on { background:#1b1b20; color:#fff; border-color:#1b1b20; }
+
+  .status { font-family:"Baloo 2",sans-serif; font-weight:800; font-size:22px; margin:2px 0 16px; min-height:30px; }
+  .status .who { display:inline-block; }
+  .status .x { color:var(--x); } .status .o { color:var(--o); }
+
+  .board { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; width:100%; aspect-ratio:1; }
+  .cell { background:#fff; border:1px solid var(--line); border-radius:16px; cursor:pointer; position:relative;
+    display:flex; align-items:center; justify-content:center; transition: background .12s, transform .05s, box-shadow .12s;
+    box-shadow:0 2px 6px rgba(0,0,0,.04); }
+  .cell:hover:not(.taken) { background:#fafaff; box-shadow:0 4px 14px rgba(0,0,0,.08); }
+  .cell.taken { cursor:default; }
+  .cell.win { background:#eef7f0; box-shadow:0 0 0 2px #51cf66 inset, 0 6px 18px rgba(81,207,102,.25); }
+  .cell svg { width:56%; height:56%; }
+  .cell .mark { animation: pop .18s ease-out; }
+  @keyframes pop { from{ transform:scale(.4); opacity:0 } to{ transform:scale(1); opacity:1 } }
+  .board.locked .cell:not(.taken) { cursor:default; }
+
+  .score { display:flex; justify-content:center; gap:12px; margin-top:22px; }
+  .score .s { flex:1; max-width:120px; background:#fff; border:1px solid var(--line); border-radius:14px; padding:12px 8px; }
+  .score .s .k { font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+  .score .s .v { font-family:"Space Grotesk",monospace; font-size:26px; font-weight:700; margin-top:2px; }
+  .score .s.sx .v { color:var(--x); } .score .s.so .v { color:var(--o); }
+
+  .actions { display:flex; gap:10px; justify-content:center; margin-top:20px; }
+  .btn { font:700 14px var(--ui); border:none; border-radius:11px; padding:12px 20px; cursor:pointer; transition:transform .1s, background .14s; }
+  .btn:active { transform:translateY(1px); }
+  .btn.primary { background:#1b1b20; color:#fff; } .btn.primary:hover { background:#000; }
+  .btn.ghost { background:#fff; color:var(--ink); border:1px solid var(--line); } .btn.ghost:hover { background:#fafafa; }
+</style>
+</head>
+<body>
+  <nav class="nav">
+    <a class="brand" href="/">Randomthing<span class="org">.org</span></a>
+    <span class="sep">/</span><h1>Tic-Tac-Toe</h1>
+  </nav>
+
+  <div class="wrap">
+    <div class="seg" id="modeSeg">
+      <button data-mode="friend" class="on">2 Players</button>
+      <button data-mode="cpu">vs Computer</button>
+    </div>
+
+    <div class="diff hide" id="diff">
+      <button data-diff="easy" class="on">Easy</button>
+      <button data-diff="hard">Impossible</button>
+    </div>
+
+    <div class="status" id="status"></div>
+
+    <div class="board" id="board"></div>
+
+    <div class="score">
+      <div class="s sx"><div class="k">X</div><div class="v" id="scoreX">0</div></div>
+      <div class="s"><div class="k">Draws</div><div class="v" id="scoreD">0</div></div>
+      <div class="s so"><div class="k">O</div><div class="v" id="scoreO">0</div></div>
+    </div>
+
+    <div class="actions">
+      <button class="btn primary" id="newBtn">New round</button>
+      <button class="btn ghost" id="resetBtn">Reset scores</button>
+    </div>
+  </div>
+
+<script>
+  const $ = id => document.getElementById(id);
+  const LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  const X_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+  const O_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="#ff5a5f" stroke-width="3"><circle cx="12" cy="12" r="7"/></svg>';
+
+  let board = Array(9).fill('');
+  let current = 'X';
+  let mode = 'friend';       // friend | cpu
+  let diff = 'easy';         // easy | hard   (cpu)
+  let over = false;
+  let scores = { X:0, O:0, D:0 };
+  const boardEl = $('board');
+
+  // build cells
+  for (let i = 0; i < 9; i++){
+    const c = document.createElement('div');
+    c.className = 'cell'; c.dataset.i = i;
+    c.addEventListener('click', () => onCell(i));
+    boardEl.appendChild(c);
+  }
+
+  function winnerOf(b){
+    for (const [a,c,d] of LINES){ if (b[a] && b[a] === b[c] && b[a] === b[d]) return { player: b[a], line: [a,c,d] }; }
+    return null;
+  }
+  function emptyIdx(b){ const o = []; for (let i=0;i<9;i++) if (!b[i]) o.push(i); return o; }
+
+  function render(winLine){
+    [...boardEl.children].forEach((c, i) => {
+      c.classList.toggle('taken', !!board[i]);
+      c.classList.toggle('win', winLine ? winLine.includes(i) : false);
+      const want = board[i] === 'X' ? X_SVG : board[i] === 'O' ? O_SVG : '';
+      if (want && !c.querySelector('.mark')){ c.innerHTML = '<div class="mark">' + want + '</div>'; }
+      else if (!want && c.firstChild){ c.innerHTML = ''; }
+    });
+  }
+  function setStatus(){
+    const st = $('status');
+    if (over){
+      const w = winnerOf(board);
+      if (w) st.innerHTML = '<span class="who ' + w.player.toLowerCase() + '">' + w.player + '</span> wins!';
+      else st.textContent = "It's a draw.";
+      return;
+    }
+    if (mode === 'cpu'){
+      st.innerHTML = current === 'X'
+        ? 'Your turn <span class="who x">X</span>'
+        : 'Computer <span class="who o">O</span>…';
+    } else {
+      st.innerHTML = '<span class="who ' + current.toLowerCase() + '">' + current + '</span> to move';
+    }
+  }
+
+  function onCell(i){
+    if (over || board[i]) return;
+    if (mode === 'cpu' && current === 'O') return;   // wait for CPU
+    place(i, current);
+  }
+  function place(i, player){
+    board[i] = player;
+    const w = winnerOf(board);
+    if (w){ finish(w); return; }
+    if (emptyIdx(board).length === 0){ finish(null); return; }
+    current = current === 'X' ? 'O' : 'X';
+    render(); setStatus();
+    if (mode === 'cpu' && current === 'O'){ boardEl.classList.add('locked'); setTimeout(cpuMove, 420); }
+  }
+  function finish(w){
+    over = true;
+    render(w ? w.line : null); setStatus();
+    if (w){ scores[w.player]++; } else { scores.D++; }
+    $('scoreX').textContent = scores.X; $('scoreO').textContent = scores.O; $('scoreD').textContent = scores.D;
+  }
+
+  // ---------- computer ----------
+  function cpuMove(){
+    boardEl.classList.remove('locked');
+    if (over) return;
+    const i = diff === 'hard' ? bestMove(board) : easyMove(board);
+    place(i, 'O');
+  }
+  function easyMove(b){
+    // 60% smart-ish (win/block), else random — beatable
+    if (Math.random() < 0.6){ const s = tacticMove(b); if (s != null) return s; }
+    const e = emptyIdx(b); return e[(Math.random()*e.length)|0];
+  }
+  function tacticMove(b){
+    for (const p of ['O','X']){         // win, then block
+      for (const [a,c,d] of LINES){
+        const line = [a,c,d], vals = line.map(k => b[k]);
+        if (vals.filter(v => v===p).length === 2 && vals.includes('')) return line[vals.indexOf('')];
+      }
+    }
+    return null;
+  }
+  function bestMove(b){
+    let best = -Infinity, move = -1;
+    for (const i of emptyIdx(b)){ b[i] = 'O'; const s = mini(b, false, 0); b[i] = ''; if (s > best){ best = s; move = i; } }
+    return move;
+  }
+  function mini(b, isMax, depth){
+    const w = winnerOf(b);
+    if (w) return w.player === 'O' ? 10 - depth : depth - 10;
+    if (emptyIdx(b).length === 0) return 0;
+    if (isMax){ let best = -Infinity; for (const i of emptyIdx(b)){ b[i]='O'; best = Math.max(best, mini(b,false,depth+1)); b[i]=''; } return best; }
+    let best = Infinity; for (const i of emptyIdx(b)){ b[i]='X'; best = Math.min(best, mini(b,true,depth+1)); b[i]=''; } return best;
+  }
+
+  // ---------- controls ----------
+  function newRound(){
+    board = Array(9).fill(''); current = 'X'; over = false;
+    boardEl.classList.remove('locked');
+    render(); setStatus();
+  }
+  $('modeSeg').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    mode = b.dataset.mode;
+    $('modeSeg').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    $('diff').classList.toggle('hide', mode !== 'cpu');
+    newRound();
+  }));
+  $('diff').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    diff = b.dataset.diff;
+    $('diff').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    newRound();
+  }));
+  $('newBtn').addEventListener('click', newRound);
+  $('resetBtn').addEventListener('click', () => {
+    scores = { X:0, O:0, D:0 };
+    $('scoreX').textContent = 0; $('scoreO').textContent = 0; $('scoreD').textContent = 0;
+    newRound();
+  });
+
+  newRound();
+</script>
+  <script defer src="/cookie-consent.js"></script>
+</body>
+</html>
