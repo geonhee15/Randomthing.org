@@ -327,8 +327,8 @@
               <line x1="50" y1="86" x2="50" y2="80"/>
               <line x1="14" y1="50" x2="20" y2="50"/>
             </g>
-            <line x1="50" y1="50" x2="50" y2="30" stroke="#1b1b1b" stroke-width="4" stroke-linecap="round"/>
-            <line x1="50" y1="50" x2="68" y2="58" stroke="#1b1b1b" stroke-width="3" stroke-linecap="round"/>
+            <line id="clkHour" x1="50" y1="50" x2="50" y2="31" stroke="#1b1b1b" stroke-width="4.5" stroke-linecap="round"/>
+            <line id="clkMin" x1="50" y1="50" x2="50" y2="21" stroke="#1b1b1b" stroke-width="3" stroke-linecap="round"/>
             <circle cx="50" cy="50" r="3.4" fill="#1b1b1b"/>
           </svg>
         </div>
@@ -381,6 +381,17 @@
     document.getElementById('yr').textContent = new Date().getFullYear();
     // easter egg: the calculator thumbnail shows a random 1–99 each visit
     document.getElementById('calcScreen').textContent = Math.floor(Math.random() * 99) + 1;
+    // the Clocks thumbnail tells the real time
+    (function(){
+      var ho = document.getElementById('clkHour'), mi = document.getElementById('clkMin');
+      function tick(){
+        var n = new Date(), m = n.getMinutes(), h = n.getHours();
+        ho.setAttribute('transform', 'rotate(' + (((h % 12) + m/60) * 30) + ' 50 50)');
+        mi.setAttribute('transform', 'rotate(' + (m * 6) + ' 50 50)');
+      }
+      tick(); setInterval(tick, 15000);
+    })();
   </script>
+  <script defer src="/cookie-consent.js"></script>
 </body>
 </html>

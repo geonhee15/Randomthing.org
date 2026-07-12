@@ -225,15 +225,17 @@ function newGame(){
 function nextLevel(){
   level++; clearPowerups(); buildBricks(); resetBalls();
   state = 'ready'; syncHud();
+  sfx('stage');
   showOverlay('Level ' + level, 'Nice. The wall is back — and a little taller.', 'Continue');
 }
 function loseLife(){
   lives--; clearPowerups(); syncHud();
   if (lives <= 0){
     state = 'lost';
+    sfx('gameover');
     if (score > best){ best = score; localStorage.setItem('bb_best', best); syncHud(); }
     showOverlay('Game Over', 'You scored ' + score + (score >= best ? ' — a new best!' : '. Best: ' + best + '.'), 'Play again');
-  } else { resetBalls(); state = 'ready'; }
+  } else { sfx('die'); resetBalls(); state = 'ready'; }
 }
 
 function syncHud(){ scoreEl.textContent = score; livesEl.textContent = lives; levelEl.textContent = level; bestEl.textContent = best; }
@@ -272,6 +274,7 @@ function multiBall(){
   balls.push(...add);
 }
 function applyPowerup(type){
+  sfx('power');
   if (type === 'wide'){ paddle.w = PADDLE_W * 1.6; wideTimer = 12; addFloater(paddle.x, paddle.y - 22, 'WIDE', '#4dabf7'); }
   else if (type === 'slow'){ if (slowTimer <= 0) scaleBalls(SLOW); slowTimer = 10; addFloater(paddle.x, paddle.y - 22, 'SLOW', '#51cf66'); }
   else if (type === 'life'){ lives = Math.min(lives + 1, 6); syncHud(); addFloater(paddle.x, paddle.y - 22, '+1 LIFE', '#ff6b6b'); }
@@ -318,9 +321,9 @@ function update(dt){
       const b = balls[bi];
       b.x += b.vx*h; b.y += b.vy*h;
 
-      if (b.x - b.r < 0){ b.x = b.r; b.vx = Math.abs(b.vx); }
-      if (b.x + b.r > LW){ b.x = LW - b.r; b.vx = -Math.abs(b.vx); }
-      if (b.y - b.r < 0){ b.y = b.r; b.vy = Math.abs(b.vy); }
+      if (b.x - b.r < 0){ b.x = b.r; b.vx = Math.abs(b.vx); sfx('bounce'); }
+      if (b.x + b.r > LW){ b.x = LW - b.r; b.vx = -Math.abs(b.vx); sfx('bounce'); }
+      if (b.y - b.r < 0){ b.y = b.r; b.vy = Math.abs(b.vy); sfx('bounce'); }
 
       if (b.vy > 0 && b.y + b.r >= paddle.y && b.y - b.r <= paddle.y + paddle.h &&
           b.x >= paddle.x - paddle.w/2 - b.r && b.x <= paddle.x + paddle.w/2 + b.r){
@@ -330,6 +333,7 @@ function update(dt){
         b.vx = spd * Math.sin(ang);
         b.vy = -Math.abs(spd * Math.cos(ang));
         b.y = paddle.y - b.r - 0.5;
+        sfx('paddle');
       }
 
       for (let k = 0; k < bricks.length; k++){
@@ -345,6 +349,7 @@ function update(dt){
           addScore(10);
           spawnParticles(br.x + br.w/2, br.y + br.h/2, br.color);
           maybeDrop(br.x + br.w/2, br.y + br.h/2);
+          sfx('brick', Math.round((br.y - TOP) / (BRICK_H + GAP)));
           break;
         }
       }
@@ -445,7 +450,46 @@ canvas.addEventListener('pointermove', e => movePaddle(e.clientX), { passive: tr
 canvas.addEventListener('pointerdown', e => { e.preventDefault(); movePaddle(e.clientX); primaryAction(); });
 ovBtn.addEventListener('click', e => { e.stopPropagation(); primaryAction(); });
 
+// ---------- sound effects (Web Audio, synthesized) ----------
+let actx = null;
+function ensureSfx(){
+  if (!actx){ try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){ return; } }
+  if (actx.state === 'suspended') actx.resume();
+}
+function beep(freq, dur, type, vol, slideTo){
+  if (!actx) return;
+  const t = actx.currentTime;
+  const o = actx.createOscillator(), g = actx.createGain();
+  o.type = type || 'square';
+  o.frequency.setValueAtTime(freq, t);
+  if (slideTo) o.frequency.exponentialRampToValueAtTime(Math.max(20, slideTo), t + dur);
+  g.gain.setValueAtTime(vol || 0.12, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(actx.destination);
+  o.start(t); o.stop(t + dur + 0.02);
+}
+function noiseHit(dur, vol){
+  if (!actx) return;
+  const t = actx.currentTime, n = Math.floor(actx.sampleRate * dur);
+  const b = actx.createBuffer(1, n, actx.sampleRate), d = b.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = (Math.random()*2 - 1) * (1 - i/n);
+  const s = actx.createBufferSource(); s.buffer = b;
+  const g = actx.createGain(); g.gain.value = vol || 0.1;
+  s.connect(g); g.connect(actx.destination); s.start(t);
+}
+function sfx(kind, param){
+  if (!actx) return;
+  if (kind === 'bounce') beep(430, 0.055, 'square', 0.10);
+  else if (kind === 'paddle') beep(300, 0.07, 'square', 0.12);
+  else if (kind === 'brick'){ beep(560 - (param||0)*32, 0.07, 'triangle', 0.14, 260); noiseHit(0.035, 0.05); }
+  else if (kind === 'power'){ [660, 880, 1170].forEach((f,i) => setTimeout(() => beep(f, 0.10, 'square', 0.11), i*65)); }
+  else if (kind === 'stage'){ [523, 659, 784, 1047].forEach((f,i) => setTimeout(() => beep(f, 0.15, 'triangle', 0.13), i*95)); }
+  else if (kind === 'die') beep(320, 0.42, 'sawtooth', 0.15, 80);
+  else if (kind === 'gameover'){ [392, 330, 262, 196].forEach((f,i) => setTimeout(() => beep(f, 0.32, 'triangle', 0.14), i*150)); }
+}
+
 function primaryAction(){
+  ensureSfx();
   if (state === 'ready') launch();
   else if (state === 'lost') newGame();
   else if (state === 'paused') togglePause();
@@ -475,5 +519,6 @@ fit();
 newGame();
 requestAnimationFrame(frame);
 </script>
+  <script defer src="/cookie-consent.js"></script>
 </body>
 </html>
