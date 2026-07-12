@@ -558,14 +558,14 @@ const savesModal = el('savesModal');
 let savesReturnState = null;
 const slotKey = i => 'bb_slot_' + i;
 
-function canSave(){ return state === 'playing' || state === 'paused'; }
+function canSave(){ return state === 'ready' || state === 'playing' || state === 'paused'; }
 function readSlot(i){ try { const s = localStorage.getItem(slotKey(i)); return s ? JSON.parse(s) : null; } catch(e){ return null; } }
 function anySave(){ for (let i = 0; i < SAVE_SLOTS; i++) if (readSlot(i)) return true; return false; }
 function updateSaveBadge(){ el('savesBtn').classList.toggle('has-save', anySave()); }
 
 function snapshot(){
   return {
-    ts: Date.now(), score: score, lives: lives, level: level,
+    ts: Date.now(), st: state, score: score, lives: lives, level: level,
     px: paddle.x, pw: paddle.w, wide: wideTimer, slow: slowTimer,
     balls: balls.map(b => [b.x, b.y, b.vx, b.vy, b.r]),
     bricks: bricks.map(b => [b.x, b.y, b.w, b.h, b.color, b.alive ? 1 : 0]),
@@ -578,8 +578,13 @@ function restoreSnap(s){
   balls = s.balls.map(a => ({ x:a[0], y:a[1], vx:a[2], vy:a[3], r:a[4] }));
   bricks = s.bricks.map(a => ({ x:a[0], y:a[1], w:a[2], h:a[3], color:a[4], alive: !!a[5] }));
   capsules = (s.caps || []).map(a => ({ x:a[0], y:a[1], vy:a[2], type:a[3], letter:a[4], color:a[5] }));
-  state = 'paused';
-  showOverlay('Game loaded', 'Level ' + level + ' · Score ' + score + ' — tap to resume', 'Resume');
+  if (s.st === 'ready'){          // ball wasn't launched yet — resume into the launch-ready state
+    state = 'ready';
+    showOverlay('Game loaded', 'Level ' + level + ' · Score ' + score + ' — tap to launch', 'Launch');
+  } else {
+    state = 'paused';
+    showOverlay('Game loaded', 'Level ' + level + ' · Score ' + score + ' — tap to resume', 'Resume');
+  }
 }
 
 function saveToSlot(i){ if (!canSave()) return; try { localStorage.setItem(slotKey(i), JSON.stringify(snapshot())); } catch(e){} renderSlots(); updateSaveBadge(); }
