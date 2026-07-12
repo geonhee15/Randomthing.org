@@ -41,6 +41,17 @@
   .brand:hover { background: rgba(0,0,0,.05); }
   .brand .org { color: #ff5a5f; }
 
+  .zone select {
+    font-family: var(--ui); font-size: 14px; font-weight: 600; color: var(--ink);
+    background: #fffdf7; border: 1px solid var(--line); border-radius: 11px;
+    padding: 9px 32px 9px 13px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,.04);
+    -webkit-appearance: none; appearance: none; max-width: 220px;
+    transition: border-color .14s;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='%239a927e' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 11px center;
+  }
+  .zone select:hover { border-color: #d8d2c2; }
+
   .menu { position: relative; }
   .menu-btn {
     display:inline-flex; align-items:center; gap:9px;
@@ -156,6 +167,9 @@
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
       </button>
       <ul class="menu-list" id="menuList"></ul>
+    </div>
+    <div class="zone">
+      <select id="zoneSel" aria-label="Country / time zone"></select>
     </div>
   </div>
 
@@ -547,18 +561,116 @@ CLOCKS.forEach(c => {
   menuList.appendChild(li);
 });
 
+// ---------- time zones (a country picker; the first option is your local time) ----------
+const ZONES = [
+  { g:'',        flag:'📍', city:'Local time',   tz:null },
+  { g:'',        flag:'🌐', city:'UTC',          tz:'UTC' },
+  { g:'Americas', flag:'🇺🇸', city:'New York',    tz:'America/New_York' },
+  { g:'Americas', flag:'🇺🇸', city:'Chicago',     tz:'America/Chicago' },
+  { g:'Americas', flag:'🇺🇸', city:'Denver',      tz:'America/Denver' },
+  { g:'Americas', flag:'🇺🇸', city:'Los Angeles', tz:'America/Los_Angeles' },
+  { g:'Americas', flag:'🇺🇸', city:'Anchorage',   tz:'America/Anchorage' },
+  { g:'Americas', flag:'🇺🇸', city:'Honolulu',    tz:'Pacific/Honolulu' },
+  { g:'Americas', flag:'🇨🇦', city:'Toronto',     tz:'America/Toronto' },
+  { g:'Americas', flag:'🇨🇦', city:'Vancouver',   tz:'America/Vancouver' },
+  { g:'Americas', flag:'🇲🇽', city:'Mexico City', tz:'America/Mexico_City' },
+  { g:'Americas', flag:'🇧🇷', city:'São Paulo',   tz:'America/Sao_Paulo' },
+  { g:'Americas', flag:'🇦🇷', city:'Buenos Aires', tz:'America/Argentina/Buenos_Aires' },
+  { g:'Americas', flag:'🇨🇱', city:'Santiago',    tz:'America/Santiago' },
+  { g:'Americas', flag:'🇨🇴', city:'Bogotá',      tz:'America/Bogota' },
+  { g:'Americas', flag:'🇵🇪', city:'Lima',        tz:'America/Lima' },
+  { g:'Europe',  flag:'🇬🇧', city:'London',       tz:'Europe/London' },
+  { g:'Europe',  flag:'🇮🇪', city:'Dublin',       tz:'Europe/Dublin' },
+  { g:'Europe',  flag:'🇵🇹', city:'Lisbon',       tz:'Europe/Lisbon' },
+  { g:'Europe',  flag:'🇪🇸', city:'Madrid',       tz:'Europe/Madrid' },
+  { g:'Europe',  flag:'🇫🇷', city:'Paris',        tz:'Europe/Paris' },
+  { g:'Europe',  flag:'🇩🇪', city:'Berlin',       tz:'Europe/Berlin' },
+  { g:'Europe',  flag:'🇳🇱', city:'Amsterdam',    tz:'Europe/Amsterdam' },
+  { g:'Europe',  flag:'🇮🇹', city:'Rome',         tz:'Europe/Rome' },
+  { g:'Europe',  flag:'🇨🇭', city:'Zurich',       tz:'Europe/Zurich' },
+  { g:'Europe',  flag:'🇸🇪', city:'Stockholm',    tz:'Europe/Stockholm' },
+  { g:'Europe',  flag:'🇵🇱', city:'Warsaw',       tz:'Europe/Warsaw' },
+  { g:'Europe',  flag:'🇬🇷', city:'Athens',       tz:'Europe/Athens' },
+  { g:'Europe',  flag:'🇺🇦', city:'Kyiv',         tz:'Europe/Kyiv' },
+  { g:'Europe',  flag:'🇷🇺', city:'Moscow',       tz:'Europe/Moscow' },
+  { g:'Europe',  flag:'🇹🇷', city:'Istanbul',     tz:'Europe/Istanbul' },
+  { g:'Africa & Middle East', flag:'🇲🇦', city:'Casablanca',  tz:'Africa/Casablanca' },
+  { g:'Africa & Middle East', flag:'🇳🇬', city:'Lagos',       tz:'Africa/Lagos' },
+  { g:'Africa & Middle East', flag:'🇪🇬', city:'Cairo',       tz:'Africa/Cairo' },
+  { g:'Africa & Middle East', flag:'🇰🇪', city:'Nairobi',     tz:'Africa/Nairobi' },
+  { g:'Africa & Middle East', flag:'🇿🇦', city:'Johannesburg', tz:'Africa/Johannesburg' },
+  { g:'Africa & Middle East', flag:'🇮🇱', city:'Jerusalem',   tz:'Asia/Jerusalem' },
+  { g:'Africa & Middle East', flag:'🇸🇦', city:'Riyadh',      tz:'Asia/Riyadh' },
+  { g:'Africa & Middle East', flag:'🇦🇪', city:'Dubai',       tz:'Asia/Dubai' },
+  { g:'Africa & Middle East', flag:'🇮🇷', city:'Tehran',      tz:'Asia/Tehran' },
+  { g:'Asia',    flag:'🇵🇰', city:'Karachi',      tz:'Asia/Karachi' },
+  { g:'Asia',    flag:'🇮🇳', city:'Delhi',        tz:'Asia/Kolkata' },
+  { g:'Asia',    flag:'🇧🇩', city:'Dhaka',        tz:'Asia/Dhaka' },
+  { g:'Asia',    flag:'🇹🇭', city:'Bangkok',      tz:'Asia/Bangkok' },
+  { g:'Asia',    flag:'🇮🇩', city:'Jakarta',      tz:'Asia/Jakarta' },
+  { g:'Asia',    flag:'🇸🇬', city:'Singapore',    tz:'Asia/Singapore' },
+  { g:'Asia',    flag:'🇲🇾', city:'Kuala Lumpur', tz:'Asia/Kuala_Lumpur' },
+  { g:'Asia',    flag:'🇵🇭', city:'Manila',       tz:'Asia/Manila' },
+  { g:'Asia',    flag:'🇭🇰', city:'Hong Kong',    tz:'Asia/Hong_Kong' },
+  { g:'Asia',    flag:'🇨🇳', city:'Shanghai',     tz:'Asia/Shanghai' },
+  { g:'Asia',    flag:'🇹🇼', city:'Taipei',       tz:'Asia/Taipei' },
+  { g:'Asia',    flag:'🇰🇷', city:'Seoul',        tz:'Asia/Seoul' },
+  { g:'Asia',    flag:'🇯🇵', city:'Tokyo',        tz:'Asia/Tokyo' },
+  { g:'Oceania', flag:'🇦🇺', city:'Sydney',       tz:'Australia/Sydney' },
+  { g:'Oceania', flag:'🇦🇺', city:'Perth',        tz:'Australia/Perth' },
+  { g:'Oceania', flag:'🇳🇿', city:'Auckland',     tz:'Pacific/Auckland' },
+  { g:'Oceania', flag:'🇫🇯', city:'Suva',         tz:'Pacific/Fiji' },
+];
+let zoneTz = null, zoneOffMs = 0, zoneCity = 'your local time';
+let curClockName = '', curClockId = '';
+function tzOffsetMs(tz, date){
+  const dtf = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour12:false, year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  const p = {}; dtf.formatToParts(date).forEach(x => p[x.type] = x.value);
+  const asUTC = Date.UTC(+p.year, +p.month-1, +p.day, p.hour === '24' ? 0 : +p.hour, +p.minute, +p.second);
+  return asUTC - Math.floor(date.getTime()/1000)*1000;   // whole-second offset; keeps ms for a smooth second hand
+}
+function computeOffset(){ if (!zoneTz){ zoneOffMs = 0; return; } try { zoneOffMs = tzOffsetMs(zoneTz, new Date()); } catch(e){ zoneOffMs = 0; } }
+function getNow(){
+  if (!zoneTz) return new Date();
+  // shift by (zone offset − local offset) so getHours()/etc read the zone's wall clock, not the local one
+  const localOff = -new Date().getTimezoneOffset() * 60000;
+  return new Date(Date.now() + zoneOffMs - localOff);
+}
+function updateCaption(){
+  if (curClockId === 'hourglass'){ caption.innerHTML = `<b>Hourglass</b> — set a duration, then let the sand run`; return; }
+  const where = zoneTz ? zoneCity + ' time' : 'your local time';
+  caption.innerHTML = `<b>${curClockName}</b> — drawn with code, showing ${where}`;
+}
+
+const zoneSel = document.getElementById('zoneSel');
+(function fillZones(){
+  let curG = '', box = zoneSel;
+  ZONES.forEach((z, i) => {
+    if (z.g && z.g !== curG){ box = document.createElement('optgroup'); box.label = z.g; zoneSel.appendChild(box); curG = z.g; }
+    const o = document.createElement('option'); o.value = i; o.textContent = `${z.flag} ${z.city}`;
+    (z.g ? box : zoneSel).appendChild(o);
+  });
+})();
+function applyZone(i){
+  const z = ZONES[i] || ZONES[0];
+  zoneTz = z.tz; zoneCity = z.city;
+  computeOffset(); updateCaption(); currentUpdate(getNow());
+  try { localStorage.setItem('clocks_zone', String(i)); } catch(e){}
+}
+zoneSel.addEventListener('change', () => applyZone(+zoneSel.value));
+setInterval(computeOffset, 30000);   // stay correct across DST changes
+
 function select(id){
   const c = CLOCKS.find(x => x.id === id) || CLOCKS[0];
   clearOptions();
   if (c.id === 'hourglass') hg = { duration: hg.duration || 60, accum: 0, startedAt: 0, running: false };
   currentUpdate = c.build() || (() => {});
   menuLabel.textContent = c.name;
-  caption.innerHTML = c.id === 'hourglass'
-    ? `<b>Hourglass</b> — set a duration, then let the sand run`
-    : `<b>${c.name}</b> — drawn with code, showing your local time`;
+  curClockName = c.name; curClockId = c.id;
+  updateCaption();
   [...menuList.children].forEach(li => li.classList.toggle('active', li.dataset.id === id));
   if (c.id === 'hourglass') showHourglassOptions();
-  currentUpdate(new Date());
+  currentUpdate(getNow());
   try { localStorage.setItem('clocks_pick', id); } catch(e){}
 }
 function openMenu(){ menu.classList.add('open'); }
@@ -567,7 +679,7 @@ menuBtn.addEventListener('click', e => { e.stopPropagation(); menu.classList.tog
 document.addEventListener('click', () => closeMenu());
 
 // ---------- loop ----------
-function tick(){ currentUpdate(new Date()); requestAnimationFrame(tick); }
+function tick(){ currentUpdate(getNow()); requestAnimationFrame(tick); }
 
 // authentic 7-segment ghost only when the DSEG font actually loads
 if (document.fonts && document.fonts.ready){
@@ -576,6 +688,9 @@ if (document.fonts && document.fonts.ready){
 
 const saved = (function(){ try { return localStorage.getItem('clocks_pick'); } catch(e){ return null; } })();
 select(CLOCKS.some(c => c.id === saved) ? saved : 'wall');
+// restore the saved time zone (after a clock is active)
+const savedZone = (function(){ try { return +localStorage.getItem('clocks_zone'); } catch(e){ return 0; } })();
+if (Number.isInteger(savedZone) && savedZone > 0 && savedZone < ZONES.length){ zoneSel.value = String(savedZone); applyZone(savedZone); }
 requestAnimationFrame(tick);
 </script>
   <script defer src="/cookie-consent.js"></script>
