@@ -45,6 +45,12 @@
   .score .s .st { width:18px; height:18px; border-radius:50%; box-shadow:inset 0 0 0 1px rgba(0,0,0,.15); }
   .score .s .st.b { background:#1b1b20; } .score .s .st.w { background:#fff; box-shadow:inset 0 0 0 1px #c8c8cc; }
   .score .s .v { font-family:"Space Grotesk",monospace; font-size:24px; font-weight:700; }
+  .record { display:flex; justify-content:center; align-items:center; gap:14px; margin-top:12px; font:600 13px var(--ui); color:var(--muted); }
+  .record.hide { display:none; }
+  .record .rl { color:var(--ink); font-weight:700; }
+  .record .rv b { font-family:"Space Grotesk",monospace; font-size:16px; color:var(--ink); }
+  .record .rreset { border:none; background:transparent; color:var(--muted); cursor:pointer; font:600 12px var(--ui); text-decoration:underline; padding:2px 4px; }
+  .record .rreset:hover { color:var(--ink); }
 
   .actions { display:flex; gap:10px; justify-content:center; margin-top:18px; flex-wrap:wrap; }
   .btn { font:700 14px var(--ui); border:none; border-radius:11px; padding:12px 18px; cursor:pointer; transition:transform .1s, background .14s; }
@@ -84,6 +90,14 @@
       <div class="s"><span class="st w"></span><span class="v" id="scoreW">0</span></div>
     </div>
 
+    <div class="record hide" id="record">
+      <span class="rl">vs Computer</span>
+      <span class="rv"><b id="recW">0</b> W</span>
+      <span class="rv"><b id="recD">0</b> D</span>
+      <span class="rv"><b id="recL">0</b> L</span>
+      <button class="rreset" id="recReset" title="Clear record">reset</button>
+    </div>
+
     <div class="actions">
       <button class="btn primary" id="newBtn">New game</button>
       <button class="btn ghost" id="undoBtn">Undo</button>
@@ -104,6 +118,13 @@
   let humanColor = 'B';                  // in cpu mode, human's stone colour
   let over = false, winCells = null, lastMove = null, history = [];
   let scores = { B:0, W:0 };
+  // persisted win/draw/loss record vs the computer
+  let rec = (function(){ try { return Object.assign({w:0,d:0,l:0}, JSON.parse(localStorage.getItem('fir_vscpu')) || {}); } catch(e){ return {w:0,d:0,l:0}; } })();
+  let lastOutcome = null;   // outcome recorded for the current finished game (so undo can revert it)
+  function saveRec(){ try { localStorage.setItem('fir_vscpu', JSON.stringify(rec)); } catch(e){} renderRec(); }
+  function renderRec(){ $('recW').textContent = rec.w; $('recD').textContent = rec.d; $('recL').textContent = rec.l; }
+  function recordOutcome(o){ if (mode !== 'cpu') return; rec[o] = (rec[o]||0) + 1; lastOutcome = o; saveRec(); }
+  function unrecordOutcome(){ if (lastOutcome && rec[lastOutcome] > 0){ rec[lastOutcome]--; saveRec(); } lastOutcome = null; }
   let cpuTimer = null, gen = 0;          // guards against stacked/stale computer moves
   function scheduleCpu(delay){
     clearTimeout(cpuTimer); const g = gen;
@@ -177,8 +198,9 @@
   function place(x, y, color){
     grid[y*N+x] = color; lastMove = { x, y }; history.push({ x, y, color });
     const win = checkWin(x, y, color);
-    if (win){ winCells = win; over = true; scores[color]++; $('scoreB').textContent = scores.B; $('scoreW').textContent = scores.W; draw(); setStatus(); return; }
-    if (history.length === N*N){ over = true; draw(); setStatus(); return; }
+    if (win){ winCells = win; over = true; scores[color]++; $('scoreB').textContent = scores.B; $('scoreW').textContent = scores.W;
+      recordOutcome(color === humanColor ? 'w' : 'l'); draw(); setStatus(); return; }
+    if (history.length === N*N){ over = true; recordOutcome('d'); draw(); setStatus(); return; }
     current = current === 'B' ? 'W' : 'B';
     draw(); setStatus();
     if (mode === 'cpu' && current !== humanColor && !over){ scheduleCpu(260); }
@@ -270,7 +292,7 @@
 
   // ---------- controls ----------
   function newGame(){
-    gen++; clearTimeout(cpuTimer);
+    gen++; clearTimeout(cpuTimer); lastOutcome = null;
     grid = new Array(N*N).fill(''); current = 'B'; over = false; winCells = null; lastMove = null; history = [];
     // Black always moves first; firstChoice decides whether the human plays Black
     let humanFirst = firstChoice === 'you' || (firstChoice === 'random' && Math.random() < 0.5);
@@ -282,7 +304,8 @@
     gen++; clearTimeout(cpuTimer);
     if (over){ // undo the winning move
       const last = history.pop(); if (!last) return;
-      grid[last.y*N+last.x] = ''; scores[last.color] = Math.max(0, scores[last.color]-1);
+      unrecordOutcome();
+      grid[last.y*N+last.x] = ''; if (winCells) scores[last.color] = Math.max(0, scores[last.color]-1);
       $('scoreB').textContent = scores.B; $('scoreW').textContent = scores.W;
       over = false; winCells = null; current = last.color; lastMove = history.length ? history[history.length-1] : null;
       draw(); setStatus();
@@ -306,6 +329,7 @@
     $('modeSeg').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
     $('diff').classList.toggle('hide', mode !== 'cpu');
     $('first').classList.toggle('hide', mode !== 'cpu');
+    $('record').classList.toggle('hide', mode !== 'cpu');
     newGame();
   }));
   $('diff').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
@@ -321,9 +345,10 @@
   $('newBtn').addEventListener('click', newGame);
   $('undoBtn').addEventListener('click', undo);
   $('resetBtn').addEventListener('click', () => { scores = { B:0, W:0 }; $('scoreB').textContent = 0; $('scoreW').textContent = 0; newGame(); });
+  $('recReset').addEventListener('click', () => { rec = { w:0, d:0, l:0 }; lastOutcome = null; saveRec(); });
   window.addEventListener('resize', fit);
 
-  fit(); newGame();
+  renderRec(); fit(); newGame();
 </script>
   <script defer src="/cookie-consent.js"></script>
 </body>
