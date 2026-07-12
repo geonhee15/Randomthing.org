@@ -65,8 +65,14 @@
       <button data-mode="cpu">vs Computer</button>
     </div>
     <div class="diff hide" id="diff">
-      <button data-diff="easy" class="on">Easy</button>
+      <button data-diff="easy">Easy</button>
+      <button data-diff="normal" class="on">Normal</button>
       <button data-diff="hard">Hard</button>
+    </div>
+    <div class="diff hide" id="first">
+      <button data-first="you" class="on">You first</button>
+      <button data-first="cpu">Computer first</button>
+      <button data-first="random">Random</button>
     </div>
 
     <div class="status" id="status"></div>
@@ -93,10 +99,16 @@
   let grid = new Array(N*N).fill('');   // '' | 'B' | 'W'
   let current = 'B';                     // black first
   let mode = 'friend';                   // friend | cpu
-  let level = 'easy';                    // easy | hard
-  let humanColor = 'B';                  // in cpu mode, human is Black (first)
+  let level = 'normal';                  // easy | normal | hard
+  let firstChoice = 'you';               // you | cpu | random — who plays Black (moves first)
+  let humanColor = 'B';                  // in cpu mode, human's stone colour
   let over = false, winCells = null, lastMove = null, history = [];
   let scores = { B:0, W:0 };
+  let cpuTimer = null, gen = 0;          // guards against stacked/stale computer moves
+  function scheduleCpu(delay){
+    clearTimeout(cpuTimer); const g = gen;
+    cpuTimer = setTimeout(() => { if (g === gen && mode === 'cpu' && !over && current !== humanColor) cpuMove(); }, delay);
+  }
   const at = (x,y) => grid[y*N+x];
   const inB = (x,y) => x>=0 && x<N && y>=0 && y<N;
 
@@ -169,7 +181,7 @@
     if (history.length === N*N){ over = true; draw(); setStatus(); return; }
     current = current === 'B' ? 'W' : 'B';
     draw(); setStatus();
-    if (mode === 'cpu' && current !== humanColor && !over){ setTimeout(cpuMove, 260); }
+    if (mode === 'cpu' && current !== humanColor && !over){ scheduleCpu(260); }
   }
   function onPlay(clientX, clientY){
     if (over) return;
@@ -227,25 +239,30 @@
     return out;
   }
   function cpuMove(){
-    if (over) return;
+    if (over || mode !== 'cpu' || current === humanColor) return;
     const me = current, opp = me === 'B' ? 'W' : 'B';
+    // per-level play: easy is greedy & poor at defence, hard defends hard and always
+    // takes the top move; normal sits in between.
+    const cfg = level === 'easy'   ? { defW: 0.6,  bestP: 0.35, pool: 8 }
+              : level === 'hard'   ? { defW: 1.35, bestP: 1.0,  pool: 1 }
+              :                      { defW: 1.1,  bestP: 0.8,  pool: 4 };
     const cands = candidates();
     let scored = cands.map(c => {
       const off = cellScore(c.x, c.y, me), def = cellScore(c.x, c.y, opp);
-      return { c, s: off + def * 1.15, off };
+      return { c, s: off + def * cfg.defW, off };
     });
     // take an immediate win outright
     const win = scored.find(o => o.off >= 1000000);
     scored.sort((a, b) => b.s - a.s);
     let pick;
     if (win) pick = win.c;
-    else if (level === 'easy'){
-      // 55% best, else a random-ish decent move
-      if (Math.random() < 0.55) pick = scored[0].c;
-      else { const top = scored.slice(0, Math.min(8, scored.length)); pick = top[(Math.random()*top.length)|0].c; }
-    } else {
-      // hard: best, tiny random tie-break among near-equal
+    else if (Math.random() < cfg.bestP){
+      // best move, tiny random tie-break among near-equal
       const top = scored.filter(o => o.s >= scored[0].s - 1);
+      pick = top[(Math.random()*top.length)|0].c;
+    } else {
+      // an off-best move from the top pool (weaker play)
+      const top = scored.slice(0, Math.min(cfg.pool, scored.length));
       pick = top[(Math.random()*top.length)|0].c;
     }
     place(pick.x, pick.y, me);
@@ -253,38 +270,52 @@
 
   // ---------- controls ----------
   function newGame(){
+    gen++; clearTimeout(cpuTimer);
     grid = new Array(N*N).fill(''); current = 'B'; over = false; winCells = null; lastMove = null; history = [];
-    humanColor = 'B';
+    // Black always moves first; firstChoice decides whether the human plays Black
+    let humanFirst = firstChoice === 'you' || (firstChoice === 'random' && Math.random() < 0.5);
+    humanColor = humanFirst ? 'B' : 'W';
     draw(); setStatus();
-    // human is Black (first); computer waits — no opening move needed
+    if (mode === 'cpu' && current !== humanColor) scheduleCpu(320);   // computer opens
   }
   function undo(){
+    gen++; clearTimeout(cpuTimer);
     if (over){ // undo the winning move
       const last = history.pop(); if (!last) return;
       grid[last.y*N+last.x] = ''; scores[last.color] = Math.max(0, scores[last.color]-1);
       $('scoreB').textContent = scores.B; $('scoreW').textContent = scores.W;
       over = false; winCells = null; current = last.color; lastMove = history.length ? history[history.length-1] : null;
-      draw(); setStatus(); return;
+      draw(); setStatus();
+      if (mode === 'cpu' && current !== humanColor) scheduleCpu(300);
+      return;
     }
-    let steps = (mode === 'cpu') ? 2 : 1;   // undo the pair vs computer
-    while (steps-- > 0 && history.length){
+    if (!history.length) return;
+    // undo at least one move; vs computer keep going until it's the human's turn again
+    do {
       const last = history.pop();
       grid[last.y*N+last.x] = '';
       current = last.color;
-    }
+    } while (mode === 'cpu' && history.length && current !== humanColor);
     lastMove = history.length ? history[history.length-1] : null;
     draw(); setStatus();
+    if (mode === 'cpu' && current !== humanColor) scheduleCpu(300);   // computer to (re)open
   }
 
   $('modeSeg').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
     mode = b.dataset.mode;
     $('modeSeg').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
     $('diff').classList.toggle('hide', mode !== 'cpu');
+    $('first').classList.toggle('hide', mode !== 'cpu');
     newGame();
   }));
   $('diff').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
     level = b.dataset.diff;
     $('diff').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    newGame();
+  }));
+  $('first').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    firstChoice = b.dataset.first;
+    $('first').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
     newGame();
   }));
   $('newBtn').addEventListener('click', newGame);
