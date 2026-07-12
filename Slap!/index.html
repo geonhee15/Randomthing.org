@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Slap! — Randomthing.org</title>
+<meta name="description" content="Drop in a photo of someone and slap their face around, elastic-man style." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root { --ui:"Inter",system-ui,-apple-system,sans-serif; --ink:#26241d; --muted:#948d79; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; padding:0; height:100%; }
+  body { font-family:var(--ui); color:var(--ink); background:#f8f3e6; min-height:100vh; overflow:hidden;
+    -webkit-font-smoothing:antialiased; -webkit-user-select:none; user-select:none; touch-action:none; }
+  .nav { position:fixed; top:0; left:0; right:0; z-index:10; display:flex; align-items:center; gap:12px; padding:14px 20px; }
+  .brand { font-family:"Baloo 2",sans-serif; font-weight:800; font-size:20px; letter-spacing:-.4px; color:var(--ink);
+    text-decoration:none; padding:5px 8px; border-radius:10px; }
+  .brand:hover { background:rgba(0,0,0,.05); }
+  .brand .org { color:#ff5a5f; }
+  .nav .sep { color:#c7bfa8; } .nav h1 { font-size:15px; font-weight:600; margin:0; color:#6a6350; }
+
+  .stage { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; }
+  #sil { width:min(46vmin,340px); height:auto; color:#cdc6b2; filter: drop-shadow(0 20px 40px rgba(60,50,20,.15)); }
+  #gl { position:absolute; inset:0; width:100%; height:100%; display:none; }
+  #gl.on { display:block; }
+
+  .hint { position:fixed; left:0; right:0; bottom:104px; text-align:center; color:var(--muted); font-size:14px; font-weight:500;
+    transition:opacity .3s; }
+  .hint b { color:#5a5340; font-weight:700; }
+
+  .controls { position:fixed; left:0; right:0; bottom:34px; display:flex; justify-content:center; gap:12px; z-index:10; }
+  .slap-btn {
+    font-family:"Baloo 2",sans-serif; font-weight:800; font-size:20px; letter-spacing:.3px; color:#fff;
+    background:#e23b2e; border:none; border-radius:16px; padding:15px 40px; cursor:pointer;
+    box-shadow:0 10px 26px rgba(226,59,46,.4), inset 0 -3px 0 rgba(0,0,0,.15); transition:transform .1s, background .15s;
+  }
+  .slap-btn:hover { background:#cf3125; } .slap-btn:active { transform:translateY(2px); }
+  .slap-btn.on { background:#1b1b20; box-shadow:0 10px 26px rgba(0,0,0,.35), inset 0 -3px 0 rgba(0,0,0,.3); }
+  .mini-btn { font:700 13px var(--ui); background:#fffdf7; color:var(--ink); border:1px solid #e5ddc7; border-radius:14px;
+    padding:14px 18px; cursor:pointer; }
+  .mini-btn:hover { background:#f4efe0; }
+
+  /* context menu */
+  .ctx { position:fixed; z-index:50; background:#fffdf7; border:1px solid #e7dfc9; border-radius:14px; padding:6px;
+    box-shadow:0 20px 44px rgba(50,42,20,.22); min-width:180px; opacity:0; transform:scale(.96); transform-origin:top left;
+    pointer-events:none; transition:opacity .12s ease, transform .12s ease; }
+  .ctx.show { opacity:1; transform:scale(1); pointer-events:auto; }
+  .ctx button { display:flex; align-items:center; gap:10px; width:100%; border:none; background:transparent; cursor:pointer;
+    font:600 14px var(--ui); color:var(--ink); padding:11px 12px; border-radius:9px; text-align:left; }
+  .ctx button:hover { background:#f1ecdd; }
+  .ctx button svg { color:#8a836d; flex:0 0 auto; }
+
+  .loading { position:fixed; inset:0; z-index:60; display:none; align-items:center; justify-content:center; flex-direction:column; gap:16px;
+    background:rgba(248,243,230,.75); backdrop-filter:blur(3px); }
+  .loading.show { display:flex; }
+  .spinner { width:42px; height:42px; border-radius:50%; border:4px solid #e0d8c2; border-top-color:#e23b2e; animation:spin .8s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .loading .lt { font-weight:700; font-size:15px; color:#5a5340; }
+</style>
+</head>
+<body>
+  <nav class="nav">
+    <a class="brand" href="/">Randomthing<span class="org">.org</span></a>
+    <span class="sep">/</span><h1>Slap!</h1>
+  </nav>
+
+  <div class="stage" id="stage">
+    <svg id="sil" viewBox="0 0 200 240" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="100" cy="66" r="46"/>
+      <path d="M28 240 C28 168 60 132 100 132 C140 132 172 168 172 240 Z"/>
+    </svg>
+    <canvas id="gl"></canvas>
+  </div>
+
+  <div class="hint" id="hint"><b>Right-click</b> the silhouette to drop in a photo of someone</div>
+
+  <div class="controls">
+    <button class="mini-btn" id="insertMini">Insert image</button>
+    <button class="slap-btn" id="slapBtn">Slap!</button>
+  </div>
+
+  <div class="ctx" id="ctx">
+    <button id="insertBtn">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.6"/><path d="M21 15l-5-5L5 21"/></svg>
+      Insert Image
+    </button>
+  </div>
+
+  <input type="file" id="file" accept="image/*" hidden />
+
+  <div class="loading" id="loading"><div class="spinner"></div><div class="lt" id="loadingText">Analyzing image…</div></div>
+
+<script>
+  const $ = id => document.getElementById(id);
+  const stage = $('stage'), sil = $('sil'), canvas = $('gl'), hint = $('hint');
+  const ctxMenu = $('ctx'), fileInput = $('file'), loading = $('loading');
+
+  // ---------- context menu / insert ----------
+  function showCtx(x, y){
+    ctxMenu.style.left = Math.min(x, window.innerWidth - 200) + 'px';
+    ctxMenu.style.top = Math.min(y, window.innerHeight - 80) + 'px';
+    ctxMenu.classList.add('show');
+  }
+  function hideCtx(){ ctxMenu.classList.remove('show'); }
+  stage.addEventListener('contextmenu', e => { e.preventDefault(); showCtx(e.clientX, e.clientY); });
+  document.addEventListener('click', e => { if (!ctxMenu.contains(e.target)) hideCtx(); });
+  $('insertBtn').addEventListener('click', () => { hideCtx(); fileInput.click(); });
+  $('insertMini').addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', e => { const f = e.target.files[0]; if (f) handleImage(f); e.target.value = ''; });
+
+  function showLoading(t){ $('loadingText').textContent = t; loading.classList.add('show'); }
+  function hideLoading(){ loading.classList.remove('show'); }
+
+  async function handleImage(file){
+    showLoading('Loading image…');
+    const img = new Image();
+    img.onload = async () => {
+      const person = await cutOutPerson(img);
+      hideLoading();
+      sil.style.display = 'none';
+      canvas.classList.add('on');   // must be visible before startMesh measures it
+      startMesh(person);
+      hint.innerHTML = 'Press <b>Slap!</b>, then grab the face and fling it';
+    };
+    img.onerror = () => { hideLoading(); alert("Couldn't load that image."); };
+    img.src = URL.createObjectURL(file);
+  }
+
+  // ---------- AI person cut-out (MediaPipe Selfie Segmentation, with fallback) ----------
+  let mpLoaded = false, selfieSeg = null;
+  function loadScript(src){ return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.crossOrigin = 'anonymous'; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); }
+  const MP_BASE = 'https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/';
+
+  function toCanvas(img, maxSide){
+    let w = img.naturalWidth, h = img.naturalHeight;
+    if (maxSide && Math.max(w, h) > maxSide){ const s = maxSide / Math.max(w, h); w = Math.round(w*s); h = Math.round(h*s); }
+    const c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').drawImage(img, 0, 0, w, h); return c;
+  }
+  function cropToContent(cv){
+    const w = cv.width, h = cv.height, d = cv.getContext('2d').getImageData(0,0,w,h).data;
+    let x0=w, y0=h, x1=0, y1=0, found=false;
+    for (let y=0; y<h; y++) for (let x=0; x<w; x++){ if (d[(y*w+x)*4+3] > 24){ found=true; if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y; } }
+    if (!found) return null;
+    const pad = Math.round(Math.max(w,h) * 0.02);
+    x0=Math.max(0,x0-pad); y0=Math.max(0,y0-pad); x1=Math.min(w-1,x1+pad); y1=Math.min(h-1,y1+pad);
+    const cw=x1-x0+1, ch=y1-y0+1;
+    const out=document.createElement('canvas'); out.width=cw; out.height=ch;
+    out.getContext('2d').drawImage(cv, x0,y0,cw,ch, 0,0,cw,ch); return out;
+  }
+  function runSelfie(srcCanvas){
+    return new Promise((resolve, reject) => {
+      if (!selfieSeg){
+        selfieSeg = new SelfieSegmentation({ locateFile: f => MP_BASE + f });
+        selfieSeg.setOptions({ modelSelection: 1 });
+      }
+      const to = setTimeout(() => reject(new Error('segmentation timed out')), 20000);
+      selfieSeg.onResults(res => {
+        clearTimeout(to);
+        const w = srcCanvas.width, h = srcCanvas.height;
+        const out = document.createElement('canvas'); out.width = w; out.height = h; const ox = out.getContext('2d');
+        ox.drawImage(srcCanvas, 0, 0);
+        const id = ox.getImageData(0, 0, w, h);
+        const mc = document.createElement('canvas'); mc.width = w; mc.height = h;
+        mc.getContext('2d').drawImage(res.segmentationMask, 0, 0, w, h);
+        const md = mc.getContext('2d').getImageData(0, 0, w, h).data;
+        for (let i = 0; i < id.data.length; i += 4) id.data[i+3] = md[i];   // alpha from person mask
+        ox.putImageData(id, 0, 0);
+        resolve(out);
+      });
+      selfieSeg.send({ image: srcCanvas }).catch(reject);
+    });
+  }
+  async function cutOutPerson(img){
+    showLoading('Analyzing image…');
+    const src = toCanvas(img, 1100);
+    try {
+      if (!mpLoaded){ await loadScript(MP_BASE + 'selfie_segmentation.js'); mpLoaded = true; }
+      const masked = await runSelfie(src);
+      const cropped = cropToContent(masked);
+      return cropped || masked;
+    } catch (e){
+      console.warn('AI cut-out unavailable — using the whole image', e);
+      return src;
+    }
+  }
+
+  // ================= elastic soft-body mesh (WebGL) =================
+  let gl, prog, aPosLoc, aUVLoc, uResLoc, uTexLoc, posBuf, uvBuf, idxBuf, tex;
+  const GX = 16, GY = 16;              // grid resolution
+  let VN = 0;                          // vertex count
+  let rx, ry, x, y, vx, vy, pin;       // physics arrays
+  let uv, indices, posArr;
+  let edges = [];                      // [a, b, restLen]
+  let running = false, slapMode = false;
+  let img = { w:1, h:1 };
+
+  function initGL(){
+    gl = canvas.getContext('webgl', { premultipliedAlpha:false, alpha:true });
+    const vs = 'attribute vec2 aPos; attribute vec2 aUV; uniform vec2 uRes; varying vec2 vUV;' +
+      'void main(){ vec2 c = aPos/uRes*2.0 - 1.0; c.y = -c.y; gl_Position = vec4(c,0.0,1.0); vUV = aUV; }';
+    const fs = 'precision mediump float; uniform sampler2D uTex; varying vec2 vUV;' +
+      'void main(){ vec4 t = texture2D(uTex, vUV); if (t.a < 0.04) discard; gl_FragColor = t; }';
+    prog = link(vs, fs);
+    aPosLoc = gl.getAttribLocation(prog, 'aPos');
+    aUVLoc = gl.getAttribLocation(prog, 'aUV');
+    uResLoc = gl.getUniformLocation(prog, 'uRes');
+    uTexLoc = gl.getUniformLocation(prog, 'uTex');
+    posBuf = gl.createBuffer(); uvBuf = gl.createBuffer(); idxBuf = gl.createBuffer();
+    gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  }
+  function link(vsrc, fsrc){
+    const v = gl.createShader(gl.VERTEX_SHADER); gl.shaderSource(v, vsrc); gl.compileShader(v);
+    const f = gl.createShader(gl.FRAGMENT_SHADER); gl.shaderSource(f, fsrc); gl.compileShader(f);
+    const p = gl.createProgram(); gl.attachShader(p, v); gl.attachShader(p, f); gl.linkProgram(p); return p;
+  }
+
+  function cssSize(){ const r = canvas.getBoundingClientRect(); return { w: r.width, h: r.height }; }
+  function fitCanvas(){
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const s = cssSize();
+    canvas.width = Math.round(s.w * dpr); canvas.height = Math.round(s.h * dpr);
+    if (gl) gl.viewport(0, 0, canvas.width, canvas.height);
+  }
+
+  function placement(){
+    // fit the person image into the stage, centred, ~72% of height
+    const s = cssSize();
+    const target = Math.min(s.h * 0.74, s.w * 0.86);
+    const ar = img.w / img.h;
+    let h = target, w = target * ar;
+    if (w > s.w * 0.9){ w = s.w * 0.9; h = w / ar; }
+    return { x0: (s.w - w)/2, y0: (s.h - h)/2, w, h };
+  }
+
+  function buildMesh(){
+    const p = placement();
+    VN = (GX+1) * (GY+1);
+    rx = new Float32Array(VN); ry = new Float32Array(VN);
+    x = new Float32Array(VN); y = new Float32Array(VN);
+    vx = new Float32Array(VN); vy = new Float32Array(VN);
+    pin = new Uint8Array(VN);
+    uv = new Float32Array(VN*2); posArr = new Float32Array(VN*2);
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    let k = 0;
+    for (let j = 0; j <= GY; j++) for (let i = 0; i <= GX; i++){
+      const px = (p.x0 + (i/GX)*p.w) * dpr;
+      const py = (p.y0 + (j/GY)*p.h) * dpr;
+      rx[k]=px; ry[k]=py; x[k]=px; y[k]=py; vx[k]=0; vy[k]=0;
+      pin[k] = (i===0 || i===GX || j===0 || j===GY) ? 1 : 0;   // pinned border
+      uv[k*2]= i/GX; uv[k*2+1]= j/GY;
+      k++;
+    }
+    // edges (structural springs) — right and down neighbours
+    edges = [];
+    const idx = (i,j) => j*(GX+1)+i;
+    for (let j=0;j<=GY;j++) for (let i=0;i<=GX;i++){
+      if (i<GX){ const a=idx(i,j),b=idx(i+1,j); edges.push([a,b,Math.hypot(rx[b]-rx[a],ry[b]-ry[a])]); }
+      if (j<GY){ const a=idx(i,j),b=idx(i,j+1); edges.push([a,b,Math.hypot(rx[b]-rx[a],ry[b]-ry[a])]); }
+      if (i<GX&&j<GY){ const a=idx(i,j),b=idx(i+1,j+1); edges.push([a,b,Math.hypot(rx[b]-rx[a],ry[b]-ry[a])]); } // shear
+    }
+    // indices
+    const tri = [];
+    for (let j=0;j<GY;j++) for (let i=0;i<GX;i++){
+      const a=idx(i,j), b=idx(i+1,j), c=idx(i,j+1), d=idx(i+1,j+1);
+      tri.push(a,b,c, b,d,c);
+    }
+    indices = new Uint16Array(tri);
+    gl.bindBuffer(gl.ARRAY_BUFFER, uvBuf); gl.bufferData(gl.ARRAY_BUFFER, uv, gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idxBuf); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+  }
+
+  function makeTexture(srcCanvas){
+    img.w = srcCanvas.width; img.h = srcCanvas.height;
+    if (!tex) tex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, srcCanvas);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  }
+
+  function startMesh(personCanvas){
+    if (!gl) initGL();
+    fitCanvas();
+    makeTexture(personCanvas);
+    buildMesh();
+    if (!running){ running = true; requestAnimationFrame(loop); }
+  }
+
+  // ---------- physics ----------
+  const ANCHOR = 26, NEIGH = 150, DAMP = 0.93, SUB = 3, DT = 1/180;
+  const fxA = () => new Float32Array(VN);
+  function step(dt){
+    const fx = new Float32Array(VN), fy = new Float32Array(VN);
+    for (let i=0;i<VN;i++){ if (pin[i]) continue; fx[i]=ANCHOR*(rx[i]-x[i]); fy[i]=ANCHOR*(ry[i]-y[i]); }
+    for (const [a,b,L] of edges){
+      const dx=x[b]-x[a], dy=y[b]-y[a]; const d=Math.hypot(dx,dy)||0.0001;
+      const f=NEIGH*(d-L)/d; const ffx=f*dx, ffy=f*dy;
+      if (!pin[a]){ fx[a]+=ffx; fy[a]+=ffy; }
+      if (!pin[b]){ fx[b]-=ffx; fy[b]-=ffy; }
+    }
+    for (let i=0;i<VN;i++){
+      if (pin[i]){ x[i]=rx[i]; y[i]=ry[i]; vx[i]=0; vy[i]=0; continue; }
+      vx[i]=(vx[i]+fx[i]*dt)*DAMP; vy[i]=(vy[i]+fy[i]*dt)*DAMP;
+      x[i]+=vx[i]*dt; y[i]+=vy[i]*dt;
+    }
+    if (grabbed >= 0){ x[grabbed]=mouse.x; y[grabbed]=mouse.y; vx[grabbed]=0; vy[grabbed]=0; }
+  }
+
+  function draw(){
+    gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT);
+    for (let i=0;i<VN;i++){ posArr[i*2]=x[i]; posArr[i*2+1]=y[i]; }
+    gl.useProgram(prog);
+    gl.uniform2f(uResLoc, canvas.width, canvas.height);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex); gl.uniform1i(uTexLoc, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, posBuf); gl.bufferData(gl.ARRAY_BUFFER, posArr, gl.DYNAMIC_DRAW);
+    gl.enableVertexAttribArray(aPosLoc); gl.vertexAttribPointer(aPosLoc, 2, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, uvBuf);
+    gl.enableVertexAttribArray(aUVLoc); gl.vertexAttribPointer(aUVLoc, 2, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, idxBuf);
+    gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
+  }
+  function loop(){
+    if (!running) return;
+    for (let s=0;s<SUB;s++) step(DT);
+    draw();
+    requestAnimationFrame(loop);
+  }
+
+  // ---------- mouse / touch interaction ----------
+  const mouse = { x:0, y:0, px:0, py:0, vx:0, vy:0, down:false };
+  let grabbed = -1;
+  function toCanvasXY(clientX, clientY){
+    const r = canvas.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    return { x: (clientX - r.left) * dpr, y: (clientY - r.top) * dpr };
+  }
+  function nearestFree(mx, my, maxDist){
+    let bi = -1, bd = maxDist*maxDist;
+    for (let i=0;i<VN;i++){ if (pin[i]) continue; const dx=x[i]-mx, dy=y[i]-my, d=dx*dx+dy*dy; if (d<bd){ bd=d; bi=i; } }
+    return bi;
+  }
+  canvas.addEventListener('pointerdown', e => {
+    if (!slapMode || !running) return;
+    e.preventDefault();
+    const p = toCanvasXY(e.clientX, e.clientY);
+    mouse.x=p.x; mouse.y=p.y; mouse.px=p.x; mouse.py=p.y; mouse.down=true;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    grabbed = nearestFree(p.x, p.y, 90*dpr);
+    canvas.setPointerCapture(e.pointerId);
+  });
+  window.addEventListener('pointermove', e => {
+    if (!slapMode || !running) return;
+    const p = toCanvasXY(e.clientX, e.clientY);
+    mouse.vx = p.x - mouse.x; mouse.vy = p.y - mouse.y;
+    mouse.x = p.x; mouse.y = p.y;
+    if (grabbed < 0 && mouse.down === false){
+      // light-touch: fast passes nudge nearby vertices
+      const sp = Math.hypot(mouse.vx, mouse.vy);
+      if (sp > 6){
+        const dpr = Math.min(window.devicePixelRatio || 1, 2), R = 70*dpr;
+        for (let i=0;i<VN;i++){ if (pin[i]) continue; const dx=x[i]-p.x, dy=y[i]-p.y, d=Math.hypot(dx,dy); if (d<R){ const k=(1-d/R)*0.5; vx[i]+=mouse.vx*k; vy[i]+=mouse.vy*k; } }
+      }
+    }
+  });
+  function releaseGrab(){
+    if (grabbed >= 0){ vx[grabbed]=mouse.vx*7.0; vy[grabbed]=mouse.vy*7.0; grabbed=-1; }
+    mouse.down = false;
+  }
+  window.addEventListener('pointerup', releaseGrab);
+  window.addEventListener('pointercancel', releaseGrab);
+
+  // ---------- slap mode toggle ----------
+  const PALM = "<svg xmlns='http://www.w3.org/2000/svg' width='46' height='46' viewBox='0 0 46 46'>" +
+    "<g fill='#ffc98f' stroke='#c98a4a' stroke-width='2.2' stroke-linejoin='round'>" +
+    "<rect x='13' y='19' width='21' height='21' rx='9'/>" +
+    "<rect x='12.5' y='7' width='5' height='16' rx='2.5'/><rect x='18.5' y='4' width='5' height='19' rx='2.5'/>" +
+    "<rect x='24.5' y='5' width='5' height='18' rx='2.5'/><rect x='30' y='9' width='5' height='14' rx='2.5'/>" +
+    "<rect x='6' y='21' width='11' height='5' rx='2.5' transform='rotate(-32 11.5 23.5)'/></g></svg>";
+  function setSlap(on){
+    slapMode = on;
+    $('slapBtn').classList.toggle('on', on);
+    $('slapBtn').textContent = on ? 'Stop' : 'Slap!';
+    canvas.style.cursor = on ? ("url(\"data:image/svg+xml," + encodeURIComponent(PALM) + "\") 22 22, auto") : 'default';
+  }
+  $('slapBtn').addEventListener('click', () => {
+    if (!running){ hint.innerHTML = 'Insert a photo first — <b>right-click</b> the silhouette'; return; }
+    setSlap(!slapMode);
+    if (slapMode) hint.innerHTML = 'Grab the face and <b>fling</b> it — or swipe fast to smack it';
+  });
+
+  window.addEventListener('resize', () => { if (running){ fitCanvas(); buildMesh(); } });
+</script>
+  <script defer src="/cookie-consent.js"></script>
+</body>
+</html>

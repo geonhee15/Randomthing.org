@@ -128,7 +128,9 @@
   let humanMark = 'X', cpuMark = 'O';
   let over = false;
   let scores = { X:0, O:0, D:0 };
+  let cpuTimer = null, gen = 0;      // guards against stacked/stale computer moves
   const boardEl = $('board');
+  function scheduleCpu(delay){ clearTimeout(cpuTimer); const g = gen; cpuTimer = setTimeout(() => { if (g === gen) cpuMove(); }, delay); }
 
   // build cells
   for (let i = 0; i < 9; i++){
@@ -183,7 +185,7 @@
     if (emptyIdx(board).length === 0){ finish(null); return; }
     current = current === 'X' ? 'O' : 'X';
     render(); setStatus();
-    if (mode === 'cpu' && current === cpuMark){ boardEl.classList.add('locked'); setTimeout(cpuMove, 420); }
+    if (mode === 'cpu' && current === cpuMark){ boardEl.classList.add('locked'); scheduleCpu(420); }
   }
   function finish(w){
     over = true;
@@ -196,7 +198,7 @@
   function randMove(b){ const e = emptyIdx(b); return e[(Math.random()*e.length)|0]; }
   function cpuMove(){
     boardEl.classList.remove('locked');
-    if (over) return;
+    if (mode !== 'cpu' || over || current !== cpuMark) return;   // only when it's genuinely the computer's turn
     let i;
     if (level === 'impossible') i = bestMove(board);
     else if (level === 'hard')   i = Math.random() < 0.82 ? bestMove(board) : (tacticMove(board) ?? randMove(board));
@@ -228,6 +230,7 @@
 
   // ---------- controls ----------
   function newRound(){
+    gen++; clearTimeout(cpuTimer);                 // cancel any pending computer move
     board = Array(9).fill(''); current = 'X'; over = false;
     boardEl.classList.remove('locked');
     if (mode === 'cpu'){
@@ -237,7 +240,7 @@
     } else { humanMark = 'X'; cpuMark = 'O'; }
     render(); setStatus();
     // X always moves first — if the computer is X, it opens
-    if (mode === 'cpu' && cpuMark === 'X'){ boardEl.classList.add('locked'); setTimeout(cpuMove, 450); }
+    if (mode === 'cpu' && cpuMark === 'X'){ boardEl.classList.add('locked'); scheduleCpu(450); }
   }
   $('modeSeg').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
     mode = b.dataset.mode;
