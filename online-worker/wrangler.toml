@@ -1,0 +1,23 @@
+# Standalone Worker that hosts the Durable Object and answers the site's
+# /api/online endpoint. Deploy it once with:  cd online-worker && npx wrangler deploy
+#
+# It grabs ONLY randomthing.org/api/online (Worker routes take precedence over
+# Pages), so the rest of the site keeps being served statically by Pages.
+
+name = "randomthing-online"
+main = "index.js"
+compatibility_date = "2024-11-01"
+
+# Route the endpoint to this Worker. If you also serve the site on www, add a
+# second entry with pattern = "www.randomthing.org/api/online".
+routes = [
+  { pattern = "randomthing.org/api/online", zone_name = "randomthing.org" }
+]
+
+[[durable_objects.bindings]]
+name = "ONLINE"
+class_name = "OnlineCounter"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["OnlineCounter"]
