@@ -100,7 +100,7 @@
   .ap-card   { background: radial-gradient(120% 120% at 22% 12%, #4a463f 0%, #2c2924 55%, #16140f 100%); }
   .ttt-card  { background: radial-gradient(120% 120% at 80% 12%, #2b3350 0%, #1b2036 55%, #0e1120 100%); }
   .fir-card  { background: radial-gradient(120% 120% at 20% 12%, #6a5230 0%, #3f3018 55%, #1c1509 100%); }
-  .slap-card { background: radial-gradient(120% 120% at 80% 12%, #ff8f6b 0%, #e0472f 52%, #7a1c14 100%); }
+  .stretch-card { background: radial-gradient(120% 120% at 80% 12%, #ff8f6b 0%, #e0472f 52%, #7a1c14 100%); }
   .calc-card .mini {
     flex: 0 0 auto;
     width: 92px;
@@ -155,7 +155,7 @@
   .clk-card .kicker { color: #e6c07a; }
   .cg-card .kicker { color: rgba(255,255,255,.85); }
   .rt-card .kicker { color: #7ee0b0; }
-  .slap-card .kicker { color: #ffc7bb; }
+  .stretch-card .kicker { color: #ffc7bb; }
 
   /* Color Guesser card artwork */
   .cg-card .mini {
@@ -203,18 +203,18 @@
     box-shadow: 16px 16px 0 -1px #141418, 32px 32px 0 -1px #141418; }
   .fir-card .mini::after { background:radial-gradient(circle at 38% 35%,#fff,#d4d4da); top:40px; left:24px;
     box-shadow: inset 0 0 0 1px #c8c8cc, 16px -16px 0 -1px #fff; }
-  /* Slap! card artwork: a face with a red hand print */
-  .slap-card .mini {
+  /* Stretch! card artwork: a face with a red hand print */
+  .stretch-card .mini {
     flex: 0 0 auto; width: 92px; height: 92px; border-radius: 16px; position: relative; overflow: hidden;
     background: radial-gradient(circle at 50% 40%, #ffe1c4, #f3bc90 62%, #e2a373);
     box-shadow: 0 10px 22px rgba(0,0,0,.4), inset 0 0 0 1px rgba(0,0,0,.08);
     transform: rotate(-4deg); transition: transform .2s ease;
   }
-  .slap-card .mini::before { content:""; position:absolute; top:31px; left:27px; width:8px; height:8px; border-radius:50%;
+  .stretch-card .mini::before { content:""; position:absolute; top:31px; left:27px; width:8px; height:8px; border-radius:50%;
     background:#4a3524; box-shadow: 22px 0 0 #4a3524; }                 /* eyes */
-  .slap-card .mini::after { content:""; position:absolute; left:31px; top:50px; width:30px; height:15px;
+  .stretch-card .mini::after { content:""; position:absolute; left:31px; top:50px; width:30px; height:15px;
     border-bottom:4px solid #b5462f; border-radius:0 0 40px 40px; }     /* mouth */
-  .slap-card .mini .palm { position:absolute; right:2px; bottom:0; width:48px; height:48px; transform:rotate(11deg);
+  .stretch-card .mini .palm { position:absolute; right:2px; bottom:0; width:48px; height:48px; transform:rotate(11deg);
     filter: drop-shadow(0 2px 4px rgba(0,0,0,.35)); }
 
   /* Audio Player card artwork: a mini turntable */
@@ -466,7 +466,7 @@
         </div>
       </a>
 
-      <a class="card art-card slap-card" href="/Slap!/">
+      <a class="card art-card stretch-card" href="/Stretch!/">
         <div class="mini" aria-hidden="true">
           <svg class="palm" viewBox="0 0 46 46" xmlns="http://www.w3.org/2000/svg">
             <g fill="rgba(226,59,46,.9)" stroke="rgba(140,25,18,.9)" stroke-width="2" stroke-linejoin="round">
@@ -479,8 +479,8 @@
         </div>
         <div class="txt">
           <span class="kicker">Elastic prank</span>
-          <span class="name">Slap!</span>
-          <span class="desc">Drop in a face and smack it&nbsp;around.</span>
+          <span class="name">Stretch!</span>
+          <span class="desc">Drop in a face and stretch it&nbsp;around.</span>
         </div>
       </a>
 
@@ -556,7 +556,7 @@
         'Tic-Tac-Toe got 4 difficulty levels and a first / second / random choice',
         'Added Five in a Row (Gomoku) — play a friend or the computer',
         'Fixed a Tic-Tac-Toe bug where fast clicks could let the computer move twice',
-        'Added Slap! — drop in a face and smack it around, elastic-man style',
+        'Added Stretch! — drop in a face and stretch it around, elastic-man style',
       ] },
     ];
 

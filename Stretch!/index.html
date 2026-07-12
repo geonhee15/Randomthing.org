@@ -4,8 +4,8 @@
 <meta charset="UTF-8" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>Slap! — Randomthing.org</title>
-<meta name="description" content="Drop in a photo of someone and slap their face around, elastic-man style." />
+<title>Stretch! — Randomthing.org</title>
+<meta name="description" content="Drop in a photo of someone and stretch their face around, elastic-man style." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -32,13 +32,13 @@
   .hint b { color:#5a5340; font-weight:700; }
 
   .controls { position:fixed; left:0; right:0; bottom:34px; display:flex; justify-content:center; gap:12px; z-index:10; }
-  .slap-btn {
+  .stretch-btn {
     font-family:"Baloo 2",sans-serif; font-weight:800; font-size:20px; letter-spacing:.3px; color:#fff;
     background:#e23b2e; border:none; border-radius:16px; padding:15px 40px; cursor:pointer;
     box-shadow:0 10px 26px rgba(226,59,46,.4), inset 0 -3px 0 rgba(0,0,0,.15); transition:transform .1s, background .15s;
   }
-  .slap-btn:hover { background:#cf3125; } .slap-btn:active { transform:translateY(2px); }
-  .slap-btn.on { background:#1b1b20; box-shadow:0 10px 26px rgba(0,0,0,.35), inset 0 -3px 0 rgba(0,0,0,.3); }
+  .stretch-btn:hover { background:#cf3125; } .stretch-btn:active { transform:translateY(2px); }
+  .stretch-btn.on { background:#1b1b20; box-shadow:0 10px 26px rgba(0,0,0,.35), inset 0 -3px 0 rgba(0,0,0,.3); }
   .mini-btn { font:700 13px var(--ui); background:#fffdf7; color:var(--ink); border:1px solid #e5ddc7; border-radius:14px;
     padding:14px 18px; cursor:pointer; }
   .mini-btn:hover { background:#f4efe0; }
@@ -64,7 +64,7 @@
 <body>
   <nav class="nav">
     <a class="brand" href="/">Randomthing<span class="org">.org</span></a>
-    <span class="sep">/</span><h1>Slap!</h1>
+    <span class="sep">/</span><h1>Stretch!</h1>
   </nav>
 
   <div class="stage" id="stage">
@@ -79,7 +79,7 @@
 
   <div class="controls">
     <button class="mini-btn" id="insertMini">Insert image</button>
-    <button class="slap-btn" id="slapBtn">Slap!</button>
+    <button class="stretch-btn" id="stretchBtn">Stretch!</button>
   </div>
 
   <div class="ctx" id="ctx">
@@ -123,7 +123,7 @@
       sil.style.display = 'none';
       canvas.classList.add('on');   // must be visible before startMesh measures it
       startMesh(person);
-      hint.innerHTML = 'Press <b>Slap!</b>, then grab the face and fling it';
+      hint.innerHTML = 'Press <b>Stretch!</b>, then grab the face and fling it';
     };
     img.onerror = () => { hideLoading(); alert("Couldn't load that image."); };
     img.src = URL.createObjectURL(file);
@@ -194,7 +194,7 @@
   let rx, ry, x, y, vx, vy, pin;       // physics arrays
   let uv, indices, posArr;
   let edges = [];                      // [a, b, restLen]
-  let running = false, slapMode = false;
+  let running = false, stretchMode = false;
   let img = { w:1, h:1 };
 
   function initGL(){
@@ -346,7 +346,7 @@
     return bi;
   }
   canvas.addEventListener('pointerdown', e => {
-    if (!slapMode || !running) return;
+    if (!stretchMode || !running) return;
     e.preventDefault();
     const p = toCanvasXY(e.clientX, e.clientY);
     mouse.x=p.x; mouse.y=p.y; mouse.px=p.x; mouse.py=p.y; mouse.down=true;
@@ -355,7 +355,7 @@
     canvas.setPointerCapture(e.pointerId);
   });
   window.addEventListener('pointermove', e => {
-    if (!slapMode || !running) return;
+    if (!stretchMode || !running) return;
     const p = toCanvasXY(e.clientX, e.clientY);
     mouse.vx = p.x - mouse.x; mouse.vy = p.y - mouse.y;
     mouse.x = p.x; mouse.y = p.y;
@@ -375,23 +375,23 @@
   window.addEventListener('pointerup', releaseGrab);
   window.addEventListener('pointercancel', releaseGrab);
 
-  // ---------- slap mode toggle ----------
+  // ---------- stretch mode toggle ----------
   const PALM = "<svg xmlns='http://www.w3.org/2000/svg' width='46' height='46' viewBox='0 0 46 46'>" +
     "<g fill='#ffc98f' stroke='#c98a4a' stroke-width='2.2' stroke-linejoin='round'>" +
     "<rect x='13' y='19' width='21' height='21' rx='9'/>" +
     "<rect x='12.5' y='7' width='5' height='16' rx='2.5'/><rect x='18.5' y='4' width='5' height='19' rx='2.5'/>" +
     "<rect x='24.5' y='5' width='5' height='18' rx='2.5'/><rect x='30' y='9' width='5' height='14' rx='2.5'/>" +
     "<rect x='6' y='21' width='11' height='5' rx='2.5' transform='rotate(-32 11.5 23.5)'/></g></svg>";
-  function setSlap(on){
-    slapMode = on;
-    $('slapBtn').classList.toggle('on', on);
-    $('slapBtn').textContent = on ? 'Stop' : 'Slap!';
+  function setStretch(on){
+    stretchMode = on;
+    $('stretchBtn').classList.toggle('on', on);
+    $('stretchBtn').textContent = on ? 'Stop' : 'Stretch!';
     canvas.style.cursor = on ? ("url(\"data:image/svg+xml," + encodeURIComponent(PALM) + "\") 22 22, auto") : 'default';
   }
-  $('slapBtn').addEventListener('click', () => {
+  $('stretchBtn').addEventListener('click', () => {
     if (!running){ hint.innerHTML = 'Insert a photo first — <b>right-click</b> the silhouette'; return; }
-    setSlap(!slapMode);
-    if (slapMode) hint.innerHTML = 'Grab the face and <b>fling</b> it — or swipe fast to smack it';
+    setStretch(!stretchMode);
+    if (stretchMode) hint.innerHTML = 'Grab the face and <b>pull</b> it — then fling it around';
   });
 
   window.addEventListener('resize', () => { if (running){ fitCanvas(); buildMesh(); } });
