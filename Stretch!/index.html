@@ -162,6 +162,31 @@
     const out=document.createElement('canvas'); out.width=cw; out.height=ch;
     out.getContext('2d').drawImage(cv, x0,y0,cw,ch, 0,0,cw,ch); return out;
   }
+
+  // ---- mask clean-up: kill the dark fringe MediaPipe leaves at soft edges ----
+  // Erosion (separable min filter) pulls the alpha edge a few pixels inward so the
+  // ring of background-tinted pixels is dropped; a 1px blur then softens the stair-step.
+  function erodeMask(src, w, h, r){
+    const tmp = new Uint8Array(w*h), out = new Uint8Array(w*h);
+    for (let y=0;y<h;y++){ const row=y*w;
+      for (let x=0;x<w;x++){ let m=255; for (let k=-r;k<=r;k++){ let xx=x+k; if (xx<0) xx=0; else if (xx>=w) xx=w-1; const v=src[row+xx]; if (v<m) m=v; } tmp[row+x]=m; } }
+    for (let x=0;x<w;x++){
+      for (let y=0;y<h;y++){ let m=255; for (let k=-r;k<=r;k++){ let yy=y+k; if (yy<0) yy=0; else if (yy>=h) yy=h-1; const v=tmp[yy*w+x]; if (v<m) m=v; } out[y*w+x]=m; } }
+    return out;
+  }
+  function blurMask(src, w, h, r){
+    const tmp = new Float32Array(w*h), out = new Uint8Array(w*h);
+    for (let y=0;y<h;y++){ const row=y*w; for (let x=0;x<w;x++){ let s=0,c=0; for (let k=-r;k<=r;k++){ const xx=x+k; if (xx<0||xx>=w) continue; s+=src[row+xx]; c++; } tmp[row+x]=s/c; } }
+    for (let x=0;x<w;x++){ for (let y=0;y<h;y++){ let s=0,c=0; for (let k=-r;k<=r;k++){ const yy=y+k; if (yy<0||yy>=h) continue; s+=tmp[yy*w+x]; c++; } out[y*w+x]=(s/c)|0; } }
+    return out;
+  }
+  function refineAlpha(md, w, h){
+    const N = w*h, bin = new Uint8Array(N);
+    for (let p=0;p<N;p++) bin[p] = md[p*4] > 190 ? 255 : 0;   // high threshold drops the soft (background-tinted) edge band
+    const R = Math.max(2, Math.round(Math.min(w,h) * 0.005)); // erosion radius scales with image size
+    const eroded = erodeMask(bin, w, h, R);
+    return blurMask(eroded, w, h, 1);                          // gentle feather
+  }
   function runSelfie(srcCanvas){
     return new Promise((resolve, reject) => {
       if (!selfieSeg){
@@ -178,7 +203,8 @@
         const mc = document.createElement('canvas'); mc.width = w; mc.height = h;
         mc.getContext('2d').drawImage(res.segmentationMask, 0, 0, w, h);
         const md = mc.getContext('2d').getImageData(0, 0, w, h).data;
-        for (let i = 0; i < id.data.length; i += 4) id.data[i+3] = md[i];   // alpha from person mask
+        const alpha = refineAlpha(md, w, h);                 // eroded + feathered person mask
+        for (let p = 0; p < w*h; p++) id.data[p*4+3] = alpha[p];
         ox.putImageData(id, 0, 0);
         resolve(out);
       });
