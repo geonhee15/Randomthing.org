@@ -111,6 +111,33 @@
     .tip { font-size: 12px; }
     .legend span { font-size: 11px; }
   }
+  .btn.has-save { position:relative; }
+  .btn.has-save::after { content:""; position:absolute; top:-3px; right:-3px; width:9px; height:9px; border-radius:50%;
+    background:#51cf66; border:2px solid #0b0c16; }
+
+  .saves { position:fixed; inset:0; z-index:60; display:flex; align-items:center; justify-content:center; padding:22px;
+    background:rgba(6,7,14,.6); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); transition:opacity .2s; }
+  .saves.hide { opacity:0; pointer-events:none; }
+  .saves-card { width:min(440px,100%); background:#15161d; color:#e7e7ef; border:1px solid rgba(255,255,255,.08);
+    border-radius:20px; box-shadow:0 40px 90px rgba(0,0,0,.6); overflow:hidden; }
+  .saves-head { display:flex; align-items:center; justify-content:space-between; padding:20px 22px 15px; border-bottom:1px solid rgba(255,255,255,.07); }
+  .saves-head h2 { font-family:"Baloo 2",sans-serif; font-size:22px; margin:0; }
+  .saves-head .sh-sub { font-size:12px; color:#9aa0b5; margin-top:2px; }
+  .saves-x { border:none; background:rgba(255,255,255,.08); color:#c9c9d4; width:34px; height:34px; border-radius:9px; cursor:pointer; font-size:15px; }
+  .saves-x:hover { background:rgba(255,255,255,.15); }
+  .slots { padding:14px; display:flex; flex-direction:column; gap:10px; }
+  .slot { background:#1d1f28; border:1px solid rgba(255,255,255,.06); border-radius:14px; padding:13px 14px;
+    display:flex; align-items:center; gap:12px; }
+  .slot .info { flex:1; min-width:0; }
+  .slot .info .t { font-weight:700; font-size:14.5px; }
+  .slot .info .m { font-size:12px; color:#9aa0b5; margin-top:2px; font-family:"Space Grotesk",monospace; }
+  .slot .info.empty .t { color:#8a8f9e; font-weight:600; }
+  .slot .acts { display:flex; gap:6px; flex:0 0 auto; }
+  .slot .acts button { border:none; border-radius:9px; padding:8px 11px; font:700 12px "Inter",sans-serif; cursor:pointer; }
+  .slot .acts .save { background:#6366f1; color:#fff; } .slot .acts .save:hover { background:#4f46e5; }
+  .slot .acts .save:disabled { background:#2a2c38; color:#5a5e6e; cursor:default; }
+  .slot .acts .load { background:#27c281; color:#08210f; } .slot .acts .load:hover { background:#22a870; }
+  .slot .acts .del { background:rgba(255,255,255,.08); color:#c98; } .slot .acts .del:hover { background:rgba(226,59,46,.25); color:#fff; }
 </style>
 </head>
 <body>
@@ -127,6 +154,7 @@
       <div class="stat"><span class="k">Lives</span><span class="v" id="lives">3</span></div>
       <div class="stat"><span class="k">Level</span><span class="v" id="level">1</span></div>
       <span class="spacer"></span>
+      <button class="btn" id="savesBtn">Saves</button>
       <button class="btn" id="pauseBtn">Pause</button>
       <button class="btn" id="resetBtn">Restart</button>
     </div>
@@ -148,6 +176,16 @@
     </div>
 
     <div class="tip">Move: <b>drag</b> / <b>mouse</b> / <b>&larr; &rarr;</b> &middot; Launch: <b>tap</b> / <b>space</b> &middot; Pause: <b>P</b></div>
+  </div>
+
+  <div class="saves hide" id="savesModal">
+    <div class="saves-card">
+      <div class="saves-head">
+        <div><h2>Save slots</h2><div class="sh-sub" id="savesSub">Save mid-game, come back later</div></div>
+        <button class="saves-x" id="savesX" aria-label="Close">✕</button>
+      </div>
+      <div class="slots" id="slots"></div>
+    </div>
   </div>
 
 <script>
@@ -514,9 +552,81 @@ el('pauseBtn').addEventListener('click', () => { if (state==='playing'||state===
 el('resetBtn').addEventListener('click', () => newGame());
 window.addEventListener('resize', fit);
 
+// ----- save slots (3 max, localStorage) -----
+const SAVE_SLOTS = 3;
+const savesModal = el('savesModal');
+let savesReturnState = null;
+const slotKey = i => 'bb_slot_' + i;
+
+function canSave(){ return state === 'playing' || state === 'paused'; }
+function readSlot(i){ try { const s = localStorage.getItem(slotKey(i)); return s ? JSON.parse(s) : null; } catch(e){ return null; } }
+function anySave(){ for (let i = 0; i < SAVE_SLOTS; i++) if (readSlot(i)) return true; return false; }
+function updateSaveBadge(){ el('savesBtn').classList.toggle('has-save', anySave()); }
+
+function snapshot(){
+  return {
+    ts: Date.now(), score: score, lives: lives, level: level,
+    px: paddle.x, pw: paddle.w, wide: wideTimer, slow: slowTimer,
+    balls: balls.map(b => [b.x, b.y, b.vx, b.vy, b.r]),
+    bricks: bricks.map(b => [b.x, b.y, b.w, b.h, b.color, b.alive ? 1 : 0]),
+    caps: capsules.map(c => [c.x, c.y, c.vy, c.type, c.letter, c.color]),
+  };
+}
+function restoreSnap(s){
+  score = s.score; lives = s.lives; level = s.level; syncHud();
+  paddle.x = s.px; paddle.w = s.pw; wideTimer = s.wide || 0; slowTimer = s.slow || 0;
+  balls = s.balls.map(a => ({ x:a[0], y:a[1], vx:a[2], vy:a[3], r:a[4] }));
+  bricks = s.bricks.map(a => ({ x:a[0], y:a[1], w:a[2], h:a[3], color:a[4], alive: !!a[5] }));
+  capsules = (s.caps || []).map(a => ({ x:a[0], y:a[1], vy:a[2], type:a[3], letter:a[4], color:a[5] }));
+  state = 'paused';
+  showOverlay('Game loaded', 'Level ' + level + ' · Score ' + score + ' — tap to resume', 'Resume');
+}
+
+function saveToSlot(i){ if (!canSave()) return; try { localStorage.setItem(slotKey(i), JSON.stringify(snapshot())); } catch(e){} renderSlots(); updateSaveBadge(); }
+function deleteSlot(i){ try { localStorage.removeItem(slotKey(i)); } catch(e){} renderSlots(); updateSaveBadge(); }
+function loadFromSlot(i){ const s = readSlot(i); if (!s) return; restoreSnap(s); savesModal.classList.add('hide'); savesReturnState = null; ensureSfx(); }
+
+function relTime(ts){ const m = Math.floor((Date.now() - ts) / 60000); if (m < 1) return 'just now'; if (m < 60) return m + 'm ago'; const h = Math.floor(m/60); if (h < 24) return h + 'h ago'; return Math.floor(h/24) + 'd ago'; }
+function renderSlots(){
+  const wrap = el('slots'); wrap.innerHTML = '';
+  const savable = canSave();
+  el('savesSub').textContent = savable ? 'Save this game to a slot' : 'Start or resume a game to save';
+  for (let i = 0; i < SAVE_SLOTS; i++){
+    const s = readSlot(i);
+    const row = document.createElement('div'); row.className = 'slot';
+    if (s){
+      row.innerHTML = '<div class="info"><div class="t">Slot ' + (i+1) + ' — Level ' + s.level + '</div>' +
+        '<div class="m">Score ' + s.score + ' &middot; Lives ' + s.lives + ' &middot; ' + relTime(s.ts) + '</div></div>' +
+        '<div class="acts"><button class="load">Load</button><button class="save"' + (savable ? '' : ' disabled') + '>Save</button><button class="del" title="Delete">&times;</button></div>';
+      row.querySelector('.load').onclick = () => loadFromSlot(i);
+      row.querySelector('.save').onclick = () => saveToSlot(i);
+      row.querySelector('.del').onclick = () => deleteSlot(i);
+    } else {
+      row.innerHTML = '<div class="info empty"><div class="t">Slot ' + (i+1) + ' — Empty</div>' +
+        '<div class="m">' + (savable ? 'ready to save' : 'nothing to save yet') + '</div></div>' +
+        '<div class="acts"><button class="save"' + (savable ? '' : ' disabled') + '>Save here</button></div>';
+      const sb = row.querySelector('.save'); sb.onclick = () => { if (savable) saveToSlot(i); };
+    }
+    wrap.appendChild(row);
+  }
+}
+function openSaves(){
+  if (state === 'playing'){ savesReturnState = 'playing'; state = 'paused'; } else savesReturnState = null;
+  renderSlots(); savesModal.classList.remove('hide');
+}
+function closeSaves(){
+  savesModal.classList.add('hide');
+  if (savesReturnState === 'playing' && state === 'paused') state = 'playing';
+  savesReturnState = null;
+}
+el('savesBtn').addEventListener('click', openSaves);
+el('savesX').addEventListener('click', closeSaves);
+savesModal.addEventListener('click', e => { if (e.target === savesModal) closeSaves(); });
+
 // ----- boot -----
 fit();
 newGame();
+updateSaveBadge();
 requestAnimationFrame(frame);
 </script>
   <script defer src="/cookie-consent.js"></script>
