@@ -27,6 +27,14 @@
     min-height: 100vh;
   }
 
+  .online {
+    position: fixed; top: 14px; left: 16px; z-index: 50;
+    font-family: "Space Grotesk", monospace; font-size: 12px; font-weight: 600;
+    letter-spacing: .02em; color: #b7b7bd; opacity: 0; transition: opacity .4s ease;
+    pointer-events: none;
+  }
+  .online.show { opacity: 1; }
+
   header.hero {
     text-align: center;
     padding: 54px 20px 30px;
@@ -358,6 +366,7 @@
 </style>
 </head>
 <body>
+  <div class="online" id="online" aria-live="polite"></div>
   <header class="hero">
     <h1 class="logo">Randomthing<span class="org">.org</span></h1>
     <div class="tagline">random things, made for fun</div>
@@ -524,6 +533,28 @@
   </footer>
   <script>
     document.getElementById('yr').textContent = new Date().getFullYear();
+
+    // live online-player count — one WebSocket per tab to a Cloudflare Durable Object.
+    // Fails soft: if the backend isn't there (e.g. local static preview), it stays hidden.
+    (function(){
+      var el = document.getElementById('online');
+      if (!el || !('WebSocket' in window)) return;
+      var url = (location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + location.host + '/api/online';
+      var ws, retry = 0;
+      function schedule(){ retry = Math.min(retry + 1, 6); setTimeout(connect, retry * 1500); }
+      function connect(){
+        try { ws = new WebSocket(url); } catch(e){ return schedule(); }
+        ws.onopen = function(){ retry = 0; };
+        ws.onmessage = function(ev){
+          try { var d = JSON.parse(ev.data);
+            if (typeof d.count === 'number'){ el.textContent = 'Online Players: ' + d.count; el.classList.add('show'); }
+          } catch(e){}
+        };
+        ws.onclose = function(){ el.classList.remove('show'); schedule(); };
+        ws.onerror = function(){ try { ws.close(); } catch(e){} };
+      }
+      connect();
+    })();
     // easter egg: the calculator thumbnail shows a random 1–99 each visit
     document.getElementById('calcScreen').textContent = Math.floor(Math.random() * 99) + 1;
     // the Clocks thumbnail tells the real time
@@ -542,6 +573,7 @@
     const LOGS = [
       { date: '26.7.12', open: true, items: [
         'Clocks — pick any country / time zone next to the clock selector, or keep your local time',
+        'Homepage shows a live “Online Players” count of everyone on the site right now',
       ] },
       { date: '26.7.11', open: false, items: [
         'Launched the site with the Calculator construction kit',
