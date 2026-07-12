@@ -254,6 +254,49 @@
     .art-card .name { font-size: 30px; }
   }
 
+  /* update-log button */
+  .log-btn {
+    margin: 16px auto 0; display:flex; align-items:center; justify-content:center;
+    width:46px; height:46px; border-radius:50%; border:1px solid #e6e6ea; background:#fff;
+    color:#6b7280; cursor:pointer; position:relative;
+    box-shadow:0 3px 10px rgba(0,0,0,.06);
+    transition: transform .14s ease, box-shadow .14s ease, border-color .14s ease, color .14s ease;
+  }
+  .log-btn:hover { transform: translateY(-2px); box-shadow:0 10px 22px rgba(0,0,0,.12); border-color:#d6d6da; color:#18181b; }
+  .log-btn:active { transform: translateY(0); }
+  .log-btn .badge { position:absolute; top:-1px; right:-1px; width:11px; height:11px; border-radius:50%;
+    background:#ff5a5f; border:2px solid #fff; display:none; }
+  .log-btn.has-new .badge { display:block; }
+
+  /* update-log modal */
+  .ulog-modal { position:fixed; inset:0; z-index:100; display:flex; align-items:center; justify-content:center; padding:22px;
+    background:rgba(18,18,26,.42); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px);
+    opacity:1; transition:opacity .2s ease; }
+  .ulog-modal.hide { opacity:0; pointer-events:none; }
+  .ulog-card { background:#fff; color:#1b1b20; text-align:left; border-radius:22px; width:min(470px,100%); max-height:82vh;
+    display:flex; flex-direction:column; overflow:hidden; box-shadow:0 40px 90px rgba(0,0,0,.35);
+    transform:none; transition:transform .2s ease; }
+  .ulog-modal.hide .ulog-card { transform:translateY(12px) scale(.98); }
+  .ulog-head { display:flex; align-items:center; justify-content:space-between; padding:20px 22px 15px; border-bottom:1px solid #f0f0f2; }
+  .ulog-head h2 { font-family:"Baloo 2",sans-serif; font-size:22px; margin:0; }
+  .ulog-head .sub { font-size:12px; color:#9a9aa2; font-weight:500; }
+  .ulog-x { border:none; background:#f1f1f4; color:#52525b; width:34px; height:34px; border-radius:9px; cursor:pointer; font-size:15px; line-height:1; }
+  .ulog-x:hover { background:#e7e7ea; }
+  .ulog-body { padding:6px 14px 16px; overflow-y:auto; }
+  .ulog-day { border-bottom:1px solid #f2f2f4; }
+  .ulog-day:last-child { border-bottom:none; }
+  .ulog-day > summary { list-style:none; cursor:pointer; display:flex; align-items:center; gap:10px; padding:14px 8px; }
+  .ulog-day > summary::-webkit-details-marker { display:none; }
+  .ulog-day > summary .chev { color:#b8b8c0; transition:transform .18s ease; flex:0 0 auto; }
+  .ulog-day[open] > summary .chev { transform:rotate(90deg); }
+  .ulog-day > summary .d { font-family:ui-monospace,"SF Mono",Menlo,monospace; font-weight:700; font-size:15px; color:#26262c; }
+  .ulog-day > summary .cnt { margin-left:auto; font-size:12px; font-weight:600; color:#a2a2aa; }
+  .ulog-day .list { padding:2px 8px 14px; display:flex; flex-direction:column; gap:10px; }
+  .ulog-row { display:flex; gap:11px; align-items:flex-start; }
+  .ulog-tag { flex:0 0 auto; margin-top:1px; font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:11px; font-weight:700;
+    color:#6366f1; background:#eef2ff; padding:3px 7px; border-radius:6px; white-space:nowrap; }
+  .ulog-tx { font-size:14px; line-height:1.5; color:#3a3a42; }
+
   footer {
     text-align: center;
     color: var(--muted);
@@ -272,6 +315,12 @@
   <header class="hero">
     <h1 class="logo">Randomthing<span class="org">.org</span></h1>
     <div class="tagline">random things, made for fun</div>
+    <button class="log-btn" id="logBtn" type="button" aria-label="Update log" title="Update log">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8 6h11M8 12h11M8 18h11"/><path d="M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>
+      </svg>
+      <span class="badge" id="logBadge"></span>
+    </button>
   </header>
 
   <main>
@@ -373,6 +422,16 @@
     </div>
   </main>
 
+  <div class="ulog-modal hide" id="ulogModal">
+    <div class="ulog-card">
+      <div class="ulog-head">
+        <div><h2>Update log</h2><div class="sub">what's new on Randomthing.org</div></div>
+        <button class="ulog-x" id="ulogX" aria-label="Close">✕</button>
+      </div>
+      <div class="ulog-body" id="ulogBody"></div>
+    </div>
+  </div>
+
   <footer>
     © <span id="yr"></span> Randomthing.org
     <span class="credit">Developed by Geonhee Kim</span>
@@ -390,6 +449,61 @@
         mi.setAttribute('transform', 'rotate(' + (m * 6) + ' 50 50)');
       }
       tick(); setInterval(tick, 15000);
+    })();
+
+    // ---------- update log ----------
+    // Newest day first; items within a day are numbered date-1, date-2, …
+    const LOGS = [
+      { date: '26.7.11', open: true, items: [
+        'Launched the site with the Calculator construction kit',
+        'Added Background — interactive shader wallpapers',
+        'Added Brick Break, an arcade brick-breaker',
+        'Added Clocks — eight clocks and timers, drawn in code',
+        'Added Color Guesser and Reaction Time',
+        'Added Audio Player — a turntable you can scratch',
+        'Added the dice favicon; the calculator thumbnail shows a random number',
+        'The clock thumbnail now tells the real time, and Brick Break got sound effects',
+        'Audio Player playlists (up to 99) that save between visits, plus a cookie notice',
+        'Added this update log',
+      ] },
+    ];
+
+    (function(){
+      var modal = document.getElementById('ulogModal');
+      var body = document.getElementById('ulogBody');
+      var btn = document.getElementById('logBtn');
+
+      function sig(){ return LOGS.length ? (LOGS[0].date + ':' + LOGS[0].items.length) : ''; }
+      function refreshBadge(){
+        var seen; try { seen = localStorage.getItem('rt_log_seen'); } catch(e){ seen = null; }
+        btn.classList.toggle('has-new', seen !== sig());
+      }
+      function render(){
+        body.innerHTML = LOGS.map(function(day){
+          var rows = day.items.map(function(t, i){
+            return '<div class="ulog-row"><span class="ulog-tag">' + day.date + '-' + (i+1) +
+                   '</span><span class="ulog-tx">' + t + '</span></div>';
+          }).join('');
+          var chev = '<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>';
+          var cnt = day.items.length + ' update' + (day.items.length > 1 ? 's' : '');
+          return '<details class="ulog-day"' + (day.open ? ' open' : '') + '><summary>' + chev +
+                 '<span class="d">' + day.date + '</span><span class="cnt">' + cnt + '</span></summary>' +
+                 '<div class="list">' + rows + '</div></details>';
+        }).join('');
+      }
+      function open(){
+        render();
+        modal.classList.remove('hide');
+        try { localStorage.setItem('rt_log_seen', sig()); } catch(e){}
+        refreshBadge();
+      }
+      function close(){ modal.classList.add('hide'); }
+
+      btn.addEventListener('click', open);
+      document.getElementById('ulogX').addEventListener('click', close);
+      modal.addEventListener('click', function(e){ if (e.target === modal) close(); });
+      document.addEventListener('keydown', function(e){ if (e.key === 'Escape') close(); });
+      refreshBadge();
     })();
   </script>
   <script defer src="/cookie-consent.js"></script>
