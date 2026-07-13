@@ -111,6 +111,7 @@
   .stretch-card { background: radial-gradient(120% 120% at 80% 12%, #ff8f6b 0%, #e0472f 52%, #7a1c14 100%); }
   .cps-card  { background: radial-gradient(120% 120% at 80% 12%, #ff7a45 0%, #d1401e 52%, #6e1c0c 100%); }
   .rps-card  { background: radial-gradient(120% 120% at 20% 12%, #454db0 0%, #262a68 52%, #12142e 100%); }
+  .sf-card   { background: radial-gradient(120% 120% at 50% 10%, #52233a 0%, #2c1420 52%, #130a10 100%); }
   .calc-card .mini {
     flex: 0 0 auto;
     width: 92px;
@@ -186,6 +187,17 @@
     transform: rotate(-4deg); transition: transform .2s ease; display:flex; align-items:center; justify-content:center; gap:3px;
   }
   .rps-card .mini svg { width:23px; height:23px; color:#dfe2ff; }
+  .sf-card .kicker { color:#ff9db0; }
+  /* Stickman Fight card artwork: two stick fighters over a lava pit */
+  .sf-card .mini {
+    flex:0 0 auto; width:92px; height:92px; border-radius:16px; position:relative; overflow:hidden;
+    background: radial-gradient(circle at 50% 42%, #351826, #150a10);
+    box-shadow:0 10px 22px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.06);
+    transform:rotate(-4deg); transition:transform .2s ease; display:flex; align-items:flex-end; justify-content:center;
+  }
+  .sf-card .mini svg { width:80px; height:80px; margin-bottom:4px; position:relative; z-index:1; }
+  .sf-card .mini::after { content:""; position:absolute; bottom:0; left:37px; width:18px; height:9px;
+    background:linear-gradient(#ff8a3c,#ff3a1a); border-radius:2px 2px 0 0; box-shadow:0 0 12px rgba(255,90,30,.75); }
 
   /* Color Guesser card artwork */
   .cg-card .mini {
@@ -497,6 +509,34 @@
         </div>
       </a>
 
+      <a class="card art-card sf-card" href="/Stickman-Fight/">
+        <div class="mini" aria-hidden="true">
+          <svg viewBox="0 0 60 60" fill="none" stroke-linecap="round">
+            <g stroke="#4d90ff" stroke-width="2.4">
+              <circle cx="16" cy="18" r="4.5" fill="#4d90ff" stroke="none"/>
+              <line x1="16" y1="22" x2="16" y2="36"/>
+              <line x1="16" y1="26" x2="10" y2="31"/>
+              <line x1="16" y1="26" x2="24" y2="24"/>
+              <line x1="16" y1="36" x2="11" y2="46"/>
+              <line x1="16" y1="36" x2="21" y2="46"/>
+            </g>
+            <g stroke="#ff5b5b" stroke-width="2.4">
+              <circle cx="44" cy="18" r="4.5" fill="#ff5b5b" stroke="none"/>
+              <line x1="44" y1="22" x2="44" y2="36"/>
+              <line x1="44" y1="26" x2="50" y2="31"/>
+              <line x1="44" y1="26" x2="36" y2="24"/>
+              <line x1="44" y1="36" x2="49" y2="46"/>
+              <line x1="44" y1="36" x2="39" y2="46"/>
+            </g>
+          </svg>
+        </div>
+        <div class="txt">
+          <span class="kicker">2 Players</span>
+          <span class="name">Stickman Fight</span>
+          <span class="desc">Chop off limbs — last head&nbsp;standing.</span>
+        </div>
+      </a>
+
       <a class="card art-card cps-card" href="/Cps-Test/">
         <div class="mini" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 2.4l15 8.6-6.4 1.4L10.7 19 5 2.4z"/></svg>
@@ -623,6 +663,7 @@
         'Added Rock Paper Scissors — pick during the countdown, then reveal against a robot',
         'Rock Paper Scissors got sound effects for the countdown, reveal, and result',
         'Brick Break and Rock Paper Scissors now have a master sound control in the top-right',
+        'Added Stickman Fight — a 2-player brawl where spinning axes chop off limbs; leave only a head to win',
       ] },
       { date: '26.7.11', open: false, items: [
         'Launched the site with the Calculator construction kit',

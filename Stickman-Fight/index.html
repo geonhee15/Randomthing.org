@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Stickman Fight — Randomthing.org</title>
+<meta name="description" content="A 2-player stickman brawl. Spinning axes, chopped-off limbs that fly, a lava pit — last one with only a head left loses." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+<style>
+  :root { --ui:"Inter",system-ui,-apple-system,sans-serif; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; padding:0; height:100%; }
+  body { font-family:var(--ui); color:#e8eaf2; overflow:hidden; min-height:100vh;
+    background:#12131c; -webkit-font-smoothing:antialiased; touch-action:none; -webkit-user-select:none; user-select:none; }
+  .nav { position:fixed; top:0; left:0; right:0; display:flex; align-items:center; gap:12px; padding:13px 18px; z-index:20; }
+  .brand { font-family:"Baloo 2",sans-serif; font-weight:800; font-size:19px; letter-spacing:-.4px; color:#fff; text-decoration:none; padding:5px 8px; border-radius:10px; }
+  .brand:hover { background:rgba(255,255,255,.08); }
+  .brand .org { color:#ff5a5f; }
+  .nav .sep { color:rgba(255,255,255,.3); } .nav h1 { font-size:15px; font-weight:600; margin:0; color:rgba(255,255,255,.7); }
+
+  .score { position:fixed; top:11px; left:50%; transform:translateX(-50%); z-index:20; display:flex; align-items:center; gap:14px;
+    font-family:"Space Grotesk",monospace; font-weight:700; font-size:24px; }
+  .score .p1 { color:#ff5b5b; } .score .p2 { color:#4d90ff; } .score .dash { color:#555; font-size:18px; }
+
+  canvas { position:fixed; inset:0; width:100%; height:100%; display:block; }
+
+  .hint { position:fixed; bottom:12px; left:0; right:0; text-align:center; z-index:20; color:rgba(255,255,255,.55); font-size:12.5px; font-weight:500; line-height:1.7; padding:0 12px; }
+  .hint b { color:rgba(255,255,255,.85); }
+  .hint .k { font-family:"Space Grotesk",monospace; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.14); border-radius:5px; padding:1px 6px; font-size:11.5px; }
+</style>
+</head>
+<body>
+  <nav class="nav">
+    <a class="brand" href="/">Randomthing<span class="org">.org</span></a>
+    <span class="sep">/</span><h1>Stickman Fight</h1>
+  </nav>
+
+  <div class="score"><span class="p1" id="s1">0</span><span class="dash">vs</span><span class="p2" id="s2">0</span></div>
+
+  <canvas id="cv"></canvas>
+
+  <div class="hint" id="hint">
+    <b>P1</b> <span class="k">A</span> <span class="k">D</span> move · <span class="k">Space</span> jump &nbsp;•&nbsp;
+    <b>P2</b> <span class="k">◄</span> <span class="k">►</span> move · <span class="k">▲</span> jump &nbsp;•&nbsp;
+    ram your spinning axe into a limb to chop it off — leave only a head to win
+  </div>
+
+<script>
+  const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+  const W = 1000, H = 560;          // logical world
+  let scale = 1, ox = 0, oy = 0, DPR = 1;
+  function fit(){
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    const cw = window.innerWidth, ch = window.innerHeight;
+    cv.width = cw * DPR; cv.height = ch * DPR;
+    scale = Math.min(cw / W, ch / H);
+    ox = (cw - W * scale) / 2; oy = (ch - H * scale) / 2;
+  }
+  window.addEventListener('resize', fit); fit();
+
+  // ---------- world / map ----------
+  const GROUND = 452;
+  const PIT = { l: 452, r: 548 };
+  const LAVA_TOP = 486, LAVA_DEATH = 470;
+  const PLATFORMS = [
+    { x: 120, y: 336, w: 180 },
+    { x: 700, y: 336, w: 180 },
+    { x: 410, y: 232, w: 180 },
+  ];
+
+  // ---------- fighter ----------
+  const G = 1900, ACCEL = 2600, FRICTION = 0.80, MAXV = 250, JUMP = 640;
+  const TORSO = 46, HEAD = 15, ARM = 26, LEG = 34;
+  const AXE_LEN = 46, SPIN = 9.5, CUTR = 12;
+  const RED = '#ff5b5b', BLUE = '#4d90ff';
+
+  const K1 = { left:'KeyA', right:'KeyD', jump:'Space' };
+  const K2 = { left:'ArrowLeft', right:'ArrowRight', jump:'ArrowUp' };
+
+  function makeFighter(x, keys){
+    return { x, y: GROUND - LEG, vx:0, vy:0, onGround:true, face:1, keys, color:RED,
+      arms:{ L:true, R:true }, legs:{ L:true, R:true }, spin: Math.random()*6.28,
+      walk:0, dead:false, hurt:0 };
+  }
+  let f1, f2, gibs = [], state = 'fight', winner = 0, overAt = 0;
+  let score = [0, 0];
+
+  function newRound(){
+    f1 = makeFighter(250, K1); f2 = makeFighter(750, K2);
+    f1.face = 1; f2.face = -1;
+    // randomise colours each round
+    if (Math.random() < 0.5){ f1.color = RED; f2.color = BLUE; } else { f1.color = BLUE; f2.color = RED; }
+    gibs = []; state = 'fight'; winner = 0;
+    document.getElementById('s1').style.color = f1.color;
+    document.getElementById('s2').style.color = f2.color;
+  }
+
+  const legCount = f => (f.legs.L?1:0) + (f.legs.R?1:0);
+  const footLen  = f => legCount(f) > 0 ? LEG : 10;
+  const hasAxe   = f => f.arms.R;
+
+  // key state
+  const keys = {};
+  addEventListener('keydown', e => {
+    if (['Space','ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.code)) e.preventDefault();
+    keys[e.code] = true;
+    if (state === 'over' && (e.code === 'Enter' || e.code === 'KeyR')) newRound();
+  });
+  addEventListener('keyup', e => { keys[e.code] = false; });
+
+  // ---------- geometry of a fighter ----------
+  function parts(f){
+    const hip = { x: f.x, y: f.y };
+    const lean = (legCount(f) === 1 ? f.face * 8 : 0);   // one-legged tilt
+    const neck = { x: hip.x + lean, y: hip.y - TORSO };
+    const head = { x: neck.x + lean*0.4, y: neck.y - HEAD - 2 };
+    const sw = Math.sin(f.walk) * (f.onGround ? 10 : 4);
+    // legs swing opposite
+    const footL = { x: hip.x - 8 - sw, y: hip.y + LEG };
+    const footR = { x: hip.x + 8 + sw, y: hip.y + LEG };
+    // arms: left swings with walk, right holds the axe
+    const shL = { x: neck.x - 6, y: neck.y + 6 };
+    const shR = { x: neck.x + 6, y: neck.y + 6 };
+    const handL = { x: shL.x - 4 + sw*0.6, y: shL.y + ARM };
+    const handR = { x: shR.x + f.face * 12, y: shR.y + 6 };
+    const tip = { x: handR.x + Math.cos(f.spin) * AXE_LEN, y: handR.y + Math.sin(f.spin) * AXE_LEN };
+    return { hip, neck, head, footL, footR, shL, shR, handL, handR, tip, lean };
+  }
+
+  function limbSegs(f){
+    const p = parts(f), segs = [];
+    if (f.arms.L) segs.push({ k:'armL', a:p.shL, b:p.handL });
+    if (f.arms.R) segs.push({ k:'armR', a:p.shR, b:p.handR });
+    if (f.legs.L) segs.push({ k:'legL', a:p.hip, b:p.footL });
+    if (f.legs.R) segs.push({ k:'legR', a:p.hip, b:p.footR });
+    return segs;
+  }
+
+  // segment-segment min distance
+  function segDist(a,b,c,d){
+    function clamp(t){ return t<0?0:t>1?1:t; }
+    const abx=b.x-a.x, aby=b.y-a.y, cdx=d.x-c.x, cdy=d.y-c.y;
+    const acx=a.x-c.x, acy=a.y-c.y;
+    const A=abx*abx+aby*aby, E=cdx*cdx+cdy*cdy, F=cdx*acx+cdy*acy;
+    let s,t;
+    const B=abx*cdx+aby*cdy, C=abx*acx+aby*acy;
+    const denom=A*E-B*B;
+    s = denom!==0 ? clamp((B*F-C*E)/denom) : 0;
+    t = (B*s+F)/ (E||1); t=clamp(t);
+    s = A!==0 ? clamp((B*t-C)/A) : 0;
+    const px=a.x+abx*s, py=a.y+aby*s, qx=c.x+cdx*t, qy=c.y+cdy*t;
+    return Math.hypot(px-qx, py-qy);
+  }
+
+  function chop(f, key, dir){
+    if (key === 'armL') f.arms.L = false;
+    else if (key === 'armR') f.arms.R = false;   // loses the axe
+    else if (key === 'legL') f.legs.L = false;
+    else if (key === 'legR') f.legs.R = false;
+    f.hurt = 0.18;
+    f.vx += dir * 120; f.vy -= 90;                // knockback
+    // spawn a wildly spinning gib
+    const p = parts(f);
+    const anchor = key === 'armL' ? p.shL : key === 'armR' ? p.shR : p.hip;
+    const isArm = key[0] === 'a';
+    gibs.push({
+      x: anchor.x, y: anchor.y + (isArm?ARM:LEG)/2, len: isArm?ARM:LEG,
+      vx: dir * (200 + Math.random()*220), vy: -(340 + Math.random()*260),
+      ang: Math.random()*6.28, av: (Math.random()<0.5?-1:1) * (14 + Math.random()*12),
+      color: f.color, life: 5, rest:false
+    });
+  }
+
+  function explode(f){        // scatter everything on death
+    const p = parts(f);
+    const list = [ [p.shL,ARM],[p.shR,ARM],[p.hip,LEG],[p.hip,LEG],[p.neck,TORSO],[p.head,HEAD] ];
+    for (const [a, len] of list){
+      gibs.push({ x:a.x, y:a.y, len, vx:(Math.random()*2-1)*300, vy:-(200+Math.random()*380),
+        ang:Math.random()*6.28, av:(Math.random()<0.5?-1:1)*(10+Math.random()*14), color:f.color, life:5, rest:false });
+    }
+  }
+
+  function surfaceLanding(f){
+    f.onGround = false;
+    const fl = footLen(f), bottom = f.y + fl;
+    if (!(f.x > PIT.l && f.x < PIT.r) && bottom >= GROUND && f.vy >= 0 && bottom <= GROUND + 40){
+      f.y = GROUND - fl; f.vy = 0; f.onGround = true;
+    }
+    for (const p of PLATFORMS){
+      if (f.x >= p.x - 2 && f.x <= p.x + p.w + 2 && f.vy >= 0 && bottom >= p.y && bottom <= p.y + 26){
+        f.y = p.y - fl; f.vy = 0; f.onGround = true;
+      }
+    }
+  }
+
+  function updateFighter(f, dt){
+    if (f.dead) return;
+    const lc = legCount(f);
+    const moveF = lc === 2 ? 1 : lc === 1 ? 0.5 : 0.12;
+    const dir = (keys[f.keys.right]?1:0) - (keys[f.keys.left]?1:0);
+    f.vx += dir * ACCEL * moveF * dt;
+    if (!dir || !f.onGround) f.vx *= f.onGround ? FRICTION : 0.995;
+    const mv = MAXV * moveF; f.vx = Math.max(-mv, Math.min(mv, f.vx));
+    if (keys[f.keys.jump] && f.onGround && lc > 0){ f.vy = -JUMP * (lc === 2 ? 1 : 0.72); f.onGround = false; }
+
+    f.vy += G * dt;
+    f.x += f.vx * dt; f.y += f.vy * dt;
+    f.x = Math.max(20, Math.min(W - 20, f.x));
+
+    surfaceLanding(f);
+    if (Math.abs(f.vx) > 12 && f.onGround) f.walk += Math.abs(f.vx) * dt * 0.06; else f.walk *= 0.85;
+    if (dir) f.face = dir;
+    if (hasAxe(f)) f.spin += SPIN * dt;
+    if (f.hurt > 0) f.hurt -= dt;
+
+    // lava pit
+    if (f.x > PIT.l && f.x < PIT.r && f.y + footLen(f) > LAVA_DEATH){ f.dead = true; explode(f); }
+    if (f.y > H + 120){ f.dead = true; }
+  }
+
+  function updateGib(g, dt){
+    g.vy += G * dt; g.x += g.vx * dt; g.y += g.vy * dt; g.ang += g.av * dt;
+    // ground / platform rest
+    let surf = (!(g.x > PIT.l && g.x < PIT.r)) ? GROUND : Infinity;
+    for (const p of PLATFORMS) if (g.x >= p.x && g.x <= p.x + p.w && g.y <= p.y + 30) surf = Math.min(surf, p.y);
+    if (g.y >= surf){ g.y = surf; g.vy *= -0.35; g.vx *= 0.6; g.av *= 0.6; if (Math.abs(g.vy) < 40){ g.vy = 0; g.rest = true; } }
+    if (g.x > PIT.l && g.x < PIT.r && g.y > LAVA_DEATH){ g.life = 0; }   // burns in lava
+    if (g.rest) g.life -= dt * 0.5;
+  }
+
+  function checkCombat(){
+    for (const [f, o] of [[f1,f2],[f2,f1]]){
+      if (f.dead || o.dead || !hasAxe(f)) continue;
+      const p = parts(f), blade = { a: p.handR, b: p.tip };
+      for (const seg of limbSegs(o)){
+        if (segDist(blade.a, blade.b, seg.a, seg.b) < CUTR){
+          chop(o, seg.k, Math.sign(o.x - f.x) || 1);
+          break;
+        }
+      }
+    }
+  }
+
+  function limbsLeft(f){ return (f.arms.L?1:0)+(f.arms.R?1:0)+(f.legs.L?1:0)+(f.legs.R?1:0); }
+
+  function checkWin(){
+    if (state !== 'fight') return;
+    let loser = null;
+    if (f1.dead || limbsLeft(f1) === 0) loser = 1;
+    else if (f2.dead || limbsLeft(f2) === 0) loser = 2;
+    if (loser){
+      winner = loser === 1 ? 2 : 1;
+      score[winner - 1]++;
+      document.getElementById('s1').textContent = score[0];
+      document.getElementById('s2').textContent = score[1];
+      state = 'over'; overAt = performance.now();
+      const w = winner === 1 ? f1 : f2;
+      if (!w.dead) { /* winner stands */ }
+    }
+  }
+
+  // ---------- render ----------
+  function line(a, b, w, col){ ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
+
+  function drawAxe(hand, tip, spin){
+    ctx.save();
+    line(hand, tip, 4, '#c8ccd8');                        // handle
+    const hx = tip.x, hy = tip.y;
+    ctx.translate(hx, hy); ctx.rotate(spin + Math.PI/2);
+    ctx.fillStyle = '#e6e9f2'; ctx.strokeStyle = '#9aa0b5'; ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(-3, -10); ctx.quadraticCurveTo(20, -14, 16, 2); ctx.quadraticCurveTo(20, 16, -3, 12); ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawFighter(f){
+    if (f.dead) return;
+    const p = parts(f), c = f.color, lw = 6;
+    ctx.lineCap = 'round';
+    line(p.hip, p.neck, lw, c);                            // torso
+    if (f.legs.L) line(p.hip, p.footL, lw, c);
+    if (f.legs.R) line(p.hip, p.footR, lw, c);
+    if (f.arms.L) line(p.shL, p.handL, lw, c);
+    if (f.arms.R){ line(p.shR, p.handR, lw, c); drawAxe(p.handR, p.tip, f.spin); }
+    // head
+    ctx.fillStyle = c; ctx.beginPath(); ctx.arc(p.head.x, p.head.y, HEAD, 0, 7); ctx.fill();
+    ctx.fillStyle = '#12131c'; ctx.beginPath();
+    ctx.arc(p.head.x + f.face*5, p.head.y - 2, 2.4, 0, 7); ctx.fill();   // eye
+  }
+
+  function drawGib(g){
+    if (g.life <= 0) return;
+    ctx.save(); ctx.translate(g.x, g.y); ctx.rotate(g.ang);
+    ctx.globalAlpha = g.rest ? Math.max(0, Math.min(1, g.life)) : 1;
+    ctx.strokeStyle = g.color; ctx.lineWidth = 6; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-g.len/2, 0); ctx.lineTo(g.len/2, 0); ctx.stroke();
+    ctx.globalAlpha = 1; ctx.restore();
+  }
+
+  function drawMap(){
+    // lava in the pit
+    const lg = ctx.createLinearGradient(0, LAVA_TOP, 0, H);
+    lg.addColorStop(0, '#ff8a3c'); lg.addColorStop(0.5, '#ff4d1a'); lg.addColorStop(1, '#a01200');
+    ctx.fillStyle = lg; ctx.fillRect(PIT.l, LAVA_TOP, PIT.r - PIT.l, H - LAVA_TOP);
+    // glow lip
+    ctx.fillStyle = 'rgba(255,120,40,.25)'; ctx.fillRect(PIT.l - 6, LAVA_TOP - 3, PIT.r - PIT.l + 12, 6);
+    // ground slabs (left + right of pit)
+    ctx.fillStyle = '#2a2d3d';
+    ctx.fillRect(0, GROUND, PIT.l, H - GROUND);
+    ctx.fillRect(PIT.r, GROUND, W - PIT.r, H - GROUND);
+    ctx.fillStyle = '#3a3e54'; ctx.fillRect(0, GROUND, PIT.l, 5); ctx.fillRect(PIT.r, GROUND, W - PIT.r, 5);
+    // platforms
+    for (const p of PLATFORMS){
+      ctx.fillStyle = '#2a2d3d'; ctx.fillRect(p.x, p.y, p.w, 14);
+      ctx.fillStyle = '#3a3e54'; ctx.fillRect(p.x, p.y, p.w, 4);
+    }
+  }
+
+  function render(){
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    ctx.save();
+    ctx.translate(ox, oy); ctx.scale(scale, scale);
+    // backdrop
+    const bg = ctx.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, '#1a1c2b'); bg.addColorStop(1, '#101018');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+    drawMap();
+    for (const g of gibs) drawGib(g);
+    drawFighter(f1); drawFighter(f2);
+    if (state === 'over'){
+      ctx.fillStyle = 'rgba(10,10,18,.5)'; ctx.fillRect(0, 0, W, H);
+      const wc = winner === 1 ? f1.color : f2.color;
+      ctx.textAlign = 'center';
+      ctx.fillStyle = wc; ctx.font = '800 60px "Baloo 2", sans-serif';
+      ctx.fillText('Player ' + winner + ' wins!', W/2, H/2 - 6);
+      ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.font = '600 20px "Inter", sans-serif';
+      ctx.fillText('Press Enter or R for the next round', W/2, H/2 + 34);
+    }
+    ctx.restore();
+  }
+
+  // ---------- loop ----------
+  let last = performance.now();
+  function frame(now){
+    let dt = (now - last) / 1000; last = now; if (dt > 0.05) dt = 0.05;
+    if (state === 'fight'){
+      updateFighter(f1, dt); updateFighter(f2, dt);
+      checkCombat();
+      checkWin();
+    }
+    for (const g of gibs) updateGib(g, dt);
+    gibs = gibs.filter(g => g.life > 0);
+    render();
+    requestAnimationFrame(frame);
+  }
+  newRound();
+  requestAnimationFrame(frame);
+</script>
+  <script defer src="/cookie-consent.js"></script>
+</body>
+</html>
