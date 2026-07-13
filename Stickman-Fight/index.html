@@ -56,10 +56,23 @@
   .btn.ghost:hover { background:rgba(255,255,255,.18); }
   .setrow { display:flex; flex-direction:column; align-items:center; gap:11px; }
   .setlabel { font-size:13px; font-weight:700; letter-spacing:.04em; color:rgba(255,255,255,.7); }
-  .swatches { display:flex; gap:14px; }
-  .sw { width:54px; height:54px; border-radius:15px; border:3px solid transparent; cursor:pointer; transition:transform .12s; }
-  .sw:hover { transform:translateY(-2px); }
-  .sw.on { border-color:#fff; box-shadow:0 0 0 3px rgba(255,255,255,.2); }
+  .fighterSetup { display:flex; gap:16px; flex-wrap:wrap; justify-content:center; }
+  .fcard { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12); border-radius:16px; padding:14px 16px;
+    display:flex; flex-direction:column; align-items:center; gap:11px; min-width:210px; }
+  .fct { font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:rgba(255,255,255,.5); }
+  .colorrow { display:flex; align-items:center; gap:10px; }
+  .fcolor { width:42px; height:42px; padding:0; border:2px solid rgba(255,255,255,.25); border-radius:11px; background:none; cursor:pointer; }
+  .fcolor::-webkit-color-swatch-wrapper { padding:2px; } .fcolor::-webkit-color-swatch { border:none; border-radius:8px; }
+  .presets { display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; }
+  .psw { width:22px; height:22px; border-radius:6px; border:1px solid rgba(255,255,255,.2); cursor:pointer; padding:0; }
+  .psw:hover { transform:scale(1.12); }
+  .weapons { display:flex; gap:8px; }
+  .wp { display:flex; flex-direction:column; align-items:center; gap:3px; cursor:pointer; border:1px solid rgba(255,255,255,.14);
+    background:rgba(255,255,255,.05); border-radius:12px; padding:8px 14px; color:rgba(255,255,255,.65); transition:all .14s; }
+  .wp svg { width:26px; height:26px; }
+  .wp span { font-size:11px; font-weight:700; }
+  .wp:hover { background:rgba(255,255,255,.1); }
+  .wp.on { background:rgba(255,90,95,.18); border-color:#ff5a5f; color:#fff; }
   .keysetup { display:flex; gap:30px; flex-wrap:wrap; justify-content:center; }
   .kgroup { display:flex; flex-direction:column; gap:8px; }
   .kgt { font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:rgba(255,255,255,.45); text-align:center; margin-bottom:2px; }
@@ -133,13 +146,7 @@
 
   <div class="sheet hide" id="setup">
     <h2>Set up your fighter</h2>
-    <div class="setrow">
-      <div class="setlabel" id="colorLabel">Your colour</div>
-      <div class="swatches" id="swatches">
-        <button class="sw" data-color="#ff5b5b" style="background:#ff5b5b" aria-label="Red"></button>
-        <button class="sw" data-color="#4d90ff" style="background:#4d90ff" aria-label="Blue"></button>
-      </div>
-    </div>
+    <div class="fighterSetup" id="fighterSetup"></div>
     <div class="setrow">
       <div class="setlabel">Controls <span style="opacity:.5;font-weight:500">— click a key to change it</span></div>
       <div class="keysetup" id="keysetup"></div>
@@ -188,7 +195,7 @@
   // ---------- physics constants ----------
   const G = 1900, ACCEL = 2600, FRICTION = 0.80, MAXV = 250, JUMP = 660;
   const TORSO = 46, HEAD = 15, ARM = 26, LEG = 34;
-  const AXE_LEN = 46, SPIN = 9.5, CUTR = 14;
+  const AXE_LEN = 46, KATANA_LEN = 58, SPIN = 9.5, THRUST = 6.5, CUTR = 14;
   const RED = '#ff5b5b', BLUE = '#4d90ff';
   const K1_DEF = { left:'KeyA', right:'KeyD', jump:'Space' };
   const K2_DEF = { left:'ArrowLeft', right:'ArrowRight', jump:'ArrowUp' };
@@ -203,7 +210,12 @@
     if (code.startsWith('Digit')) return code.slice(5);
     return code.replace('Numpad','#');
   }
-  let myColor = RED, listening = null;
+  let listening = null;
+  const PRESETS = ['#ff5b5b','#4d90ff','#ffd23f','#2ec46b','#b06bff','#ff8a3c','#19c3c9','#ffffff'];
+  // per-fighter colour + weapon, chosen on the setup screen
+  let cfg = (function(){ try { const c = JSON.parse(localStorage.getItem('sf_cfg')); if (c && c.p1 && c.p2) return c; } catch(e){} return { p1:{ color:'#ff5b5b', weapon:'axe' }, p2:{ color:'#4d90ff', weapon:'axe' } }; })();
+  function saveCfg(){ try { localStorage.setItem('sf_cfg', JSON.stringify(cfg)); } catch(e){} }
+  function randHex(){ const h = '0123456789abcdef'; let s = '#'; for (let i=0;i<6;i++) s += h[(Math.random()*16)|0]; return s; }
 
   // ---------- audio ----------
   let actx = null, masterGain = null;
@@ -250,7 +262,7 @@
 
   // ---------- fighters ----------
   function makeFighter(x, src){
-    return { x, y: GROUND - LEG, vx:0, vy:0, onGround:true, coyote:0, pj:false, face:1, src, color:RED,
+    return { x, y: GROUND - LEG, vx:0, vy:0, onGround:true, coyote:0, pj:false, face:1, src, color:RED, weapon:'axe',
       arms:{ L:true, R:true }, legs:{ L:true, R:true }, spin: Math.random()*6.28, walk:0,
       dead:false, hurt:0, ai:{left:0,right:0,jump:0}, rin:{left:0,right:0,jump:0}, aiTimer:0 };
   }
@@ -258,8 +270,6 @@
   let mode = 'menu';           // '2p' | 'cpu' | 'online'
   let screen = 'menu';         // 'menu' | 'search' | 'game' | 'over'
   let net = null, isHost = false;   // online
-  let P1C = RED, P2C = BLUE;         // colours are fixed once per match, not per round
-  function pickColors(){ if (Math.random() < 0.5){ P1C = RED; P2C = BLUE; } else { P1C = BLUE; P2C = RED; } }
 
   const legCount = f => (f.legs.L?1:0) + (f.legs.R?1:0);
   const footLen  = f => legCount(f) > 0 ? LEG : 10;
@@ -271,7 +281,9 @@
     let p2src = mode === '2p' ? 'k2' : mode === 'cpu' ? 'ai' : 'remote';
     f1 = makeFighter(250, p1src); f2 = makeFighter(750, p2src);
     f1.face = 1; f2.face = -1;
-    f1.color = P1C; f2.color = P2C;         // keep the colours decided for this match
+    if (mode === 'cpu'){ cfg.p2.color = randHex(); cfg.p2.weapon = Math.random() < 0.5 ? 'axe' : 'katana'; }
+    f1.color = cfg.p1.color; f1.weapon = cfg.p1.weapon;
+    f2.color = cfg.p2.color; f2.weapon = cfg.p2.weapon;
     gibs = []; state = 'fight'; winner = 0; screen = 'game';
     $('s1').style.color = f1.color; $('s2').style.color = f2.color;
     $('score').classList.remove('hide');
@@ -309,7 +321,13 @@
     const shL = { x: neck.x - 6, y: neck.y + 6 }, shR = { x: neck.x + 6, y: neck.y + 6 };
     const handL = { x: shL.x - 4 + sw*0.6, y: shL.y + ARM };
     const handR = { x: shR.x + f.face * 12, y: shR.y + 6 };
-    const tip = { x: handR.x + Math.cos(f.spin) * AXE_LEN, y: handR.y + Math.sin(f.spin) * AXE_LEN };
+    let tip;
+    if (f.weapon === 'katana'){
+      const ext = 0.5 + 0.5 * Math.sin(f.spin);              // thrust in and out
+      tip = { x: handR.x + f.face * (14 + KATANA_LEN * ext), y: handR.y - 3 };
+    } else {
+      tip = { x: handR.x + Math.cos(f.spin) * AXE_LEN, y: handR.y + Math.sin(f.spin) * AXE_LEN };
+    }
     return { hip, neck, head, footL, footR, shL, shR, handL, handR, tip, lean };
   }
   function limbSegs(f){
@@ -382,7 +400,7 @@
 
     if (Math.abs(f.vx) > 12 && f.onGround) f.walk += Math.abs(f.vx) * dt * 0.06; else f.walk *= 0.85;
     if (dir) f.face = dir;
-    if (hasAxe(f)) f.spin += SPIN * dt;
+    if (hasAxe(f)) f.spin += (f.weapon === 'katana' ? THRUST : SPIN) * dt;
     if (f.hurt > 0) f.hurt -= dt;
 
     if (f.x > PIT.l && f.x < PIT.r && f.y + footLen(f) > LAVA_DEATH){ f.dead = true; explode(f); sfx('lava'); }
@@ -432,22 +450,37 @@
 
   // ---------- AI ----------
   function aiThink(f, o, dt){
-    if (legCount(f) === 0){ f.ai = {left:0,right:0,jump:0}; return; }
-    const dx = o.x - f.x, adx = Math.abs(dx), reach = 52;
-    let left=0, right=0, jump=0;
-    if (adx > reach){ if (dx > 0) right = 1; else left = 1; }
-    else if (adx < reach - 20){ if (dx > 0) left = 1; else right = 1; }   // don't overlap; keep axe range
-    // pit avoidance
-    const step = (right - left) * 6, nx = f.x + step;
-    const towardPitInterior = nx > PIT.l - 4 && nx < PIT.r + 4;
-    if (towardPitInterior && f.onGround){
-      if (adx > reach) jump = 1;            // hop across to keep chasing
-      else { left = 0; right = 0; }
-    }
-    if (o.y < f.y - 42 && f.onGround && adx < 130) jump = 1;   // opponent above → jump up
+    const inp = { left:0, right:0, jump:0 };
+    const lc = legCount(f);
+    if (lc === 0){ f.ai = inp; return; }
+    const dx = o.x - f.x, adx = Math.abs(dx), dir = dx > 0 ? 1 : -1;
+    const myReach = f.weapon === 'katana' ? 72 : 46;   // katana out-ranges the axe when it thrusts
+    const losing = limbsLeft(f) < limbsLeft(o);         // play safe when behind
+    const want = myReach - 6;                           // sit at the edge of my range
+    let move = 0;
+
+    if (adx > want + 14) move = dir;                    // close the gap
+    else if (adx < want - 18) move = -dir;              // too close — back out of a bad trade
+    else if (f.weapon === 'axe' && !losing) move = (Math.sin(f.spin) > 0 ? dir : 0);   // graze the spinning axe in
+    // if the katana is out (extended), press the attack; if retracting, hold
+    else if (f.weapon === 'katana' && !losing) move = (Math.sin(f.spin) > 0.3 ? dir : 0);
+
+    if (losing && adx < myReach){ move = -dir; if (f.onGround && Math.random() < 0.05) inp.jump = 1; }  // dodge away
+
+    // never step into the lava; hop across to keep chasing if the target is beyond it
+    const nx = f.x + move * 7;
+    if (move !== 0 && nx > PIT.l - 2 && nx < PIT.r + 2 && f.onGround){ if (adx > myReach) inp.jump = 1; else move = 0; }
+    // keep off the very lip so a knockback doesn't drop me in
+    if (f.onGround && f.x > PIT.l - 12 && f.x < PIT.l + 3) move = -1;
+    if (f.onGround && f.x > PIT.r - 3 && f.x < PIT.r + 12) move = 1;
+
+    if (o.y < f.y - 40 && f.onGround && adx < 160) inp.jump = 1;   // chase onto a platform / to their height
     f.aiTimer -= dt;
-    if (f.aiTimer <= 0){ f.aiTimer = 0.5 + Math.random()*1.0; if (Math.random() < 0.35 && f.onGround) jump = 1; }
-    f.ai = { left, right, jump };
+    if (f.aiTimer <= 0){ f.aiTimer = 0.5 + Math.random()*1.1; if (f.onGround && Math.random() < (losing ? 0.5 : 0.22)) inp.jump = 1; }
+
+    if (move === 0) f.face = dir;   // keep facing the enemy while holding (matters for the katana)
+    if (move > 0) inp.right = 1; else if (move < 0) inp.left = 1;
+    f.ai = inp;
   }
 
   // ---------- online netcode (authoritative host) ----------
@@ -480,9 +513,13 @@
     if (m.t === 'match'){
       isHost = !!m.host;
       $('search').classList.add('hide');
-      if (isHost){ startRound(); }   // P1C/P2C already set from the setup screen
-      else { screen = 'game'; $('score').classList.remove('hide'); $('menu').classList.add('hide'); updateKeysUI(); }
+      if (isHost){ startRound(); }   // colours/weapons applied from cfg
+      else {
+        screen = 'game'; $('score').classList.remove('hide'); $('menu').classList.add('hide'); updateKeysUI();
+        try { net.send(JSON.stringify({ t:'cfg', color: cfg.p1.color, weapon: cfg.p1.weapon })); } catch(e){}
+      }
     }
+    else if (m.t === 'cfg' && isHost && f2){ f2.color = m.color; f2.weapon = m.weapon; cfg.p2.color = m.color; cfg.p2.weapon = m.weapon; $('s2').style.color = f2.color; }
     else if (m.t === 'in' && isHost){ f2.rin = { left:m.l, right:m.r, jump:m.j }; }
     else if (m.t === 'state' && !isHost){ applyState(m.s); }
     else if (m.t === 'over' && !isHost){ /* handled via state */ }
@@ -494,18 +531,18 @@
     if (s !== lastSent){ lastSent = s; net.send(JSON.stringify({ t:'in', l:i.left, r:i.right, j:i.jump })); }
   }
   function snapshot(){
-    const pf = f => ({ x:f.x, y:f.y, vx:f.vx, vy:f.vy, fa:f.face, sp:f.spin, wk:f.walk, d:f.dead,
+    const pf = f => ({ x:f.x, y:f.y, vx:f.vx, vy:f.vy, fa:f.face, sp:f.spin, wk:f.walk, d:f.dead, wp:f.weapon,
       aL:f.arms.L, aR:f.arms.R, lL:f.legs.L, lR:f.legs.R, c:f.color });
     return { f1:pf(f1), f2:pf(f2), g: gibs.map(g=>[g.x|0,g.y|0,+g.ang.toFixed(2),g.len,g.color,g.rest?1:0]),
       st:state, sc:score, wn:winner };
   }
   function applyState(s){
     const set = (f, o) => { f.x=o.x; f.y=o.y; f.vx=o.vx; f.vy=o.vy; f.face=o.fa; f.spin=o.sp; f.walk=o.wk; f.dead=o.d;
-      f.arms.L=o.aL; f.arms.R=o.aR; f.legs.L=o.lL; f.legs.R=o.lR; f.color=o.c; };
+      f.arms.L=o.aL; f.arms.R=o.aR; f.legs.L=o.lL; f.legs.R=o.lR; f.color=o.c; f.weapon=o.wp || 'axe'; };
     if (!f1) { f1 = makeFighter(250,'remote'); f2 = makeFighter(750,'remote'); }
     set(f1, s.f1); set(f2, s.f2);
     gibs = s.g.map(a => ({ x:a[0], y:a[1], ang:a[2], len:a[3], color:a[4], rest:!!a[5], life:5, vx:0, vy:0, av:0 }));
-    if (P1C !== f1.color || P2C !== f2.color){ P1C = f1.color; P2C = f2.color; updateKeysUI(); }
+    updateKeysUI();
     $('s1').style.color = f1.color; $('s2').style.color = f2.color;
     $('s1').textContent = s.sc[0]; $('s2').textContent = s.sc[1]; score = s.sc;
     if (s.st === 'over' && screen === 'game'){ winner = s.wn; state = 'over'; screen = 'over'; sfx('win'); showOver(); }
@@ -521,13 +558,29 @@
   const other = c => c === RED ? BLUE : RED;
   document.querySelectorAll('.mode').forEach(b => b.addEventListener('click', () => { ensureSfx(); showSetup(b.dataset.mode); }));
 
+  const AXE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3c3 0 6 2.5 6 6l-4-.5L14 12 9 7l3-1L11.5 3z"/><path d="M11 9L4 20"/></svg>';
+  const KATANA_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4L8 16"/><path d="M4 20l3.5-3.5"/><path d="M6.5 14.5l3 3"/></svg>';
   function showSetup(m){
     mode = m; screen = 'setup';
     $('menu').classList.add('hide'); $('setup').classList.remove('hide');
-    $('colorLabel').textContent = m === '2p' ? 'Player 1 colour' : 'Your colour';
-    renderSwatches(); renderKeySetup();
+    renderFighterSetup(); renderKeySetup();
   }
-  function renderSwatches(){ document.querySelectorAll('#swatches .sw').forEach(s => s.classList.toggle('on', s.dataset.color === myColor)); }
+  function fcard(who, title){
+    const c = cfg[who];
+    const pres = PRESETS.map(p => '<button class="psw" data-who="'+who+'" data-c="'+p+'" style="background:'+p+'"></button>').join('');
+    return '<div class="fcard"><div class="fct">'+title+'</div>'
+      + '<div class="colorrow"><input type="color" class="fcolor" data-who="'+who+'" value="'+c.color+'"><div class="presets">'+pres+'</div></div>'
+      + '<div class="weapons">'
+      + '<button class="wp '+(c.weapon==='axe'?'on':'')+'" data-who="'+who+'" data-w="axe">'+AXE_ICON+'<span>Axe</span></button>'
+      + '<button class="wp '+(c.weapon==='katana'?'on':'')+'" data-who="'+who+'" data-w="katana">'+KATANA_ICON+'<span>Katana</span></button>'
+      + '</div></div>';
+  }
+  function renderFighterSetup(){
+    $('fighterSetup').innerHTML = mode === '2p' ? (fcard('p1','Player 1') + fcard('p2','Player 2')) : fcard('p1','You');
+    $('fighterSetup').querySelectorAll('.fcolor').forEach(inp => inp.addEventListener('input', () => { cfg[inp.dataset.who].color = inp.value; }));
+    $('fighterSetup').querySelectorAll('.psw').forEach(b => b.addEventListener('click', () => { cfg[b.dataset.who].color = b.dataset.c; renderFighterSetup(); }));
+    $('fighterSetup').querySelectorAll('.wp').forEach(b => b.addEventListener('click', () => { cfg[b.dataset.who].weapon = b.dataset.w; renderFighterSetup(); }));
+  }
   function renderKeySetup(){
     const krow = (who, act, label) => { const k = who === 'k1' ? K1 : K2;
       return '<div class="krow"><span>'+label+'</span><button class="kbtn" data-who="'+who+'" data-act="'+act+'">'+keyLabel(k[act])+'</button></div>'; };
@@ -549,12 +602,10 @@
     listening.btn.classList.remove('listening'); listening.btn.textContent = keyLabel(code);
     listening = null;
   }
-  document.querySelectorAll('#swatches .sw').forEach(s => s.addEventListener('click', () => { myColor = s.dataset.color; renderSwatches(); }));
   $('resetKeys').addEventListener('click', () => { K1 = Object.assign({}, K1_DEF); K2 = Object.assign({}, K2_DEF); saveKeys(); renderKeySetup(); });
   $('backBtn').addEventListener('click', () => { listening = null; $('setup').classList.add('hide'); toMenu(); });
   $('startBtn').addEventListener('click', () => {
-    listening = null; $('setup').classList.add('hide');
-    P1C = myColor; P2C = other(myColor);
+    listening = null; $('setup').classList.add('hide'); saveCfg();
     if (mode === 'online') startQueue(); else startRound();
   });
   $('cancelBtn').addEventListener('click', () => { if (net) { net.close(); net = null; } toMenu(); });
@@ -570,10 +621,11 @@
     if (screen !== 'game'){ el.classList.add('hide'); return; }
     el.classList.remove('hide');
     if (mode === '2p'){
-      el.innerHTML = '<b style="color:'+P1C+'">P1</b> <span class="k">A</span><span class="k">D</span><span class="k">Spc</span>'
-        + ' &nbsp; <b style="color:'+P2C+'">P2</b> <span class="k">◄</span><span class="k">►</span><span class="k">▲</span>';
+      const c1 = f1 ? f1.color : cfg.p1.color, c2 = f2 ? f2.color : cfg.p2.color;
+      el.innerHTML = '<b style="color:'+c1+'">P1</b> <span class="k">A</span><span class="k">D</span><span class="k">Spc</span>'
+        + ' &nbsp; <b style="color:'+c2+'">P2</b> <span class="k">◄</span><span class="k">►</span><span class="k">▲</span>';
     } else {
-      const c = mode === 'online' ? (isHost ? P1C : P2C) : P1C;
+      const c = mode === 'online' ? (isHost ? (f1?f1.color:cfg.p1.color) : (f2?f2.color:cfg.p1.color)) : (f1?f1.color:cfg.p1.color);
       el.innerHTML = '<b style="color:'+c+'">You</b> <span class="k">A</span><span class="k">D</span> move <span class="k">Space</span> jump';
     }
   }
@@ -587,6 +639,17 @@
     ctx.beginPath(); ctx.moveTo(2,-4); ctx.lineTo(20,-16); ctx.quadraticCurveTo(30,0,20,16); ctx.lineTo(2,4); ctx.closePath();
     ctx.fill(); ctx.stroke(); ctx.restore();
   }
+  function drawKatana(hand, tip, face){
+    // guard (tsuba) + short handle behind the hand
+    ctx.strokeStyle='#7a4a1e'; ctx.lineWidth=4; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(hand.x - face*8, hand.y + 2); ctx.lineTo(hand.x, hand.y); ctx.stroke();
+    ctx.strokeStyle='#c9932e'; ctx.lineWidth=5;
+    ctx.beginPath(); ctx.moveTo(hand.x, hand.y - 5); ctx.lineTo(hand.x, hand.y + 5); ctx.stroke();
+    // steel blade to the tip
+    ctx.strokeStyle='#dfe4f0'; ctx.lineWidth=3.4;
+    ctx.beginPath(); ctx.moveTo(hand.x, hand.y); ctx.lineTo(tip.x, tip.y); ctx.stroke();
+    ctx.fillStyle='#f2f5fb'; ctx.beginPath(); ctx.arc(tip.x, tip.y, 2.1, 0, 7); ctx.fill();
+  }
   function drawFighter(f){
     if (!f || f.dead) return;
     const p = parts(f), c = f.color; ctx.lineCap='round';
@@ -594,7 +657,7 @@
     if (f.legs.L) line(p.hip, p.footL, 6, c);
     if (f.legs.R) line(p.hip, p.footR, 6, c);
     if (f.arms.L) line(p.shL, p.handL, 6, c);
-    if (f.arms.R){ line(p.shR, p.handR, 6, c); drawAxe(p.handR, p.tip, f.spin); }
+    if (f.arms.R){ line(p.shR, p.handR, 6, c); if (f.weapon === 'katana') drawKatana(p.handR, p.tip, f.face); else drawAxe(p.handR, p.tip, f.spin); }
     ctx.fillStyle=c; ctx.beginPath(); ctx.arc(p.head.x, p.head.y, HEAD, 0, 7); ctx.fill();
     ctx.fillStyle='#12131c'; ctx.beginPath(); ctx.arc(p.head.x + f.face*5, p.head.y - 2, 2.4, 0, 7); ctx.fill();
   }
