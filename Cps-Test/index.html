@@ -76,7 +76,8 @@
 
   let dur = 5, custom = false;
   let state = 'idle';                 // idle | run | done
-  let clicks = 0, endAt = 0, raf = null;
+  let clicks = 0, endAt = 0, raf = null, doneAt = 0;
+  const LOCK_MS = 2000;               // ignore clicks for 2s after a result
 
   const bestKey = () => 'cps_best_' + dur;
   function loadBest(){ const v = +localStorage.getItem(bestKey()); return v > 0 ? v : null; }
@@ -126,12 +127,14 @@
     if (rec) localStorage.setItem(bestKey(), cps.toFixed(3));
     showBest();
     sub.textContent = clicks + ' clicks in ' + dur + 's' + (rec ? ' — new best!' : '');
-    hint.textContent = 'Click to try again';
+    doneAt = performance.now();
+    hint.textContent = 'Hold on…';
+    setTimeout(() => { if (state === 'done') hint.textContent = 'Click to try again'; }, LOCK_MS);
   }
   function hitPad(){
     if (state === 'idle') start();
     else if (state === 'run'){ clicks++; clicksEl.textContent = clicks; big.textContent = clicks; }
-    else reset(dur);
+    else { if (performance.now() - doneAt < LOCK_MS) return; reset(dur); }   // ignore clicks for 2s after the result
   }
   pad.addEventListener('pointerdown', hitPad);
 
