@@ -138,6 +138,15 @@
   .slot .acts .save:disabled { background:#2a2c38; color:#5a5e6e; cursor:default; }
   .slot .acts .load { background:#27c281; color:#08210f; } .slot .acts .load:hover { background:#22a870; }
   .slot .acts .del { background:rgba(255,255,255,.08); color:#c98; } .slot .acts .del:hover { background:rgba(226,59,46,.25); color:#fff; }
+  .soundctl { position:fixed; top:14px; right:16px; z-index:40; display:flex; align-items:center; gap:9px;
+    background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.14); border-radius:999px; padding:6px 13px 6px 9px;
+    -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); }
+  .soundctl .snd-btn { background:none; border:none; cursor:pointer; color:#e7e7ef; display:flex; padding:1px; }
+  .soundctl .snd-btn svg { width:19px; height:19px; display:block; }
+  .soundctl .snd-btn .ic-off { display:none; }
+  .soundctl.muted .snd-btn .ic-on { display:none; }
+  .soundctl.muted .snd-btn .ic-off { display:block; color:#9aa0b5; }
+  .soundctl .snd-vol { width:80px; accent-color:#6366f1; cursor:pointer; }
 </style>
 </head>
 <body>
@@ -146,6 +155,14 @@
     <span class="sep">/</span>
     <h1>Brick Break</h1>
   </nav>
+
+  <div class="soundctl" id="soundctl">
+    <button class="snd-btn" id="sndBtn" aria-label="Toggle sound">
+      <svg class="ic-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 010 7"/><path d="M18.5 5.5a9 9 0 010 13"/></svg>
+      <svg class="ic-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M22 9l-6 6"/><path d="M16 9l6 6"/></svg>
+    </button>
+    <input class="snd-vol" id="sndVol" type="range" min="0" max="100" value="70" aria-label="Volume">
+  </div>
 
   <div class="wrap">
     <div class="hud">
@@ -489,9 +506,12 @@ canvas.addEventListener('pointerdown', e => { e.preventDefault(); movePaddle(e.c
 ovBtn.addEventListener('click', e => { e.stopPropagation(); primaryAction(); });
 
 // ---------- sound effects (Web Audio, synthesized) ----------
-let actx = null;
+let actx = null, masterGain = null;
 function ensureSfx(){
-  if (!actx){ try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){ return; } }
+  if (!actx){
+    try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){ return; }
+    masterGain = actx.createGain(); masterGain.connect(actx.destination); applyGain();
+  }
   if (actx.state === 'suspended') actx.resume();
 }
 function beep(freq, dur, type, vol, slideTo){
@@ -503,7 +523,7 @@ function beep(freq, dur, type, vol, slideTo){
   if (slideTo) o.frequency.exponentialRampToValueAtTime(Math.max(20, slideTo), t + dur);
   g.gain.setValueAtTime(vol || 0.12, t);
   g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  o.connect(g); g.connect(actx.destination);
+  o.connect(g); g.connect(masterGain || actx.destination);
   o.start(t); o.stop(t + dur + 0.02);
 }
 function noiseHit(dur, vol){
@@ -513,7 +533,7 @@ function noiseHit(dur, vol){
   for (let i = 0; i < n; i++) d[i] = (Math.random()*2 - 1) * (1 - i/n);
   const s = actx.createBufferSource(); s.buffer = b;
   const g = actx.createGain(); g.gain.value = vol || 0.1;
-  s.connect(g); g.connect(actx.destination); s.start(t);
+  s.connect(g); g.connect(masterGain || actx.destination); s.start(t);
 }
 function sfx(kind, param){
   if (!actx) return;
@@ -525,6 +545,19 @@ function sfx(kind, param){
   else if (kind === 'die') beep(320, 0.42, 'sawtooth', 0.15, 80);
   else if (kind === 'gameover'){ [392, 330, 262, 196].forEach((f,i) => setTimeout(() => beep(f, 0.32, 'triangle', 0.14), i*150)); }
 }
+
+// ---- master sound control (shared widget, top-right) ----
+let sVol = 0.7, sMuted = false;
+try { const v = localStorage.getItem('rt_sound_vol'); if (v !== null) sVol = Math.max(0, Math.min(1, +v)); sMuted = localStorage.getItem('rt_sound_muted') === '1'; } catch(e){}
+function applyGain(){ if (masterGain) masterGain.gain.value = sMuted ? 0 : sVol; }
+function saveSound(){ try { localStorage.setItem('rt_sound_vol', String(sVol)); localStorage.setItem('rt_sound_muted', sMuted ? '1' : '0'); } catch(e){} }
+(function initSound(){
+  const box = document.getElementById('soundctl'), btn = document.getElementById('sndBtn'), vol = document.getElementById('sndVol');
+  function sync(){ box.classList.toggle('muted', sMuted || sVol === 0); vol.value = Math.round(sVol*100); }
+  btn.addEventListener('click', () => { ensureSfx(); sMuted = !sMuted; applyGain(); saveSound(); sync(); });
+  vol.addEventListener('input', () => { sVol = +vol.value/100; if (sVol > 0) sMuted = false; ensureSfx(); applyGain(); saveSound(); sync(); });
+  sync();
+})();
 
 function primaryAction(){
   ensureSfx();

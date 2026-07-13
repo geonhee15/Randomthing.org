@@ -59,6 +59,16 @@
     font-family:"Baloo 2",sans-serif; font-weight:800; font-size:19px; color:#fff; background:#ff5a5f; border:none; border-radius:16px;
     padding:14px 40px; cursor:pointer; box-shadow:0 10px 26px rgba(255,90,95,.38); transition:transform .1s, background .15s; }
   .go:hover { background:#f04a50; } .go:active { transform:translateX(-50%) translateY(2px); }
+
+  .soundctl { position:fixed; top:14px; right:16px; z-index:40; display:flex; align-items:center; gap:9px;
+    background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.14); border-radius:999px; padding:6px 13px 6px 9px;
+    -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); }
+  .soundctl .snd-btn { background:none; border:none; cursor:pointer; color:#eef0ff; display:flex; padding:1px; }
+  .soundctl .snd-btn svg { width:19px; height:19px; display:block; }
+  .soundctl .snd-btn .ic-off { display:none; }
+  .soundctl.muted .snd-btn .ic-on { display:none; }
+  .soundctl.muted .snd-btn .ic-off { display:block; color:#9aa0c8; }
+  .soundctl .snd-vol { width:80px; accent-color:#7b83ff; cursor:pointer; }
 </style>
 </head>
 <body>
@@ -66,6 +76,14 @@
     <a class="brand" href="/">Randomthing<span class="org">.org</span></a>
     <span class="sep">/</span><h1>Rock Paper Scissors</h1>
   </nav>
+
+  <div class="soundctl" id="soundctl">
+    <button class="snd-btn" id="sndBtn" aria-label="Toggle sound">
+      <svg class="ic-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 010 7"/><path d="M18.5 5.5a9 9 0 010 13"/></svg>
+      <svg class="ic-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M22 9l-6 6"/><path d="M16 9l6 6"/></svg>
+    </button>
+    <input class="snd-vol" id="sndVol" type="range" min="0" max="100" value="70" aria-label="Volume">
+  </div>
 
   <div class="score">You <b id="win">0</b> · Draw <b id="draw">0</b> · Robot <b id="loss">0</b><button class="rreset" id="rreset" title="Reset score">reset</button></div>
 
@@ -110,6 +128,47 @@
   function saveScore(){ try { localStorage.setItem('rps_score', JSON.stringify(score)); } catch(e){} renderScore(); }
   renderScore();
 
+  // ---- audio ----
+  let actx = null, masterGain = null;
+  function ensureSfx(){
+    if (!actx){
+      try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){ return; }
+      masterGain = actx.createGain(); masterGain.connect(actx.destination); applyGain();
+    }
+    if (actx.state === 'suspended') actx.resume();
+  }
+  function beep(freq, dur, type, vol, slideTo){
+    if (!actx) return;
+    const t = actx.currentTime, o = actx.createOscillator(), g = actx.createGain();
+    o.type = type || 'sine'; o.frequency.setValueAtTime(freq, t);
+    if (slideTo) o.frequency.exponentialRampToValueAtTime(Math.max(20, slideTo), t + dur);
+    g.gain.setValueAtTime(vol || 0.14, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(masterGain || actx.destination); o.start(t); o.stop(t + dur + 0.02);
+  }
+  function sfx(kind){
+    if (!actx) return;
+    if (kind === 'pick') beep(520, 0.05, 'square', 0.10);
+    else if (kind === 'tick') beep(440, 0.09, 'triangle', 0.12);
+    else if (kind === 'go') beep(680, 0.14, 'square', 0.13);
+    else if (kind === 'reveal') beep(190, 0.18, 'sawtooth', 0.16, 95);
+    else if (kind === 'win') [523,659,784,1047].forEach((f,i) => setTimeout(() => beep(f, 0.14, 'triangle', 0.14), i*80));
+    else if (kind === 'lose') [392,330,262].forEach((f,i) => setTimeout(() => beep(f, 0.20, 'sawtooth', 0.12, f*0.7), i*110));
+    else if (kind === 'draw') [440,440].forEach((f,i) => setTimeout(() => beep(f, 0.12, 'square', 0.11), i*130));
+  }
+
+  // ---- master sound control (shared widget, top-right) ----
+  let sVol = 0.7, sMuted = false;
+  try { const v = localStorage.getItem('rt_sound_vol'); if (v !== null) sVol = Math.max(0, Math.min(1, +v)); sMuted = localStorage.getItem('rt_sound_muted') === '1'; } catch(e){}
+  function applyGain(){ if (masterGain) masterGain.gain.value = sMuted ? 0 : sVol; }
+  function saveSound(){ try { localStorage.setItem('rt_sound_vol', String(sVol)); localStorage.setItem('rt_sound_muted', sMuted ? '1' : '0'); } catch(e){} }
+  (function initSound(){
+    const box = $('soundctl'), btn = $('sndBtn'), vol = $('sndVol');
+    function sync(){ box.classList.toggle('muted', sMuted || sVol === 0); vol.value = Math.round(sVol*100); }
+    btn.addEventListener('click', () => { ensureSfx(); sMuted = !sMuted; applyGain(); saveSound(); sync(); });
+    vol.addEventListener('input', () => { sVol = +vol.value/100; if (sVol > 0) sMuted = false; ensureSfx(); applyGain(); saveSound(); sync(); });
+    sync();
+  })();
+
   let state = 'idle';           // idle | counting | reveal
   let myPick = null, count = 0, timer = null;
 
@@ -118,29 +177,30 @@
 
   document.querySelectorAll('.pick').forEach(b => b.addEventListener('click', () => {
     if (state !== 'counting') return;
-    myPick = b.dataset.move; highlight();
+    myPick = b.dataset.move; highlight(); sfx('pick');
     $('tip').textContent = 'Locked in ' + LABEL[myPick] + ' — you can still change it';
   }));
 
   function startRound(){
+    ensureSfx();
     state = 'counting'; myPick = null; count = 3;
     highlight(); setPicksEnabled(true);
     $('hands').style.display = 'none';
     $('msg').textContent = 'Choose your move!';
     $('tip').textContent = 'Tap a move before the countdown hits zero.';
-    $('count').textContent = count;
+    $('count').textContent = count; sfx('tick');
     $('goBtn').style.visibility = 'hidden';
     clearInterval(timer);
     timer = setInterval(() => {
       count--;
-      if (count > 0){ $('count').textContent = count; }
+      if (count > 0){ $('count').textContent = count; sfx('tick'); }
       else { clearInterval(timer); reveal(); }
     }, 1000);
   }
 
   function reveal(){
     state = 'reveal';
-    setPicksEnabled(false);
+    setPicksEnabled(false); sfx('reveal');
     $('count').textContent = '';
     const auto = !myPick;
     if (auto) myPick = ['rock','paper','scissors'][Math.floor(Math.random()*3)];
@@ -159,9 +219,9 @@
     you.className = 'disc' + (outcome === 'win' ? ' win' : outcome === 'lose' ? ' lose' : '');
     robd.className = 'disc' + (outcome === 'lose' ? ' win' : outcome === 'win' ? ' lose' : '');
 
-    if (outcome === 'win'){ score.w++; $('msg').textContent = 'You win!'; }
-    else if (outcome === 'lose'){ score.l++; $('msg').textContent = 'Robot wins'; }
-    else { score.d++; $('msg').textContent = "It's a draw"; }
+    if (outcome === 'win'){ score.w++; $('msg').textContent = 'You win!'; setTimeout(() => sfx('win'), 200); }
+    else if (outcome === 'lose'){ score.l++; $('msg').textContent = 'Robot wins'; setTimeout(() => sfx('lose'), 200); }
+    else { score.d++; $('msg').textContent = "It's a draw"; setTimeout(() => sfx('draw'), 200); }
     saveScore();
 
     $('tip').textContent = (auto ? 'No pick — random ' + LABEL[myPick] + ' played. ' : '')
