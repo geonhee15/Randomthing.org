@@ -57,7 +57,15 @@
   .spin { width:38px; height:38px; border-radius:50%; border:4px solid rgba(255,255,255,.15); border-top-color:#7bdc96; animation:sp .8s linear infinite; }
   @keyframes sp { to { transform:rotate(360deg); } }
 
-  .soundctl { position:fixed; top:14px; right:16px; z-index:40; display:flex; align-items:center; gap:9px;
+  .topbar-r { position:fixed; top:12px; right:16px; z-index:40; display:flex; align-items:center; gap:10px; }
+  .keys { display:flex; align-items:center; gap:6px; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.14);
+    border-radius:999px; padding:6px 13px; font-size:12px; font-weight:600; color:rgba(255,255,255,.7);
+    -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); }
+  .keys.hide { display:none; }
+  .keys b { font-weight:800; }
+  .keys .k { font-family:"Space Grotesk",monospace; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.16);
+    border-radius:5px; padding:1px 5px; font-size:11px; font-weight:700; color:#fff; }
+  .soundctl { display:flex; align-items:center; gap:9px;
     background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.14); border-radius:999px; padding:6px 13px 6px 9px;
     -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); }
   .soundctl .snd-btn { background:none; border:none; cursor:pointer; color:#e8eaf2; display:flex; padding:1px; }
@@ -74,19 +82,20 @@
     <span class="sep">/</span><h1>Stickman Fight</h1>
   </nav>
 
-  <div class="soundctl" id="soundctl">
-    <button class="snd-btn" id="sndBtn" aria-label="Toggle sound">
-      <svg class="ic-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 010 7"/><path d="M18.5 5.5a9 9 0 010 13"/></svg>
-      <svg class="ic-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M22 9l-6 6"/><path d="M16 9l6 6"/></svg>
-    </button>
-    <input class="snd-vol" id="sndVol" type="range" min="0" max="100" value="70" aria-label="Volume">
+  <div class="topbar-r">
+    <div class="keys hide" id="keys"></div>
+    <div class="soundctl" id="soundctl">
+      <button class="snd-btn" id="sndBtn" aria-label="Toggle sound">
+        <svg class="ic-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 010 7"/><path d="M18.5 5.5a9 9 0 010 13"/></svg>
+        <svg class="ic-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H3v6h3l5 4V5z"/><path d="M22 9l-6 6"/><path d="M16 9l6 6"/></svg>
+      </button>
+      <input class="snd-vol" id="sndVol" type="range" min="0" max="100" value="70" aria-label="Volume">
+    </div>
   </div>
 
   <div class="score hide" id="score"><span class="p1" id="s1">0</span><span class="dash">vs</span><span class="p2" id="s2">0</span></div>
 
   <canvas id="cv"></canvas>
-
-  <div class="hint hide" id="hint"></div>
 
   <!-- menu / status sheet -->
   <div class="sheet" id="menu">
@@ -203,6 +212,8 @@
   let mode = 'menu';           // '2p' | 'cpu' | 'online'
   let screen = 'menu';         // 'menu' | 'search' | 'game' | 'over'
   let net = null, isHost = false;   // online
+  let P1C = RED, P2C = BLUE;         // colours are fixed once per match, not per round
+  function pickColors(){ if (Math.random() < 0.5){ P1C = RED; P2C = BLUE; } else { P1C = BLUE; P2C = RED; } }
 
   const legCount = f => (f.legs.L?1:0) + (f.legs.R?1:0);
   const footLen  = f => legCount(f) > 0 ? LEG : 10;
@@ -214,12 +225,12 @@
     let p2src = mode === '2p' ? 'k2' : mode === 'cpu' ? 'ai' : 'remote';
     f1 = makeFighter(250, p1src); f2 = makeFighter(750, p2src);
     f1.face = 1; f2.face = -1;
-    if (Math.random() < 0.5){ f1.color = RED; f2.color = BLUE; } else { f1.color = BLUE; f2.color = RED; }
+    f1.color = P1C; f2.color = P2C;         // keep the colours decided for this match
     gibs = []; state = 'fight'; winner = 0; screen = 'game';
     $('s1').style.color = f1.color; $('s2').style.color = f2.color;
-    $('score').classList.remove('hide'); $('hint').classList.remove('hide');
+    $('score').classList.remove('hide');
     $('menu').classList.add('hide'); $('search').classList.add('hide'); $('over').classList.add('hide');
-    if (mode !== 'online') localHint();
+    updateKeysUI();
     ensureSfx(); sfx('start');
   }
 
@@ -413,7 +424,7 @@
     state = 'over'; screen = 'over';
     $('overTitle').textContent = 'Opponent left'; $('overTitle').style.color = '#fff';
     $('overSub').textContent = 'They disconnected.'; $('againBtn').style.display = 'none';
-    $('over').classList.remove('hide'); $('score').classList.add('hide'); $('hint').classList.add('hide');
+    $('over').classList.remove('hide'); $('score').classList.add('hide'); $('keys').classList.add('hide');
     net = null;
   }
   let lastSent = '';
@@ -422,9 +433,8 @@
     if (m.t === 'match'){
       isHost = !!m.host;
       $('search').classList.add('hide');
-      if (isHost) startRound();
-      else { screen = 'game'; $('score').classList.remove('hide'); $('hint').classList.remove('hide'); $('menu').classList.add('hide'); }
-      $('hint').innerHTML = 'You are ' + (isHost ? 'the <b>left</b>' : 'the <b>right</b>') + ' fighter — <span class="k">A</span> <span class="k">D</span> move · <span class="k">Space</span> jump';
+      if (isHost){ pickColors(); startRound(); }
+      else { screen = 'game'; $('score').classList.remove('hide'); $('menu').classList.add('hide'); updateKeysUI(); }
     }
     else if (m.t === 'in' && isHost){ f2.rin = { left:m.l, right:m.r, jump:m.j }; }
     else if (m.t === 'state' && !isHost){ applyState(m.s); }
@@ -448,6 +458,7 @@
     if (!f1) { f1 = makeFighter(250,'remote'); f2 = makeFighter(750,'remote'); }
     set(f1, s.f1); set(f2, s.f2);
     gibs = s.g.map(a => ({ x:a[0], y:a[1], ang:a[2], len:a[3], color:a[4], rest:!!a[5], life:5, vx:0, vy:0, av:0 }));
+    if (P1C !== f1.color || P2C !== f2.color){ P1C = f1.color; P2C = f2.color; updateKeysUI(); }
     $('s1').style.color = f1.color; $('s2').style.color = f2.color;
     $('s1').textContent = s.sc[0]; $('s2').textContent = s.sc[1]; score = s.sc;
     if (s.st === 'over' && screen === 'game'){ winner = s.wn; state = 'over'; screen = 'over'; sfx('win'); showOver(); }
@@ -463,7 +474,7 @@
   document.querySelectorAll('.mode').forEach(b => b.addEventListener('click', () => {
     ensureSfx(); const m = b.dataset.mode;
     if (m === 'online') startQueue();
-    else { mode = m; startRound(); }
+    else { mode = m; pickColors(); startRound(); }
   }));
   $('cancelBtn').addEventListener('click', () => { if (net) { net.close(); net = null; } toMenu(); });
   $('againBtn').addEventListener('click', () => { if (mode !== 'online') startRound(); });
@@ -471,12 +482,19 @@
   function toMenu(){
     mode = 'menu'; screen = 'menu';
     $('menu').classList.remove('hide'); $('over').classList.add('hide'); $('search').classList.add('hide');
-    $('score').classList.add('hide'); $('hint').classList.add('hide');
+    $('score').classList.add('hide'); updateKeysUI();
   }
-  function localHint(){
-    $('hint').innerHTML = mode === '2p'
-      ? '<b>P1</b> <span class="k">A</span> <span class="k">D</span> · <span class="k">Space</span> &nbsp;•&nbsp; <b>P2</b> <span class="k">◄</span> <span class="k">►</span> · <span class="k">▲</span> &nbsp;•&nbsp; ram your axe into a limb — leave only a head to win'
-      : '<b>You</b> <span class="k">A</span> <span class="k">D</span> move · <span class="k">Space</span> jump &nbsp;•&nbsp; chop the computer down to a head to win';
+  function updateKeysUI(){
+    const el = $('keys');
+    if (screen !== 'game'){ el.classList.add('hide'); return; }
+    el.classList.remove('hide');
+    if (mode === '2p'){
+      el.innerHTML = '<b style="color:'+P1C+'">P1</b> <span class="k">A</span><span class="k">D</span><span class="k">Spc</span>'
+        + ' &nbsp; <b style="color:'+P2C+'">P2</b> <span class="k">◄</span><span class="k">►</span><span class="k">▲</span>';
+    } else {
+      const c = mode === 'online' ? (isHost ? P1C : P2C) : P1C;
+      el.innerHTML = '<b style="color:'+c+'">You</b> <span class="k">A</span><span class="k">D</span> move <span class="k">Space</span> jump';
+    }
   }
 
   // ---------- render ----------
