@@ -58,7 +58,7 @@
   .setlabel { font-size:13px; font-weight:700; letter-spacing:.04em; color:rgba(255,255,255,.7); }
   .fighterSetup { display:flex; gap:16px; flex-wrap:wrap; justify-content:center; }
   .fcard { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12); border-radius:16px; padding:14px 16px;
-    display:flex; flex-direction:column; align-items:center; gap:11px; min-width:210px; }
+    display:flex; flex-direction:column; align-items:center; gap:11px; width:262px; }
   .fct { font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:rgba(255,255,255,.5); }
   .colorrow { display:flex; align-items:center; gap:10px; }
   .fcolor { width:42px; height:42px; padding:0; border:2px solid rgba(255,255,255,.25); border-radius:11px; background:none; cursor:pointer; }
@@ -66,11 +66,11 @@
   .presets { display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; }
   .psw { width:22px; height:22px; border-radius:6px; border:1px solid rgba(255,255,255,.2); cursor:pointer; padding:0; }
   .psw:hover { transform:scale(1.12); }
-  .weapons { display:flex; gap:8px; }
+  .weapons { display:flex; flex-wrap:wrap; gap:7px; justify-content:center; }
   .wp { display:flex; flex-direction:column; align-items:center; gap:3px; cursor:pointer; border:1px solid rgba(255,255,255,.14);
-    background:rgba(255,255,255,.05); border-radius:12px; padding:8px 14px; color:rgba(255,255,255,.65); transition:all .14s; }
-  .wp svg { width:26px; height:26px; }
-  .wp span { font-size:11px; font-weight:700; }
+    background:rgba(255,255,255,.05); border-radius:11px; padding:7px 9px; width:74px; color:rgba(255,255,255,.65); transition:all .14s; }
+  .wp svg { width:23px; height:23px; }
+  .wp span { font-size:10.5px; font-weight:700; }
   .wp:hover { background:rgba(255,255,255,.1); }
   .wp.on { background:rgba(255,90,95,.18); border-color:#ff5a5f; color:#fff; }
   .keysetup { display:flex; gap:30px; flex-wrap:wrap; justify-content:center; }
@@ -195,7 +195,10 @@
   // ---------- physics constants ----------
   const G = 1900, ACCEL = 2600, FRICTION = 0.80, MAXV = 250, JUMP = 660;
   const TORSO = 46, HEAD = 15, ARM = 26, LEG = 34;
-  const AXE_LEN = 46, KATANA_LEN = 58, SPIN = 9.5, THRUST = 6.5, CUTR = 14;
+  const AXE_LEN = 46, KATANA_LEN = 58, SPEAR_LEN = 88, HAMMER_LEN = 40;
+  const SPIN = 9.5, THRUST = 6.5, THRUST_SLOW = 4.2, HAMMER_SPD = 5.2;
+  const SHURIKEN_CD = 0.55, SHURIKEN_SPD = 560;
+  const CUTR = 14;
   const RED = '#ff5b5b', BLUE = '#4d90ff';
   const K1_DEF = { left:'KeyA', right:'KeyD', jump:'Space' };
   const K2_DEF = { left:'ArrowLeft', right:'ArrowRight', jump:'ArrowUp' };
@@ -263,10 +266,10 @@
   // ---------- fighters ----------
   function makeFighter(x, src){
     return { x, y: GROUND - LEG, vx:0, vy:0, onGround:true, coyote:0, pj:false, face:1, src, color:RED, weapon:'axe',
-      arms:{ L:true, R:true }, legs:{ L:true, R:true }, spin: Math.random()*6.28, walk:0,
+      arms:{ L:true, R:true }, legs:{ L:true, R:true }, spin: Math.random()*6.28, walk:0, fireTimer:0.3,
       dead:false, hurt:0, ai:{left:0,right:0,jump:0}, rin:{left:0,right:0,jump:0}, aiTimer:0 };
   }
-  let f1, f2, gibs = [], state = 'fight', winner = 0, score = [0,0];
+  let f1, f2, gibs = [], projs = [], state = 'fight', winner = 0, score = [0,0];
   let mode = 'menu';           // '2p' | 'cpu' | 'online'
   let screen = 'menu';         // 'menu' | 'search' | 'game' | 'over'
   let net = null, isHost = false;   // online
@@ -281,10 +284,10 @@
     let p2src = mode === '2p' ? 'k2' : mode === 'cpu' ? 'ai' : 'remote';
     f1 = makeFighter(250, p1src); f2 = makeFighter(750, p2src);
     f1.face = 1; f2.face = -1;
-    if (mode === 'cpu'){ cfg.p2.color = randHex(); cfg.p2.weapon = Math.random() < 0.5 ? 'axe' : 'katana'; }
+    if (mode === 'cpu'){ cfg.p2.color = randHex(); cfg.p2.weapon = WEAPONS[(Math.random()*WEAPONS.length)|0].id; }
     f1.color = cfg.p1.color; f1.weapon = cfg.p1.weapon;
     f2.color = cfg.p2.color; f2.weapon = cfg.p2.weapon;
-    gibs = []; state = 'fight'; winner = 0; screen = 'game';
+    gibs = []; projs = []; state = 'fight'; winner = 0; screen = 'game';
     $('s1').style.color = f1.color; $('s2').style.color = f2.color;
     $('score').classList.remove('hide');
     $('menu').classList.add('hide'); $('search').classList.add('hide'); $('over').classList.add('hide');
@@ -322,12 +325,12 @@
     const handL = { x: shL.x - 4 + sw*0.6, y: shL.y + ARM };
     const handR = { x: shR.x + f.face * 12, y: shR.y + 6 };
     let tip;
-    if (f.weapon === 'katana'){
-      const ext = 0.5 + 0.5 * Math.sin(f.spin);              // thrust in and out
-      tip = { x: handR.x + f.face * (14 + KATANA_LEN * ext), y: handR.y - 3 };
-    } else {
-      tip = { x: handR.x + Math.cos(f.spin) * AXE_LEN, y: handR.y + Math.sin(f.spin) * AXE_LEN };
-    }
+    const w = f.weapon;
+    if (w === 'katana'){ const ext = 0.5 + 0.5*Math.sin(f.spin); tip = { x: handR.x + f.face*(14 + KATANA_LEN*ext), y: handR.y - 3 }; }
+    else if (w === 'spear'){ const ext = 0.5 + 0.5*Math.sin(f.spin); tip = { x: handR.x + f.face*(20 + SPEAR_LEN*ext), y: handR.y - 2 }; }
+    else if (w === 'hammer'){ const a = -Math.PI/2 + f.face * Math.sin(f.spin) * 1.7; tip = { x: handR.x + Math.cos(a)*HAMMER_LEN, y: handR.y + Math.sin(a)*HAMMER_LEN }; }
+    else if (w === 'shuriken'){ tip = { x: handR.x + f.face*10, y: handR.y }; }   // held star; damage is via thrown projectiles
+    else { tip = { x: handR.x + Math.cos(f.spin)*AXE_LEN, y: handR.y + Math.sin(f.spin)*AXE_LEN }; }
     return { hip, neck, head, footL, footR, shL, shR, handL, handR, tip, lean };
   }
   function limbSegs(f){
@@ -366,6 +369,29 @@
         ang:Math.random()*6.28, av:(Math.random()<0.5?-1:1)*(10+Math.random()*14), color:f.color, life:5, rest:false });
   }
 
+  // ---------- shuriken (thrown projectiles) ----------
+  function fireShuriken(f){
+    if (f.dead) return;
+    const p = parts(f);
+    projs.push({ x:p.handR.x, y:p.handR.y, vx:f.face*SHURIKEN_SPD, vy:-30, ang:0, av:26, owner:(f===f1?1:2), color:f.color, life:2.5 });
+  }
+  function pointSegDist(px, py, a, b){
+    const abx=b.x-a.x, aby=b.y-a.y, apx=px-a.x, apy=py-a.y;
+    const t = Math.max(0, Math.min(1, (apx*abx+apy*aby)/((abx*abx+aby*aby)||1)));
+    return Math.hypot(a.x+abx*t-px, a.y+aby*t-py);
+  }
+  function updateProj(pr, dt){
+    pr.vy += G*0.22*dt; pr.x += pr.vx*dt; pr.y += pr.vy*dt; pr.ang += pr.av*dt; pr.life -= dt;
+    const o = pr.owner === 1 ? f2 : f1;
+    if (o && !o.dead){
+      for (const seg of limbSegs(o)){
+        if (pointSegDist(pr.x, pr.y, seg.a, seg.b) < 12){ chop(o, seg.k, Math.sign(pr.vx) || 1); pr.life = 0; break; }
+      }
+    }
+    if (pr.x < -20 || pr.x > W+20 || pr.y > H+20) pr.life = 0;
+    if (pr.x > PIT.l && pr.x < PIT.r && pr.y > LAVA_DEATH) pr.life = 0;
+  }
+
   // ---------- landing (generous: coyote time, edge grace, crossing detection) ----------
   function land(f, prevBottom){
     f.onGround = false;
@@ -400,7 +426,10 @@
 
     if (Math.abs(f.vx) > 12 && f.onGround) f.walk += Math.abs(f.vx) * dt * 0.06; else f.walk *= 0.85;
     if (dir) f.face = dir;
-    if (hasAxe(f)) f.spin += (f.weapon === 'katana' ? THRUST : SPIN) * dt;
+    if (hasAxe(f)){
+      if (f.weapon === 'shuriken'){ f.spin += 8*dt; f.fireTimer -= dt; if (f.fireTimer <= 0){ f.fireTimer = SHURIKEN_CD; fireShuriken(f); } }
+      else f.spin += (f.weapon === 'katana' ? THRUST : f.weapon === 'spear' ? THRUST_SLOW : f.weapon === 'hammer' ? HAMMER_SPD : SPIN) * dt;
+    }
     if (f.hurt > 0) f.hurt -= dt;
 
     if (f.x > PIT.l && f.x < PIT.r && f.y + footLen(f) > LAVA_DEATH){ f.dead = true; explode(f); sfx('lava'); }
@@ -416,7 +445,7 @@
   }
   function checkCombat(){
     for (const [f, o] of [[f1,f2],[f2,f1]]){
-      if (f.dead || o.dead || !hasAxe(f)) continue;
+      if (f.dead || o.dead || !hasAxe(f) || f.weapon === 'shuriken') continue;
       const p = parts(f), blade = { a: p.handR, b: p.tip };
       for (const seg of limbSegs(o)){
         if (segDist(blade.a, blade.b, seg.a, seg.b) < CUTR){ chop(o, seg.k, Math.sign(o.x - f.x) || 1); break; }
@@ -454,7 +483,7 @@
     const lc = legCount(f);
     if (lc === 0){ f.ai = inp; return; }
     const dx = o.x - f.x, adx = Math.abs(dx), dir = dx > 0 ? 1 : -1;
-    const myReach = f.weapon === 'katana' ? 72 : 46;   // katana out-ranges the axe when it thrusts
+    const myReach = f.weapon === 'shuriken' ? 260 : f.weapon === 'spear' ? 100 : f.weapon === 'katana' ? 72 : f.weapon === 'hammer' ? 52 : 46;
     const losing = limbsLeft(f) < limbsLeft(o);         // play safe when behind
     const want = myReach - 6;                           // sit at the edge of my range
     let move = 0;
@@ -534,6 +563,7 @@
     const pf = f => ({ x:f.x, y:f.y, vx:f.vx, vy:f.vy, fa:f.face, sp:f.spin, wk:f.walk, d:f.dead, wp:f.weapon,
       aL:f.arms.L, aR:f.arms.R, lL:f.legs.L, lR:f.legs.R, c:f.color });
     return { f1:pf(f1), f2:pf(f2), g: gibs.map(g=>[g.x|0,g.y|0,+g.ang.toFixed(2),g.len,g.color,g.rest?1:0]),
+      p: projs.map(pr=>[pr.x|0,pr.y|0,+pr.ang.toFixed(2),pr.color]),
       st:state, sc:score, wn:winner };
   }
   function applyState(s){
@@ -542,6 +572,7 @@
     if (!f1) { f1 = makeFighter(250,'remote'); f2 = makeFighter(750,'remote'); }
     set(f1, s.f1); set(f2, s.f2);
     gibs = s.g.map(a => ({ x:a[0], y:a[1], ang:a[2], len:a[3], color:a[4], rest:!!a[5], life:5, vx:0, vy:0, av:0 }));
+    projs = (s.p || []).map(a => ({ x:a[0], y:a[1], ang:a[2], color:a[3], life:2, vx:0, vy:0, av:0, owner:1 }));
     updateKeysUI();
     $('s1').style.color = f1.color; $('s2').style.color = f2.color;
     $('s1').textContent = s.sc[0]; $('s2').textContent = s.sc[1]; score = s.sc;
@@ -560,6 +591,10 @@
 
   const AXE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3c3 0 6 2.5 6 6l-4-.5L14 12 9 7l3-1L11.5 3z"/><path d="M11 9L4 20"/></svg>';
   const KATANA_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 4L8 16"/><path d="M4 20l3.5-3.5"/><path d="M6.5 14.5l3 3"/></svg>';
+  const SPEAR_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21L21 3"/><path d="M21 3l-1 5-4-1z" fill="currentColor"/></svg>';
+  const HAMMER_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="12" y="3" width="9" height="6" rx="1"/><path d="M13 8L4 20"/></svg>';
+  const SHURIKEN_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3l2.5 7L22 12l-7.5 2L12 21l-2.5-7L2 12l7.5-2z"/></svg>';
+  const WEAPONS = [ { id:'axe', name:'Axe', icon:AXE_ICON }, { id:'katana', name:'Katana', icon:KATANA_ICON }, { id:'spear', name:'Spear', icon:SPEAR_ICON }, { id:'hammer', name:'Hammer', icon:HAMMER_ICON }, { id:'shuriken', name:'Shuriken', icon:SHURIKEN_ICON } ];
   function showSetup(m){
     mode = m; screen = 'setup';
     $('menu').classList.add('hide'); $('setup').classList.remove('hide');
@@ -571,8 +606,7 @@
     return '<div class="fcard"><div class="fct">'+title+'</div>'
       + '<div class="colorrow"><input type="color" class="fcolor" data-who="'+who+'" value="'+c.color+'"><div class="presets">'+pres+'</div></div>'
       + '<div class="weapons">'
-      + '<button class="wp '+(c.weapon==='axe'?'on':'')+'" data-who="'+who+'" data-w="axe">'+AXE_ICON+'<span>Axe</span></button>'
-      + '<button class="wp '+(c.weapon==='katana'?'on':'')+'" data-who="'+who+'" data-w="katana">'+KATANA_ICON+'<span>Katana</span></button>'
+      + WEAPONS.map(w => '<button class="wp '+(c.weapon===w.id?'on':'')+'" data-who="'+who+'" data-w="'+w.id+'">'+w.icon+'<span>'+w.name+'</span></button>').join('')
       + '</div></div>';
   }
   function renderFighterSetup(){
@@ -650,6 +684,33 @@
     ctx.beginPath(); ctx.moveTo(hand.x, hand.y); ctx.lineTo(tip.x, tip.y); ctx.stroke();
     ctx.fillStyle='#f2f5fb'; ctx.beginPath(); ctx.arc(tip.x, tip.y, 2.1, 0, 7); ctx.fill();
   }
+  function drawSpear(hand, tip){
+    const ang = Math.atan2(tip.y-hand.y, tip.x-hand.x);
+    ctx.strokeStyle='#8a6a3a'; ctx.lineWidth=3.4; ctx.lineCap='round';   // wooden shaft
+    ctx.beginPath(); ctx.moveTo(hand.x, hand.y); ctx.lineTo(tip.x, tip.y); ctx.stroke();
+    ctx.save(); ctx.translate(tip.x, tip.y); ctx.rotate(ang);            // steel head
+    ctx.fillStyle='#dfe4f0'; ctx.beginPath(); ctx.moveTo(10,0); ctx.lineTo(-4,-5); ctx.lineTo(-4,5); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+  function drawHammer(hand, tip){
+    const ang = Math.atan2(tip.y-hand.y, tip.x-hand.x);
+    ctx.strokeStyle='#6a4a2a'; ctx.lineWidth=4; ctx.lineCap='round';     // handle
+    ctx.beginPath(); ctx.moveTo(hand.x, hand.y); ctx.lineTo(tip.x, tip.y); ctx.stroke();
+    ctx.save(); ctx.translate(tip.x, tip.y); ctx.rotate(ang);            // heavy head
+    ctx.fillStyle='#9aa0b5'; ctx.strokeStyle='#6a6f7e'; ctx.lineWidth=1.5;
+    ctx.fillRect(-3,-11,15,22); ctx.strokeRect(-3,-11,15,22);
+    ctx.restore();
+  }
+  function drawStar(x, y, ang, color){
+    ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
+    ctx.fillStyle='#c8ccd8'; ctx.strokeStyle='#6a6f7e'; ctx.lineWidth=1;
+    ctx.beginPath();
+    for (let i=0;i<4;i++){ const a=i*Math.PI/2; ctx.lineTo(Math.cos(a)*9, Math.sin(a)*9); ctx.lineTo(Math.cos(a+Math.PI/4)*3.2, Math.sin(a+Math.PI/4)*3.2); }
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = color; ctx.beginPath(); ctx.arc(0,0,2.2,0,7); ctx.fill();
+    ctx.restore();
+  }
+  function drawProj(pr){ drawStar(pr.x, pr.y, pr.ang, pr.color); }
   function drawFighter(f){
     if (!f || f.dead) return;
     const p = parts(f), c = f.color; ctx.lineCap='round';
@@ -657,7 +718,14 @@
     if (f.legs.L) line(p.hip, p.footL, 6, c);
     if (f.legs.R) line(p.hip, p.footR, 6, c);
     if (f.arms.L) line(p.shL, p.handL, 6, c);
-    if (f.arms.R){ line(p.shR, p.handR, 6, c); if (f.weapon === 'katana') drawKatana(p.handR, p.tip, f.face); else drawAxe(p.handR, p.tip, f.spin); }
+    if (f.arms.R){
+      line(p.shR, p.handR, 6, c);
+      const w = f.weapon;
+      if (w === 'katana' || w === 'spear') (w === 'spear' ? drawSpear : drawKatana)(p.handR, p.tip, f.face);
+      else if (w === 'hammer') drawHammer(p.handR, p.tip);
+      else if (w === 'shuriken') drawStar(p.handR.x + f.face*8, p.handR.y, f.spin, c);
+      else drawAxe(p.handR, p.tip, f.spin);
+    }
     ctx.fillStyle=c; ctx.beginPath(); ctx.arc(p.head.x, p.head.y, HEAD, 0, 7); ctx.fill();
     ctx.fillStyle='#12131c'; ctx.beginPath(); ctx.arc(p.head.x + f.face*5, p.head.y - 2, 2.4, 0, 7); ctx.fill();
   }
@@ -684,7 +752,7 @@
     const bg = ctx.createLinearGradient(0,0,0,H); bg.addColorStop(0,'#1a1c2b'); bg.addColorStop(1,'#101018');
     ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
     if (screen === 'game' || screen === 'over'){
-      drawMap(); for (const g of gibs) drawGib(g); drawFighter(f1); drawFighter(f2);
+      drawMap(); for (const g of gibs) drawGib(g); drawFighter(f1); drawFighter(f2); for (const pr of projs) drawProj(pr);
     } else { drawMap(); }
     ctx.restore();
   }
@@ -703,7 +771,12 @@
         if (mode === 'online' && isHost) hostBroadcast(dt);
       }
     }
-    for (const g of gibs) if (mode !== 'online' || isHost) updateGib(g, dt);
+    if (mode !== 'online' || isHost){
+      for (const g of gibs) updateGib(g, dt);
+      for (const pr of projs) updateProj(pr, dt);
+      gibs = gibs.filter(g => g.life > 0);
+      projs = projs.filter(p => p.life > 0);
+    }
     render();
     requestAnimationFrame(frame);
   }
