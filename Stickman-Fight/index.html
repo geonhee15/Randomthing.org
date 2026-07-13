@@ -54,6 +54,20 @@
   .btn:hover { background:#f04a50; } .btn:active { transform:translateY(2px); }
   .btn.ghost { background:rgba(255,255,255,.1); box-shadow:none; }
   .btn.ghost:hover { background:rgba(255,255,255,.18); }
+  .setrow { display:flex; flex-direction:column; align-items:center; gap:11px; }
+  .setlabel { font-size:13px; font-weight:700; letter-spacing:.04em; color:rgba(255,255,255,.7); }
+  .swatches { display:flex; gap:14px; }
+  .sw { width:54px; height:54px; border-radius:15px; border:3px solid transparent; cursor:pointer; transition:transform .12s; }
+  .sw:hover { transform:translateY(-2px); }
+  .sw.on { border-color:#fff; box-shadow:0 0 0 3px rgba(255,255,255,.2); }
+  .keysetup { display:flex; gap:30px; flex-wrap:wrap; justify-content:center; }
+  .kgroup { display:flex; flex-direction:column; gap:8px; }
+  .kgt { font-size:11px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:rgba(255,255,255,.45); text-align:center; margin-bottom:2px; }
+  .krow { display:flex; align-items:center; justify-content:space-between; gap:16px; font-size:13px; font-weight:600; color:rgba(255,255,255,.7); }
+  .kbtn { font-family:"Space Grotesk",monospace; font-weight:700; min-width:66px; padding:7px 12px; border-radius:9px; cursor:pointer;
+    background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18); color:#fff; }
+  .kbtn:hover { background:rgba(255,255,255,.14); }
+  .kbtn.listening { background:#ff5a5f; border-color:#ff5a5f; }
   .spin { width:38px; height:38px; border-radius:50%; border:4px solid rgba(255,255,255,.15); border-top-color:#7bdc96; animation:sp .8s linear infinite; }
   @keyframes sp { to { transform:rotate(360deg); } }
 
@@ -117,6 +131,26 @@
     </div>
   </div>
 
+  <div class="sheet hide" id="setup">
+    <h2>Set up your fighter</h2>
+    <div class="setrow">
+      <div class="setlabel" id="colorLabel">Your colour</div>
+      <div class="swatches" id="swatches">
+        <button class="sw" data-color="#ff5b5b" style="background:#ff5b5b" aria-label="Red"></button>
+        <button class="sw" data-color="#4d90ff" style="background:#4d90ff" aria-label="Blue"></button>
+      </div>
+    </div>
+    <div class="setrow">
+      <div class="setlabel">Controls <span style="opacity:.5;font-weight:500">— click a key to change it</span></div>
+      <div class="keysetup" id="keysetup"></div>
+    </div>
+    <div style="display:flex; gap:10px; margin-top:4px;">
+      <button class="btn ghost" id="resetKeys">Reset keys</button>
+      <button class="btn" id="startBtn">Start</button>
+    </div>
+    <button class="btn ghost" id="backBtn" style="padding:9px 22px; font-size:15px;">Back</button>
+  </div>
+
   <div class="sheet hide" id="search">
     <div class="spin"></div>
     <h2 id="searchTitle">Finding an opponent…</h2>
@@ -156,8 +190,20 @@
   const TORSO = 46, HEAD = 15, ARM = 26, LEG = 34;
   const AXE_LEN = 46, SPIN = 9.5, CUTR = 14;
   const RED = '#ff5b5b', BLUE = '#4d90ff';
-  const K1 = { left:'KeyA', right:'KeyD', jump:'Space' };
-  const K2 = { left:'ArrowLeft', right:'ArrowRight', jump:'ArrowUp' };
+  const K1_DEF = { left:'KeyA', right:'KeyD', jump:'Space' };
+  const K2_DEF = { left:'ArrowLeft', right:'ArrowRight', jump:'ArrowUp' };
+  function loadKeys(key, def){ try { return Object.assign({}, def, JSON.parse(localStorage.getItem(key)) || {}); } catch(e){ return Object.assign({}, def); } }
+  let K1 = loadKeys('sf_k1', K1_DEF);
+  let K2 = loadKeys('sf_k2', K2_DEF);
+  function saveKeys(){ try { localStorage.setItem('sf_k1', JSON.stringify(K1)); localStorage.setItem('sf_k2', JSON.stringify(K2)); } catch(e){} }
+  function keyLabel(code){
+    const m = { Space:'Space', ArrowLeft:'←', ArrowRight:'→', ArrowUp:'↑', ArrowDown:'↓', ShiftLeft:'⇧', ShiftRight:'⇧', Enter:'⏎' };
+    if (m[code]) return m[code];
+    if (code.startsWith('Key')) return code.slice(3);
+    if (code.startsWith('Digit')) return code.slice(5);
+    return code.replace('Numpad','#');
+  }
+  let myColor = RED, listening = null;
 
   // ---------- audio ----------
   let actx = null, masterGain = null;
@@ -237,6 +283,7 @@
   // ---------- input ----------
   const keys = {};
   addEventListener('keydown', e => {
+    if (listening){ e.preventDefault(); bindKey(e.code); return; }
     if (['Space','ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.code)) e.preventDefault();
     keys[e.code] = true;
     if (screen === 'over' && (e.code === 'Enter' || e.code === 'KeyR') && mode !== 'online') startRound();
@@ -433,7 +480,7 @@
     if (m.t === 'match'){
       isHost = !!m.host;
       $('search').classList.add('hide');
-      if (isHost){ pickColors(); startRound(); }
+      if (isHost){ startRound(); }   // P1C/P2C already set from the setup screen
       else { screen = 'game'; $('score').classList.remove('hide'); $('menu').classList.add('hide'); updateKeysUI(); }
     }
     else if (m.t === 'in' && isHost){ f2.rin = { left:m.l, right:m.r, jump:m.j }; }
@@ -471,17 +518,51 @@
   }
 
   // ---------- menu wiring ----------
-  document.querySelectorAll('.mode').forEach(b => b.addEventListener('click', () => {
-    ensureSfx(); const m = b.dataset.mode;
-    if (m === 'online') startQueue();
-    else { mode = m; pickColors(); startRound(); }
-  }));
+  const other = c => c === RED ? BLUE : RED;
+  document.querySelectorAll('.mode').forEach(b => b.addEventListener('click', () => { ensureSfx(); showSetup(b.dataset.mode); }));
+
+  function showSetup(m){
+    mode = m; screen = 'setup';
+    $('menu').classList.add('hide'); $('setup').classList.remove('hide');
+    $('colorLabel').textContent = m === '2p' ? 'Player 1 colour' : 'Your colour';
+    renderSwatches(); renderKeySetup();
+  }
+  function renderSwatches(){ document.querySelectorAll('#swatches .sw').forEach(s => s.classList.toggle('on', s.dataset.color === myColor)); }
+  function renderKeySetup(){
+    const krow = (who, act, label) => { const k = who === 'k1' ? K1 : K2;
+      return '<div class="krow"><span>'+label+'</span><button class="kbtn" data-who="'+who+'" data-act="'+act+'">'+keyLabel(k[act])+'</button></div>'; };
+    let html = '<div class="kgroup"><div class="kgt">'+(mode==='2p'?'Player 1':'You')+'</div>'
+      + krow('k1','left','Left') + krow('k1','right','Right') + krow('k1','jump','Jump') + '</div>';
+    if (mode === '2p') html += '<div class="kgroup"><div class="kgt">Player 2</div>'
+      + krow('k2','left','Left') + krow('k2','right','Right') + krow('k2','jump','Jump') + '</div>';
+    $('keysetup').innerHTML = html;
+    $('keysetup').querySelectorAll('.kbtn').forEach(btn => btn.addEventListener('click', () => {
+      $('keysetup').querySelectorAll('.kbtn').forEach(x => { if (x !== btn) { x.classList.remove('listening'); } });
+      btn.classList.add('listening'); btn.textContent = '…';
+      listening = { who: btn.dataset.who, act: btn.dataset.act, btn };
+    }));
+  }
+  function bindKey(code){
+    if (!listening) return;
+    const k = listening.who === 'k1' ? K1 : K2;
+    k[listening.act] = code; saveKeys();
+    listening.btn.classList.remove('listening'); listening.btn.textContent = keyLabel(code);
+    listening = null;
+  }
+  document.querySelectorAll('#swatches .sw').forEach(s => s.addEventListener('click', () => { myColor = s.dataset.color; renderSwatches(); }));
+  $('resetKeys').addEventListener('click', () => { K1 = Object.assign({}, K1_DEF); K2 = Object.assign({}, K2_DEF); saveKeys(); renderKeySetup(); });
+  $('backBtn').addEventListener('click', () => { listening = null; $('setup').classList.add('hide'); toMenu(); });
+  $('startBtn').addEventListener('click', () => {
+    listening = null; $('setup').classList.add('hide');
+    P1C = myColor; P2C = other(myColor);
+    if (mode === 'online') startQueue(); else startRound();
+  });
   $('cancelBtn').addEventListener('click', () => { if (net) { net.close(); net = null; } toMenu(); });
   $('againBtn').addEventListener('click', () => { if (mode !== 'online') startRound(); });
   $('menuBtn').addEventListener('click', () => { if (net){ net.close(); net = null; } toMenu(); });
   function toMenu(){
     mode = 'menu'; screen = 'menu';
-    $('menu').classList.remove('hide'); $('over').classList.add('hide'); $('search').classList.add('hide');
+    $('menu').classList.remove('hide'); $('over').classList.add('hide'); $('search').classList.add('hide'); $('setup').classList.add('hide');
     $('score').classList.add('hide'); updateKeysUI();
   }
   function updateKeysUI(){

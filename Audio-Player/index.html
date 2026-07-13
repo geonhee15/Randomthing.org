@@ -465,9 +465,22 @@
   $('btnRec').addEventListener('click', toggleRecord);
 
   // ---------- transport ----------
-  function play(){ ensureAudio(); if (!buf) return; if (playhead >= len - 1) playhead = 0; transportRate = 1; setStatus('▶ PLAY'); }
-  function pause(){ transportRate = 0; if (buf) setStatus('❚❚ PAUSE'); }
-  function reverse(){ ensureAudio(); if (!buf) return; if (playhead <= 0) playhead = len - 1; transportRate = -1; setStatus('◀ REV'); }
+  // remember what's playing so the homepage can show a "Now Playing" chip and pick it up
+  function saveNP(){
+    try {
+      const t = tracks[currentTrack];
+      if (!t || !buf || t.id == null){ localStorage.removeItem('ap_now'); return; }
+      localStorage.setItem('ap_now', JSON.stringify({
+        name: t.name, id: t.id, time: playhead / (buf.sampleRate || 44100),
+        playing: transportRate > 0.01, at: Date.now()
+      }));
+    } catch(e){}
+  }
+  window.addEventListener('beforeunload', saveNP);
+
+  function play(){ ensureAudio(); if (!buf) return; if (playhead >= len - 1) playhead = 0; transportRate = 1; setStatus('▶ PLAY'); saveNP(); }
+  function pause(){ transportRate = 0; if (buf) setStatus('❚❚ PAUSE'); saveNP(); }
+  function reverse(){ ensureAudio(); if (!buf) return; if (playhead <= 0) playhead = len - 1; transportRate = -1; setStatus('◀ REV'); saveNP(); }
   $('btnPlay').addEventListener('click', play);
   $('btnPause').addEventListener('click', pause);
   $('btnRev').addEventListener('click', reverse);
