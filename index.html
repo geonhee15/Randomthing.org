@@ -109,6 +109,8 @@
   .ttt-card  { background: radial-gradient(120% 120% at 80% 12%, #2b3350 0%, #1b2036 55%, #0e1120 100%); }
   .fir-card  { background: radial-gradient(120% 120% at 20% 12%, #6a5230 0%, #3f3018 55%, #1c1509 100%); }
   .stretch-card { background: radial-gradient(120% 120% at 80% 12%, #ff8f6b 0%, #e0472f 52%, #7a1c14 100%); }
+  .cps-card  { background: radial-gradient(120% 120% at 80% 12%, #ff7a45 0%, #d1401e 52%, #6e1c0c 100%); }
+  .rps-card  { background: radial-gradient(120% 120% at 20% 12%, #454db0 0%, #262a68 52%, #12142e 100%); }
   .calc-card .mini {
     flex: 0 0 auto;
     width: 92px;
@@ -164,6 +166,26 @@
   .cg-card .kicker { color: rgba(255,255,255,.85); }
   .rt-card .kicker { color: #7ee0b0; }
   .stretch-card .kicker { color: #ffc7bb; }
+  .cps-card .kicker { color: #ffc4a3; }
+  .rps-card .kicker { color: #b4b9ff; }
+  /* CPS Test card artwork: a cursor mid-click */
+  .cps-card .mini {
+    flex: 0 0 auto; width: 92px; height: 92px; border-radius: 16px; position: relative; overflow: hidden;
+    background: radial-gradient(circle at 50% 38%, #3a1c12, #1f0e08);
+    box-shadow: 0 10px 22px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.06);
+    transform: rotate(-4deg); transition: transform .2s ease; display:flex; align-items:center; justify-content:center;
+  }
+  .cps-card .mini::before { content:""; position:absolute; width:50px; height:50px; border-radius:50%;
+    border:2px solid rgba(255,255,255,.18); top:16px; left:15px; }
+  .cps-card .mini svg { width:32px; height:32px; color:#fff; position:relative; filter:drop-shadow(0 2px 4px rgba(0,0,0,.45)); }
+  /* Rock Paper Scissors card artwork: the three hands */
+  .rps-card .mini {
+    flex: 0 0 auto; width: 92px; height: 92px; border-radius: 16px;
+    background: linear-gradient(150deg, #3b4192, #20244f);
+    box-shadow: 0 10px 22px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.08);
+    transform: rotate(-4deg); transition: transform .2s ease; display:flex; align-items:center; justify-content:center; gap:3px;
+  }
+  .rps-card .mini svg { width:23px; height:23px; color:#dfe2ff; }
 
   /* Color Guesser card artwork */
   .cg-card .mini {
@@ -475,6 +497,29 @@
         </div>
       </a>
 
+      <a class="card art-card cps-card" href="/Cps-Test/">
+        <div class="mini" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 2.4l15 8.6-6.4 1.4L10.7 19 5 2.4z"/></svg>
+        </div>
+        <div class="txt">
+          <span class="kicker">Click speed</span>
+          <span class="name">CPS Test</span>
+          <span class="desc">How fast can you&nbsp;click?</span>
+        </div>
+      </a>
+
+      <a class="card art-card rps-card" href="/Rock-Paper-Scissor/">
+        <div class="mini" aria-hidden="true">
+          <svg viewBox="0 0 48 48" fill="currentColor"><path d="M11 27c-1-6 3-9 6-9 1-4 6-4 7-1 2-2 6-1 6 2 4-1 7 2 6 6l-1 6c-1 6-6 10-13 10-8 0-16-4-17-14 0-3 4-4 5-1 0 0 1 2 1 1z"/></svg>
+          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M13 9l19 22"/><path d="M35 9L20 27"/><circle cx="13" cy="35" r="5"/><circle cx="33" cy="37" r="5"/></svg>
+        </div>
+        <div class="txt">
+          <span class="kicker">Vs robot</span>
+          <span class="name">Rock Paper Scissors</span>
+          <span class="desc">Beat the robot in a&nbsp;showdown.</span>
+        </div>
+      </a>
+
       <a class="card art-card stretch-card" href="/Stretch!/">
         <div class="mini" aria-hidden="true">
           <svg class="palm" viewBox="0 0 46 46" xmlns="http://www.w3.org/2000/svg">
@@ -574,6 +619,8 @@
       { date: '26.7.12', open: true, items: [
         'Clocks — pick any country / time zone next to the clock selector, or keep your local time',
         'Homepage shows a live “Online Players” count of everyone on the site right now',
+        'Added CPS Test — measure your clicks per second over 1 / 5 / 10 / 30s or a custom time',
+        'Added Rock Paper Scissors — pick during the countdown, then reveal against a robot',
       ] },
       { date: '26.7.11', open: false, items: [
         'Launched the site with the Calculator construction kit',

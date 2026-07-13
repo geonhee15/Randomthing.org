@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Rock Paper Scissors — Randomthing.org</title>
+<meta name="description" content="Play Rock Paper Scissors against a robot. Lock in your move during the countdown, then both hands reveal at once." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+<style>
+  :root { --ui:"Inter",system-ui,-apple-system,sans-serif; --ink:#eef0ff; --muted:#9aa0c8; --line:rgba(255,255,255,.12); }
+  * { box-sizing:border-box; }
+  html, body { margin:0; padding:0; height:100%; }
+  body { font-family:var(--ui); color:var(--ink); overflow:hidden; min-height:100vh;
+    background:radial-gradient(120% 120% at 50% 0%, #2b3170 0%, #1a1c40 55%, #0e0f24 100%);
+    -webkit-font-smoothing:antialiased; touch-action:manipulation; -webkit-user-select:none; user-select:none; }
+  .nav { position:fixed; top:0; left:0; right:0; display:flex; align-items:center; gap:12px; padding:14px 20px; z-index:20; }
+  .brand { font-family:"Baloo 2",sans-serif; font-weight:800; font-size:20px; letter-spacing:-.4px; color:#fff; text-decoration:none; padding:5px 8px; border-radius:10px; }
+  .brand:hover { background:rgba(255,255,255,.08); }
+  .brand .org { color:#ff6b70; }
+  .nav .sep { color:rgba(255,255,255,.3); } .nav h1 { font-size:15px; font-weight:600; margin:0; color:rgba(255,255,255,.7); }
+
+  .score { position:fixed; top:52px; left:0; right:0; text-align:center; z-index:20; font:600 14px var(--ui); color:var(--muted); }
+  .score b { font-family:"Space Grotesk",monospace; color:#fff; font-size:17px; margin:0 3px; }
+  .score .rreset { border:none; background:transparent; color:var(--muted); cursor:pointer; font:600 12px var(--ui); text-decoration:underline; margin-left:10px; }
+  .score .rreset:hover { color:#fff; }
+
+  .stage { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:24px; text-align:center; }
+  .hands { display:flex; align-items:center; justify-content:center; gap:clamp(18px,7vw,80px); margin-bottom:8px; }
+  .hand { display:flex; flex-direction:column; align-items:center; gap:10px; }
+  .hand .who { font-size:13px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+  .disc { width:clamp(96px,26vw,150px); height:clamp(96px,26vw,150px); border-radius:50%; display:flex; align-items:center; justify-content:center;
+    background:rgba(255,255,255,.06); border:1px solid var(--line); box-shadow:inset 0 2px 14px rgba(0,0,0,.25); transition:transform .12s ease; }
+  .disc svg { width:56%; height:56%; color:#fff; }
+  .disc.win { background:rgba(39,194,129,.18); border-color:rgba(39,194,129,.5); box-shadow:0 0 30px rgba(39,194,129,.35); }
+  .disc.lose { background:rgba(232,85,78,.15); border-color:rgba(232,85,78,.45); }
+  .disc.shake { animation:shake .28s ease infinite; }
+  @keyframes shake { 0%,100%{ transform:translateY(0) rotate(0); } 25%{ transform:translateY(-10px) rotate(-6deg); } 75%{ transform:translateY(-10px) rotate(6deg); } }
+  .vs { font-family:"Baloo 2",sans-serif; font-weight:800; font-size:clamp(18px,4vw,26px); color:var(--muted); }
+
+  .count { font-family:"Space Grotesk",var(--ui); font-weight:700; font-size:clamp(60px,17vw,120px); line-height:1; min-height:1.05em; }
+  .msg { font-family:"Baloo 2",sans-serif; font-weight:800; font-size:clamp(26px,7vw,52px); line-height:1.05; }
+  .tip { margin-top:12px; color:var(--muted); font-size:14px; font-weight:500; min-height:1.2em; }
+
+  .picks { position:fixed; bottom:96px; left:0; right:0; display:flex; justify-content:center; gap:clamp(10px,3vw,20px); z-index:20; padding:0 16px; }
+  .pick { width:clamp(72px,20vw,96px); height:clamp(72px,20vw,96px); border-radius:20px; cursor:pointer;
+    background:rgba(255,255,255,.06); border:1px solid var(--line); color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px;
+    transition:transform .12s, background .14s, border-color .14s; }
+  .pick svg { width:38px; height:38px; }
+  .pick span { font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
+  .pick:hover:not(:disabled) { transform:translateY(-3px); border-color:rgba(255,255,255,.3); }
+  .pick.sel { background:#5b64e6; border-color:#7b83ff; }
+  .pick.sel span { color:#fff; }
+  .pick:disabled { opacity:.4; cursor:default; }
+
+  .go { position:fixed; bottom:30px; left:50%; transform:translateX(-50%); z-index:20;
+    font-family:"Baloo 2",sans-serif; font-weight:800; font-size:19px; color:#fff; background:#ff5a5f; border:none; border-radius:16px;
+    padding:14px 40px; cursor:pointer; box-shadow:0 10px 26px rgba(255,90,95,.38); transition:transform .1s, background .15s; }
+  .go:hover { background:#f04a50; } .go:active { transform:translateX(-50%) translateY(2px); }
+</style>
+</head>
+<body>
+  <nav class="nav">
+    <a class="brand" href="/">Randomthing<span class="org">.org</span></a>
+    <span class="sep">/</span><h1>Rock Paper Scissors</h1>
+  </nav>
+
+  <div class="score">You <b id="win">0</b> · Draw <b id="draw">0</b> · Robot <b id="loss">0</b><button class="rreset" id="rreset" title="Reset score">reset</button></div>
+
+  <div class="stage">
+    <div class="hands" id="hands" style="display:none">
+      <div class="hand"><span class="who">You</span><div class="disc" id="youDisc"></div></div>
+      <div class="vs">vs</div>
+      <div class="hand"><span class="who">Robot</span><div class="disc" id="robDisc"></div></div>
+    </div>
+    <div class="count" id="count"></div>
+    <div class="msg" id="msg">Rock Paper Scissors</div>
+    <div class="tip" id="tip">Play a robot — lock in your move before the countdown ends.</div>
+  </div>
+
+  <div class="picks" id="picks">
+    <button class="pick" data-move="rock" disabled><span></span></button>
+    <button class="pick" data-move="paper" disabled><span></span></button>
+    <button class="pick" data-move="scissors" disabled><span></span></button>
+  </div>
+
+  <button class="go" id="goBtn">Start round</button>
+
+<script>
+  const $ = id => document.getElementById(id);
+  const ICONS = {
+    rock: '<svg viewBox="0 0 48 48" fill="currentColor"><path d="M11 27c-1-6 3-9 6-9 1-4 6-4 7-1 2-2 6-1 6 2 4-1 7 2 6 6l-1 6c-1 6-6 10-13 10-8 0-16-4-17-14 0-3 4-4 5-1 0 0 1 2 1 1z"/></svg>',
+    paper: '<svg viewBox="0 0 48 48" fill="currentColor"><path d="M14 22V11c0-3 4-3 4 0v8V9c0-3 4-3 4 0v10V8c0-3 4-3 4 0v11V11c0-3 4-3 4 0v16c0 7-4 12-12 12-6 0-9-3-11-8l-3-8c-1-3 3-5 5-2z"/></svg>',
+    scissors: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M13 9l19 22"/><path d="M35 9L20 27"/><circle cx="13" cy="35" r="5"/><circle cx="33" cy="37" r="5"/></svg>'
+  };
+  const LABEL = { rock:'Rock', paper:'Paper', scissors:'Scissors' };
+  const BEATS = { rock:'scissors', paper:'rock', scissors:'paper' };
+
+  // fill pick buttons
+  document.querySelectorAll('.pick').forEach(b => {
+    const m = b.dataset.move;
+    b.insertAdjacentHTML('afterbegin', ICONS[m]);
+    b.querySelector('span').textContent = LABEL[m];
+  });
+
+  let score = (function(){ try { return Object.assign({w:0,d:0,l:0}, JSON.parse(localStorage.getItem('rps_score')) || {}); } catch(e){ return {w:0,d:0,l:0}; } })();
+  function renderScore(){ $('win').textContent = score.w; $('draw').textContent = score.d; $('loss').textContent = score.l; }
+  function saveScore(){ try { localStorage.setItem('rps_score', JSON.stringify(score)); } catch(e){} renderScore(); }
+  renderScore();
+
+  let state = 'idle';           // idle | counting | reveal
+  let myPick = null, count = 0, timer = null;
+
+  function setPicksEnabled(on){ document.querySelectorAll('.pick').forEach(b => { b.disabled = !on; }); }
+  function highlight(){ document.querySelectorAll('.pick').forEach(b => b.classList.toggle('sel', b.dataset.move === myPick)); }
+
+  document.querySelectorAll('.pick').forEach(b => b.addEventListener('click', () => {
+    if (state !== 'counting') return;
+    myPick = b.dataset.move; highlight();
+    $('tip').textContent = 'Locked in ' + LABEL[myPick] + ' — you can still change it';
+  }));
+
+  function startRound(){
+    state = 'counting'; myPick = null; count = 3;
+    highlight(); setPicksEnabled(true);
+    $('hands').style.display = 'none';
+    $('msg').textContent = 'Choose your move!';
+    $('tip').textContent = 'Tap a move before the countdown hits zero.';
+    $('count').textContent = count;
+    $('goBtn').style.visibility = 'hidden';
+    clearInterval(timer);
+    timer = setInterval(() => {
+      count--;
+      if (count > 0){ $('count').textContent = count; }
+      else { clearInterval(timer); reveal(); }
+    }, 1000);
+  }
+
+  function reveal(){
+    state = 'reveal';
+    setPicksEnabled(false);
+    $('count').textContent = '';
+    const auto = !myPick;
+    if (auto) myPick = ['rock','paper','scissors'][Math.floor(Math.random()*3)];
+    const rob = ['rock','paper','scissors'][Math.floor(Math.random()*3)];
+
+    $('youDisc').innerHTML = ICONS[myPick];
+    $('robDisc').innerHTML = ICONS[rob];
+    $('hands').style.display = 'flex';
+
+    let outcome;
+    if (myPick === rob) outcome = 'draw';
+    else if (BEATS[myPick] === rob) outcome = 'win';
+    else outcome = 'lose';
+
+    const you = $('youDisc'), robd = $('robDisc');
+    you.className = 'disc' + (outcome === 'win' ? ' win' : outcome === 'lose' ? ' lose' : '');
+    robd.className = 'disc' + (outcome === 'lose' ? ' win' : outcome === 'win' ? ' lose' : '');
+
+    if (outcome === 'win'){ score.w++; $('msg').textContent = 'You win!'; }
+    else if (outcome === 'lose'){ score.l++; $('msg').textContent = 'Robot wins'; }
+    else { score.d++; $('msg').textContent = "It's a draw"; }
+    saveScore();
+
+    $('tip').textContent = (auto ? 'No pick — random ' + LABEL[myPick] + ' played. ' : '')
+      + LABEL[myPick] + ' vs ' + LABEL[rob];
+    $('goBtn').textContent = 'Play again';
+    $('goBtn').style.visibility = 'visible';
+  }
+
+  $('goBtn').addEventListener('click', () => { if (state !== 'counting') startRound(); });
+  $('rreset').addEventListener('click', () => { score = { w:0, d:0, l:0 }; saveScore(); });
+</script>
+  <script defer src="/cookie-consent.js"></script>
+</body>
+</html>

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>CPS Test — Randomthing.org</title>
+<meta name="description" content="How fast can you click? Measure your clicks per second over 1, 5, 10, 30 seconds, or a custom time." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+<style>
+  :root { --ui:"Inter",system-ui,-apple-system,sans-serif; --ink:#1b1b20; --muted:#8a8a93; --line:#e8e8ec; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; padding:0; height:100%; }
+  body { font-family:var(--ui); color:var(--ink); background:#f6f6f8; min-height:100vh; overflow:hidden;
+    -webkit-font-smoothing:antialiased; touch-action:manipulation; -webkit-user-select:none; user-select:none; }
+  .nav { position:fixed; top:0; left:0; right:0; display:flex; align-items:center; gap:12px; padding:14px 20px; z-index:20; }
+  .brand { font-family:"Baloo 2",sans-serif; font-weight:800; font-size:20px; letter-spacing:-.4px; color:var(--ink); text-decoration:none; padding:5px 8px; border-radius:10px; }
+  .brand:hover { background:rgba(0,0,0,.05); }
+  .brand .org { color:#ff5a5f; }
+  .nav .sep { color:#cfcfd4; } .nav h1 { font-size:15px; font-weight:600; margin:0; color:#56565e; }
+
+  .presets { position:fixed; top:52px; left:0; right:0; display:flex; flex-wrap:wrap; gap:7px; justify-content:center; z-index:20; padding:8px; }
+  .presets button { border:1px solid var(--line); background:#fff; color:var(--muted); cursor:pointer; font:600 13px var(--ui); padding:8px 15px; border-radius:999px; transition:all .14s; }
+  .presets button:hover { color:var(--ink); }
+  .presets button.on { background:#ff5a3c; color:#fff; border-color:#ff5a3c; }
+  .presets .custom-in { width:74px; border:1px solid var(--line); border-radius:999px; padding:8px 12px; font:600 13px var(--ui); text-align:center; }
+
+  .pad { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; cursor:pointer; padding:24px; transition:background .1s; }
+  .pad.idle { background:#fff2ec; color:#9a3f26; }
+  .pad.run  { background:#ff5a3c; color:#fff; }
+  .pad.done { background:#fff2ec; color:#9a3f26; }
+  .pad .big { font-family:"Baloo 2",sans-serif; font-weight:800; font-size:clamp(34px,9vw,72px); line-height:1.04; }
+  .pad .sub { font-size:clamp(15px,2.6vw,20px); font-weight:500; margin-top:12px; opacity:.92; }
+  .pad .hint { margin-top:16px; font-size:14px; opacity:.75; }
+
+  .stats { position:fixed; bottom:0; left:0; right:0; display:flex; justify-content:center; gap:28px; padding:18px; z-index:20; pointer-events:none; }
+  .stats .s { display:flex; flex-direction:column; align-items:center; gap:2px; color:var(--muted); }
+  .stats .s .n { font-family:"Space Grotesk",monospace; font-size:20px; font-weight:700; color:var(--ink); }
+  .stats .s .t { font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; }
+</style>
+</head>
+<body>
+  <nav class="nav">
+    <a class="brand" href="/">Randomthing<span class="org">.org</span></a>
+    <span class="sep">/</span><h1>CPS Test</h1>
+  </nav>
+
+  <div class="presets" id="presets">
+    <button data-sec="1">1s</button>
+    <button data-sec="5" class="on">5s</button>
+    <button data-sec="10">10s</button>
+    <button data-sec="30">30s</button>
+    <button data-sec="custom">Custom</button>
+    <input class="custom-in" id="customIn" type="number" min="1" max="600" placeholder="sec" style="display:none">
+  </div>
+
+  <div class="pad idle" id="pad">
+    <div class="big" id="big">CPS Test</div>
+    <div class="sub" id="sub">Click to start — 5 seconds</div>
+    <div class="hint" id="hint">Click as fast as you can until time runs out.</div>
+  </div>
+
+  <div class="stats">
+    <div class="s"><span class="n" id="clicksEl">0</span><span class="t">Clicks</span></div>
+    <div class="s"><span class="n" id="timeEl">5.0</span><span class="t">Time</span></div>
+    <div class="s"><span class="n" id="cpsEl">—</span><span class="t">CPS</span></div>
+    <div class="s"><span class="n" id="bestEl">—</span><span class="t">Best</span></div>
+  </div>
+
+<script>
+  const $ = id => document.getElementById(id);
+  const pad=$('pad'), big=$('big'), sub=$('sub'), hint=$('hint');
+  const clicksEl=$('clicksEl'), timeEl=$('timeEl'), cpsEl=$('cpsEl'), bestEl=$('bestEl');
+
+  let dur = 5, custom = false;
+  let state = 'idle';                 // idle | run | done
+  let clicks = 0, endAt = 0, raf = null;
+
+  const bestKey = () => 'cps_best_' + dur;
+  function loadBest(){ const v = +localStorage.getItem(bestKey()); return v > 0 ? v : null; }
+  function showBest(){ const b = loadBest(); bestEl.textContent = b ? b.toFixed(1) : '—'; }
+
+  function reset(sec){
+    dur = sec; state = 'idle'; clicks = 0; cancelAnimationFrame(raf);
+    clicksEl.textContent = '0'; cpsEl.textContent = '—'; timeEl.textContent = dur.toFixed(1);
+    pad.className = 'pad idle'; big.textContent = 'CPS Test';
+    sub.textContent = 'Click to start — ' + dur + (dur === 1 ? ' second' : ' seconds');
+    hint.textContent = 'Click as fast as you can until time runs out.';
+    showBest();
+  }
+
+  $('presets').querySelectorAll('button').forEach(b => b.addEventListener('click', (e) => {
+    e.stopPropagation();
+    $('presets').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    if (b.dataset.sec === 'custom'){
+      custom = true; const inp = $('customIn'); inp.style.display = ''; inp.focus();
+      reset(Math.max(1, Math.min(600, +inp.value || 15)));
+    } else {
+      custom = false; $('customIn').style.display = 'none'; reset(+b.dataset.sec);
+    }
+  }));
+  $('customIn').addEventListener('pointerdown', e => e.stopPropagation());
+  $('customIn').addEventListener('input', () => { if (custom && state !== 'run') reset(Math.max(1, Math.min(600, +$('customIn').value || 1))); });
+
+  function tick(){
+    if (state !== 'run') return;
+    const left = Math.max(0, endAt - performance.now());
+    timeEl.textContent = (left / 1000).toFixed(1);
+    if (left <= 0){ finish(); return; }
+    raf = requestAnimationFrame(tick);
+  }
+  function start(){
+    state = 'run'; clicks = 1; endAt = performance.now() + dur * 1000;
+    pad.className = 'pad run'; sub.textContent = ''; hint.textContent = '';
+    clicksEl.textContent = '1'; big.textContent = '1';
+    raf = requestAnimationFrame(tick);
+  }
+  function finish(){
+    cancelAnimationFrame(raf); state = 'done';
+    const cps = clicks / dur;
+    timeEl.textContent = '0.0'; cpsEl.textContent = cps.toFixed(1); clicksEl.textContent = clicks;
+    pad.className = 'pad done'; big.textContent = cps.toFixed(1) + ' CPS';
+    const b = loadBest(); const rec = !b || cps > b;
+    if (rec) localStorage.setItem(bestKey(), cps.toFixed(3));
+    showBest();
+    sub.textContent = clicks + ' clicks in ' + dur + 's' + (rec ? ' — new best!' : '');
+    hint.textContent = 'Click to try again';
+  }
+  function hitPad(){
+    if (state === 'idle') start();
+    else if (state === 'run'){ clicks++; clicksEl.textContent = clicks; big.textContent = clicks; }
+    else reset(dur);
+  }
+  pad.addEventListener('pointerdown', hitPad);
+
+  reset(5);
+</script>
+  <script defer src="/cookie-consent.js"></script>
+</body>
+</html>
