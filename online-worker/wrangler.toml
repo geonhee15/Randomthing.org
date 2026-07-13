@@ -11,13 +11,22 @@ compatibility_date = "2024-11-01"
 # Route the endpoint to this Worker. If you also serve the site on www, add a
 # second entry with pattern = "www.randomthing.org/api/online".
 routes = [
-  { pattern = "randomthing.org/api/online", zone_name = "randomthing.org" }
+  { pattern = "randomthing.org/api/online", zone_name = "randomthing.org" },
+  { pattern = "randomthing.org/api/sf/queue", zone_name = "randomthing.org" }
 ]
 
 [[durable_objects.bindings]]
 name = "ONLINE"
 class_name = "OnlineCounter"
 
+[[durable_objects.bindings]]
+name = "MM"
+class_name = "Matchmaker"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["OnlineCounter"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["Matchmaker"]
