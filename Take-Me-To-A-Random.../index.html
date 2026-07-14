@@ -45,6 +45,7 @@
   .wiki { background:radial-gradient(120% 120% at 30% 20%, #94a3b8, #334155); }
   .street { background:radial-gradient(120% 120% at 30% 20%, #4ade80, #15803d); }
   .cat  { background:radial-gradient(120% 120% at 30% 20%, #fb7185, #e11d48); }
+  .dog  { background:radial-gradient(120% 120% at 30% 20%, #d6a35c, #92580f); }
 
   footer { text-align:center; color:var(--muted); font-size:12.5px; padding:24px; }
 </style>
@@ -98,6 +99,11 @@
       <button class="item" data-kind="cat">
         <div class="tile cat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 4.5l3.2 4M19.5 4.5l-3.2 4"/><path d="M5 9.5C5 8 6.5 7.5 12 7.5s7 .5 7 2c1 4.5-2.2 11-7 11s-8-6.5-7-11z"/><path d="M9.5 12.5h.01M14.5 12.5h.01"/><path d="M12 14.5v1.2M9.6 16.4h4.8"/></svg></div>
         <span class="name">Random Cat</span>
+        <span class="arrow">open ↗</span>
+      </button>
+      <button class="item" data-kind="dog">
+        <div class="tile dog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5.5C6 5 4.5 6 4.5 9c0 1.5.5 2.5.5 2.5M16 5.5c2-.5 3.5.5 3.5 3.5 0 1.5-.5 2.5-.5 2.5"/><path d="M5 9c0 0-.5 4 1.2 6.6C7.6 17.7 9.6 18.5 12 18.5s4.4-.8 5.8-2.9C19.5 13 19 9 19 9"/><path d="M9.6 12h.01M14.4 12h.01"/><path d="M12 14.4c-.9 0-1.4.7-1.4.7M12 14.4c.9 0 1.4.7 1.4.7M12 14.2v-.6"/></svg></div>
+        <span class="name">Random Dog</span>
         <span class="arrow">open ↗</span>
       </button>
     </div>
@@ -166,6 +172,10 @@
     if (kind === 'wiki') return 'https://en.wikipedia.org/wiki/Special:Random';
     if (kind === 'street') return 'https://randomstreetview.com/';
     if (kind === 'cat') return 'https://cataas.com/cat?rand=' + Math.random().toString(36).slice(2);
+    if (kind === 'dog'){
+      try { const r = await fetch('https://dog.ceo/api/breeds/image/random', { cache: 'no-store' }); if (r.ok){ const j = await r.json(); if (j && j.message) return j.message; } } catch(e){}
+      return 'https://random.dog/';
+    }
     // youtube: the worker searches a random keyword and returns a top result
     try {
       const r = await fetch('/api/random/youtube', { cache: 'no-store' });
