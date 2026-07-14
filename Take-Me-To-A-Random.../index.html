@@ -67,7 +67,7 @@
       </button>
       <button class="item" data-kind="ig">
         <div class="tile ig"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" stroke="none"/></svg></div>
-        <span class="name">Random Instagram Post</span>
+        <span class="name">Random Instagram Account</span>
         <span class="arrow">open ↗</span>
       </button>
     </div>
@@ -83,19 +83,20 @@
     'https://en.wikipedia.org/wiki/Special:Random', 'https://neal.fun', 'https://pointerpointer.com',
     'https://radio.garden', 'https://window-swap.com', 'https://theuselessweb.com/', 'https://mapcrunch.com'
   ];
-  const FALLBACK = {
-    yt: ['https://www.youtube.com/watch?v=jNQXAC9IVRw', 'https://www.youtube.com/watch?v=jfKfPfyJRdk', 'https://www.youtube.com/watch?v=5qap5aO4i9A'],
-    ig: ['https://www.instagram.com/natgeo/', 'https://www.instagram.com/nasa/', 'https://www.instagram.com/instagram/']
-  };
+  const FALLBACK_YT = ['https://www.youtube.com/watch?v=jNQXAC9IVRw', 'https://www.youtube.com/watch?v=jfKfPfyJRdk', 'https://www.youtube.com/watch?v=5qap5aO4i9A'];
+  // ~300 big public Instagram accounts (celebs, athletes, brands, creators, orgs)
+  const IG = ['instagram','cristiano','leomessi','kyliejenner','selenagomez','therock','arianagrande','kimkardashian','beyonce','khloekardashian','kendalljenner','natgeo','nike','justinbieber','taylorswift','virat.kohli','nickiminaj','jlo','kourtneykardash','mileycyrus','katyperry','zendaya','kevinhart4real','ddlovato','theellenshow','badgalriri','gigihadid','nasa','shakira','davidbeckham','championsleague','vindiesel','chrisbrownofficial','champagnepapi','snoopdogg','realmadrid','fcbarcelona','emmawatson','priyankachopra','deepikapadukone','neymarjr','nba','kingjames','billieeilish','dualipa','teddysphotos','shawnmendes','camila_cabello','postmalone','travisscott','theweeknd','adele','ladygaga','brunomars','jbalvin','maluma','karolg','sanbenito','anitta','daddyyankee','ozuna','iamcardib','theestallion','sza','dojacat','oliviarodrigo','harrystyles','zayn','niallhoran','liampayne','iamhalsey','marshmello','davidguetta','calvinharris','tiesto','martingarrix','krisjenner','gwenstefani','justintimberlake','pink','onedirection','coldplay','imaginedragons','maroon5','linkinpark','metallica','wizkhalifa','21savage','lildurk','offsetyrn','quavo','g_eazy','frenchmontana','french','2chainz','vancityreynolds','tomholland2013','robertdowneyjr','chrishemsworth','markruffalo','gal_gadot','willsmith','jadapinkettsmith','milliebobbybrown','finnwolfhardofficial','leonardodicaprio','officiallymcconaughey','thehughjackman','chrisevans','elizabetholsenofficial','sebastianstan','anthonymackie','idriselba','samuelljackson','aliaabhatt','katrinakaif','anushkasharma','ranveersingh','akshaykumar','tigerjackieshroff','shraddhakapoor','kareenakapoorkhan','madhuridixitnene','varundvn','sidmalhotra','kritisanon','jacquelinef143','sonamkapoor','dishapatani','kobebryant','stephencurry30','kevindurant','russwest44','jamesharden13','giannis_an34','kyrieirving','damianlillard','usainbolt','serenawilliams','rogerfederer','rafaelnadal','tigerwoods','floydmayweather','thenotoriousmma','khabib_nurmagomedov','miketyson','anthony_joshua','canelo','simonebiles','k.mbappe','erling.haaland','viniciusjr','garethbale11','sergioramos','iamzlatanibrahimovic','paulpogba','luissuarez9','karimbenzema','lukamodric10','adidas','cocacola','pepsi','redbull','gopro','chanel','gucci','louisvuitton','dior','prada','versace','burberry','fendi','balenciaga','hermes','cartier','rolex','tiffanyandco','starbucks','mcdonalds','kfc','dominos','netflix','spotify','playstation','xbox','nintendo','marvel','disney','pixar','starwars','lego','ferrari','lamborghini','bugatti','bmw','mercedesbenz','audi','porsche','google','microsoft','samsung','sony','canon','spacex','hm','zara','uniqlo','supremenewyork','jumpman23','underarmour','puma','reebok','newbalance','vans','converse','rayban','oakley','nfl','mlb','nhl','manchesterunited','mancity','liverpoolfc','chelseafc','arsenal','spursofficial','juventus','acmilan','inter','atleticodemadrid','psg','fcbayern','bvb09','premierleague','laliga','f1','redbullracing','mercedesamgf1','scuderiaferrari','espn','skysports','433','brfootball','houseofhighlights','bleacherreport','mrbeast','zachking','khaby00','charlidamelio','addisonraee','lelepons','kingbach','dudeperfect','mkbhd','pewdiepie','jamescharles','jeffreestar','nikkietutorials','hudabeauty','kyliecosmetics','fentybeauty','9gag','buzzfeed','voguemagazine','gq','elleusa','cosmopolitan','forbes','time','bbcnews','cnn','nytimes','guinnessworldrecords','worldstar','complex','hypebeast','foodnetwork','buzzfeedtasty','gordongram','jamieoliver','wwe','ufc','nationalgeographic','history','discovery','amazon','youtube','tiktok','spotifyusa','apple','airbnb','uber','wearetennis','goal','skysportsnews','barstoolsports','worldstarhiphop','9to5mac','wired','theonion','humansofny','overheardnewyork','earthpix','beautiful.destinations','mensfashion','architecture','streetstyle','minimalism'];
   const rand = a => a[(Math.random() * a.length) | 0];
 
   async function pickUrl(kind){
     if (kind === 'web') return rand(WEB);
+    if (kind === 'ig') return 'https://www.instagram.com/' + rand(IG) + '/';
+    // youtube: the worker searches a random keyword and returns a top result
     try {
-      const r = await fetch('/api/random/' + (kind === 'yt' ? 'youtube' : 'instagram'), { cache: 'no-store' });
+      const r = await fetch('/api/random/youtube', { cache: 'no-store' });
       if (r.ok){ const j = await r.json(); if (j && j.url) return j.url; }
     } catch(e){}
-    return rand(FALLBACK[kind]);
+    return rand(FALLBACK_YT);
   }
   document.querySelectorAll('.item').forEach(b => b.addEventListener('click', () => {
     const win = window.open('', '_blank');           // reserve the tab inside the click gesture

@@ -13,8 +13,7 @@ compatibility_date = "2024-11-01"
 routes = [
   { pattern = "randomthing.org/api/online", zone_name = "randomthing.org" },
   { pattern = "randomthing.org/api/sf/queue", zone_name = "randomthing.org" },
-  { pattern = "randomthing.org/api/random/youtube", zone_name = "randomthing.org" },
-  { pattern = "randomthing.org/api/random/instagram", zone_name = "randomthing.org" }
+  { pattern = "randomthing.org/api/random/youtube", zone_name = "randomthing.org" }
 ]
 
 [[durable_objects.bindings]]

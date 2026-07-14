@@ -72,7 +72,6 @@ export class Matchmaker {
 
 // ---- "Take me to a random…" — search a keyword, pick one of the top results ----
 const YT_WORDS = ['travel','cats','cooking','lofi','space','history','ocean','robots','guitar','vintage','nature','science','painting','coffee','city walk','mountains','street food','magic','origami','aquarium','thunderstorm','vinyl','pottery','skateboard','jazz','desert','waterfall','arcade','calligraphy','tiny house'];
-const IG_TAGS = ['sunset','food','travel','art','nature','architecture','coffee','dog','flowers','streetphotography','ocean','mountains','cityscape','design','vintage','minimal','cat','bakery','skate','film'];
 const UA = { 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122 Safari/537.36', 'accept-language': 'en-US,en;q=0.9' };
 const noStore = { 'content-type': 'application/json', 'cache-control': 'no-store' };
 
@@ -86,17 +85,6 @@ async function randomYoutube() {
     return 'https://www.youtube.com/watch?v=' + ids[Math.floor(Math.random() * Math.min(5, ids.length))];
   } catch (e) { return null; }
 }
-async function randomInstagram() {
-  const t = IG_TAGS[Math.floor(Math.random() * IG_TAGS.length)];
-  try {
-    const res = await fetch('https://www.instagram.com/explore/tags/' + t + '/', { headers: UA });
-    const html = await res.text();
-    const codes = [...new Set([...html.matchAll(/"(?:shortcode|code)":"([A-Za-z0-9_-]{6,})"/g)].map(m => m[1]))].slice(0, 8);
-    if (!codes.length) return null;
-    return 'https://www.instagram.com/p/' + codes[Math.floor(Math.random() * Math.min(5, codes.length))] + '/';
-  } catch (e) { return null; }
-}
-
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -110,9 +98,6 @@ export default {
     }
     if (url.pathname === '/api/random/youtube') {
       return new Response(JSON.stringify({ url: await randomYoutube() }), { headers: noStore });
-    }
-    if (url.pathname === '/api/random/instagram') {
-      return new Response(JSON.stringify({ url: await randomInstagram() }), { headers: noStore });
     }
     return new Response('online-counter worker', { status: 200 });
   }
