@@ -76,28 +76,32 @@
   <footer>More random jumps coming soon.</footer>
 
 <script>
-  // First pass: each opens a random pick from a small curated list in a new tab.
-  const LISTS = {
-    web: [
-      'https://neal.fun', 'https://pointerpointer.com', 'https://radio.garden',
-      'https://window-swap.com', 'https://theuselessweb.com/', 'https://mapcrunch.com',
-      'https://en.wikipedia.org/wiki/Special:Random'
-    ],
-    yt: [
-      'https://www.youtube.com/watch?v=jNQXAC9IVRw',
-      'https://www.youtube.com/watch?v=jfKfPfyJRdk',
-      'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-      'https://www.youtube.com/watch?v=5qap5aO4i9A'
-    ],
-    ig: [
-      'https://www.instagram.com/natgeo/', 'https://www.instagram.com/nasa/',
-      'https://www.instagram.com/instagram/', 'https://www.instagram.com/9gag/'
-    ]
+  // Website: real random client-side. YouTube/Instagram: the worker searches a
+  // random keyword and returns one of the top results; falls back to a curated
+  // list if the worker isn't deployed.
+  const WEB = [
+    'https://en.wikipedia.org/wiki/Special:Random', 'https://neal.fun', 'https://pointerpointer.com',
+    'https://radio.garden', 'https://window-swap.com', 'https://theuselessweb.com/', 'https://mapcrunch.com'
+  ];
+  const FALLBACK = {
+    yt: ['https://www.youtube.com/watch?v=jNQXAC9IVRw', 'https://www.youtube.com/watch?v=jfKfPfyJRdk', 'https://www.youtube.com/watch?v=5qap5aO4i9A'],
+    ig: ['https://www.instagram.com/natgeo/', 'https://www.instagram.com/nasa/', 'https://www.instagram.com/instagram/']
   };
+  const rand = a => a[(Math.random() * a.length) | 0];
+
+  async function pickUrl(kind){
+    if (kind === 'web') return rand(WEB);
+    try {
+      const r = await fetch('/api/random/' + (kind === 'yt' ? 'youtube' : 'instagram'), { cache: 'no-store' });
+      if (r.ok){ const j = await r.json(); if (j && j.url) return j.url; }
+    } catch(e){}
+    return rand(FALLBACK[kind]);
+  }
   document.querySelectorAll('.item').forEach(b => b.addEventListener('click', () => {
-    const list = LISTS[b.dataset.kind]; if (!list || !list.length) return;
-    const url = list[(Math.random() * list.length) | 0];
-    window.open(url, '_blank', 'noopener');
+    const win = window.open('', '_blank');           // reserve the tab inside the click gesture
+    pickUrl(b.dataset.kind).then(url => {
+      if (win) win.location.href = url; else window.open(url, '_blank', 'noopener');
+    }).catch(() => { if (win) win.close(); });
   }));
 </script>
   <script defer src="/cookie-consent.js"></script>
