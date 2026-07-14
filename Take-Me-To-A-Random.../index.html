@@ -40,6 +40,8 @@
   .web  { background:radial-gradient(120% 120% at 30% 20%, #38bdf8, #2563eb); }
   .yt   { background:radial-gradient(120% 120% at 30% 20%, #ff5b5b, #d61f26); }
   .ig   { background:linear-gradient(135deg, #f9ce34 0%, #ee2a7b 48%, #6228d7 100%); }
+  .img  { background:radial-gradient(120% 120% at 30% 20%, #34d399, #0d9488); }
+  .reddit { background:radial-gradient(120% 120% at 30% 20%, #ff7a45, #ff4500); }
 
   footer { text-align:center; color:var(--muted); font-size:12.5px; padding:24px; }
 </style>
@@ -68,6 +70,16 @@
       <button class="item" data-kind="ig">
         <div class="tile ig"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" stroke="none"/></svg></div>
         <span class="name">Random Instagram Account</span>
+        <span class="arrow">open ↗</span>
+      </button>
+      <button class="item" data-kind="img">
+        <div class="tile img"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.6"/><path d="M21 15l-5-5L5 21"/></svg></div>
+        <span class="name">Random Image</span>
+        <span class="arrow">open ↗</span>
+      </button>
+      <button class="item" data-kind="reddit">
+        <div class="tile reddit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13.5" r="7.5"/><circle cx="9" cy="13" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="13" r="1" fill="currentColor" stroke="none"/><path d="M9.2 16.5c1.6 1.1 4 1.1 5.6 0"/><circle cx="18.5" cy="6.5" r="1.6"/><path d="M12 6l1.2-3 4 1"/></svg></div>
+        <span class="name">Random Reddit Post</span>
         <span class="arrow">open ↗</span>
       </button>
     </div>
@@ -100,16 +112,38 @@
     'https://musiclab.chromeexperiments.com/', 'https://earth.google.com/web/', 'https://www.openculture.com/',
     'https://archive.org/', 'https://www.gutenberg.org/', 'https://unsplash.com/', 'https://coolors.co/',
     'https://neal.fun/deep-sea/', 'https://neal.fun/size-of-space/', 'https://neal.fun/space-elevator/',
-    'https://www.pinball.org/', 'https://tholman.com/', 'https://css-tricks.com/', 'https://a.singlediv.com/'
+    'https://www.pinball.org/', 'https://tholman.com/', 'https://css-tricks.com/', 'https://a.singlediv.com/',
+    'https://neal.fun/password-game/', 'https://neal.fun/internet-artifacts/', 'https://neal.fun/wonders-of-street-view/',
+    'https://neal.fun/life-stats/', 'https://neal.fun/spend/', 'https://neal.fun/wire/', 'https://www.atlasobscura.com/',
+    'https://pudding.cool/', 'https://radiooooo.com/', 'https://waitbutwhy.com/', 'https://kottke.org/',
+    'https://www.mentalfloss.com/', 'https://www.ted.com/', 'https://informationisbeautiful.net/',
+    'https://observablehq.com/', 'https://www.autodraw.com/', 'https://zoom.earth/', 'https://www.ventusky.com/',
+    'https://www.openstreetmap.org/', 'https://www.solarsystemscope.com/', 'https://stuffin.space/',
+    'https://www.noisli.com/', 'https://asoftmurmur.com/', 'https://endless.horse/', 'https://fakeupdate.net/',
+    'https://heeeeeeeey.com/', 'https://typatone.com/', 'https://clickclickclick.click/',
+    'https://apod.nasa.gov/apod/astropix.html', 'https://eyes.nasa.gov/', 'https://thiscatdoesnotexist.com/',
+    'https://thisartworkdoesnotexist.com/', 'https://www.whichfaceisreal.com/', 'https://excalidraw.com/',
+    'https://www.tldraw.com/', 'https://www.photopea.com/', 'https://squoosh.app/', 'https://play2048.co/',
+    'https://lichess.org/', 'https://www.chess.com/', 'https://www.quantamagazine.org/', 'https://nautil.us/',
+    'https://aeon.co/', 'https://longreads.com/', 'https://www.submarinecablemap.com/', 'https://opentopomap.org/',
+    'https://musicforprogramming.net/', 'https://fonts.google.com/', 'https://coolors.co/generate',
+    'https://www.pexels.com/', 'https://giphy.com/', 'https://tenor.com/', 'https://www.behance.net/',
+    'https://dribbble.com/', 'https://codepen.io/', 'https://www.are.na/', 'https://scale.chromeexperiments.com/',
+    'https://www.mozilla.org/en-US/firefox/', 'https://archillect.com/', 'https://weirdorconfusing.com/',
+    'https://www.calm.com/', 'https://ismycomputeron.com/', 'https://cat-bounce.com/'
   ];
   const FALLBACK_YT = ['https://www.youtube.com/watch?v=jNQXAC9IVRw', 'https://www.youtube.com/watch?v=jfKfPfyJRdk', 'https://www.youtube.com/watch?v=5qap5aO4i9A'];
   // ~300 big public Instagram accounts (celebs, athletes, brands, creators, orgs)
   const IG = ['instagram','cristiano','leomessi','kyliejenner','selenagomez','therock','arianagrande','kimkardashian','beyonce','khloekardashian','kendalljenner','natgeo','nike','justinbieber','taylorswift','virat.kohli','nickiminaj','jlo','kourtneykardash','mileycyrus','katyperry','zendaya','kevinhart4real','ddlovato','theellenshow','badgalriri','gigihadid','nasa','shakira','davidbeckham','championsleague','vindiesel','chrisbrownofficial','champagnepapi','snoopdogg','realmadrid','fcbarcelona','emmawatson','priyankachopra','deepikapadukone','neymarjr','nba','kingjames','billieeilish','dualipa','teddysphotos','shawnmendes','camila_cabello','postmalone','travisscott','theweeknd','adele','ladygaga','brunomars','jbalvin','maluma','karolg','sanbenito','anitta','daddyyankee','ozuna','iamcardib','theestallion','sza','dojacat','oliviarodrigo','harrystyles','zayn','niallhoran','liampayne','iamhalsey','marshmello','davidguetta','calvinharris','tiesto','martingarrix','krisjenner','gwenstefani','justintimberlake','pink','onedirection','coldplay','imaginedragons','maroon5','linkinpark','metallica','wizkhalifa','21savage','lildurk','offsetyrn','quavo','g_eazy','frenchmontana','french','2chainz','vancityreynolds','tomholland2013','robertdowneyjr','chrishemsworth','markruffalo','gal_gadot','willsmith','jadapinkettsmith','milliebobbybrown','finnwolfhardofficial','leonardodicaprio','officiallymcconaughey','thehughjackman','chrisevans','elizabetholsenofficial','sebastianstan','anthonymackie','idriselba','samuelljackson','aliaabhatt','katrinakaif','anushkasharma','ranveersingh','akshaykumar','tigerjackieshroff','shraddhakapoor','kareenakapoorkhan','madhuridixitnene','varundvn','sidmalhotra','kritisanon','jacquelinef143','sonamkapoor','dishapatani','kobebryant','stephencurry30','kevindurant','russwest44','jamesharden13','giannis_an34','kyrieirving','damianlillard','usainbolt','serenawilliams','rogerfederer','rafaelnadal','tigerwoods','floydmayweather','thenotoriousmma','khabib_nurmagomedov','miketyson','anthony_joshua','canelo','simonebiles','k.mbappe','erling.haaland','viniciusjr','garethbale11','sergioramos','iamzlatanibrahimovic','paulpogba','luissuarez9','karimbenzema','lukamodric10','adidas','cocacola','pepsi','redbull','gopro','chanel','gucci','louisvuitton','dior','prada','versace','burberry','fendi','balenciaga','hermes','cartier','rolex','tiffanyandco','starbucks','mcdonalds','kfc','dominos','netflix','spotify','playstation','xbox','nintendo','marvel','disney','pixar','starwars','lego','ferrari','lamborghini','bugatti','bmw','mercedesbenz','audi','porsche','google','microsoft','samsung','sony','canon','spacex','hm','zara','uniqlo','supremenewyork','jumpman23','underarmour','puma','reebok','newbalance','vans','converse','rayban','oakley','nfl','mlb','nhl','manchesterunited','mancity','liverpoolfc','chelseafc','arsenal','spursofficial','juventus','acmilan','inter','atleticodemadrid','psg','fcbayern','bvb09','premierleague','laliga','f1','redbullracing','mercedesamgf1','scuderiaferrari','espn','skysports','433','brfootball','houseofhighlights','bleacherreport','mrbeast','zachking','khaby00','charlidamelio','addisonraee','lelepons','kingbach','dudeperfect','mkbhd','pewdiepie','jamescharles','jeffreestar','nikkietutorials','hudabeauty','kyliecosmetics','fentybeauty','9gag','buzzfeed','voguemagazine','gq','elleusa','cosmopolitan','forbes','time','bbcnews','cnn','nytimes','guinnessworldrecords','worldstar','complex','hypebeast','foodnetwork','buzzfeedtasty','gordongram','jamieoliver','wwe','ufc','nationalgeographic','history','discovery','amazon','youtube','tiktok','spotifyusa','apple','airbnb','uber','wearetennis','goal','skysportsnews','barstoolsports','worldstarhiphop','9to5mac','wired','theonion','humansofny','overheardnewyork','earthpix','beautiful.destinations','mensfashion','architecture','streetstyle','minimalism'];
+  // popular safe subreddits — Reddit's /r/<sub>/random redirects to a random post
+  const SUBS = ['todayilearned','damnthatsinteresting','interestingasfuck','mildlyinteresting','science','space','earthporn','food','gaming','movies','books','history','art','nature','videos','showerthoughts','askreddit','explainlikeimfive','dataisbeautiful','mapporn','oddlysatisfying','natureisfuckinglit','getmotivated','itookapicture','museum','coolguides','educationalgifs','nextfuckinglevel','beamazed','humansbeingbros','aww','foodporn','cozyplaces','architecture','design','crafts','woodworking','gardening','hiking','camping','travel','geography','astronomy','physics','biology','technology','futurology','documentaries','todayifoundout','lifeprotips','youshouldknow','pics','funny','wholesomememes'];
   const rand = a => a[(Math.random() * a.length) | 0];
 
   async function pickUrl(kind){
     if (kind === 'web') return rand(WEB);
     if (kind === 'ig') return 'https://www.instagram.com/' + rand(IG) + '/';
+    if (kind === 'img') return 'https://picsum.photos/seed/' + Math.random().toString(36).slice(2) + '/1600/900';
+    if (kind === 'reddit') return 'https://www.reddit.com/r/' + rand(SUBS) + '/random/';
     // youtube: the worker searches a random keyword and returns a top result
     try {
       const r = await fetch('/api/random/youtube', { cache: 'no-store' });
