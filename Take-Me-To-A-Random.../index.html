@@ -42,6 +42,9 @@
   .ig   { background:linear-gradient(135deg, #f9ce34 0%, #ee2a7b 48%, #6228d7 100%); }
   .img  { background:radial-gradient(120% 120% at 30% 20%, #34d399, #0d9488); }
   .reddit { background:radial-gradient(120% 120% at 30% 20%, #ff7a45, #ff4500); }
+  .wiki { background:radial-gradient(120% 120% at 30% 20%, #94a3b8, #334155); }
+  .street { background:radial-gradient(120% 120% at 30% 20%, #4ade80, #15803d); }
+  .cat  { background:radial-gradient(120% 120% at 30% 20%, #fb7185, #e11d48); }
 
   footer { text-align:center; color:var(--muted); font-size:12.5px; padding:24px; }
 </style>
@@ -80,6 +83,21 @@
       <button class="item" data-kind="reddit">
         <div class="tile reddit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13.5" r="7.5"/><circle cx="9" cy="13" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="13" r="1" fill="currentColor" stroke="none"/><path d="M9.2 16.5c1.6 1.1 4 1.1 5.6 0"/><circle cx="18.5" cy="6.5" r="1.6"/><path d="M12 6l1.2-3 4 1"/></svg></div>
         <span class="name">Random Subreddit</span>
+        <span class="arrow">open ↗</span>
+      </button>
+      <button class="item" data-kind="wiki">
+        <div class="tile wiki"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5a2 2 0 012-2h6v16H6a2 2 0 00-2 2V5z"/><path d="M20 5a2 2 0 00-2-2h-6v16h6a2 2 0 012 2V5z"/></svg></div>
+        <span class="name">Random Wikipedia Article</span>
+        <span class="arrow">open ↗</span>
+      </button>
+      <button class="item" data-kind="street">
+        <div class="tile street"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.5-7-11a7 7 0 1114 0c0 4.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.6"/></svg></div>
+        <span class="name">Random Street View</span>
+        <span class="arrow">open ↗</span>
+      </button>
+      <button class="item" data-kind="cat">
+        <div class="tile cat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 4.5l3.2 4M19.5 4.5l-3.2 4"/><path d="M5 9.5C5 8 6.5 7.5 12 7.5s7 .5 7 2c1 4.5-2.2 11-7 11s-8-6.5-7-11z"/><path d="M9.5 12.5h.01M14.5 12.5h.01"/><path d="M12 14.5v1.2M9.6 16.4h4.8"/></svg></div>
+        <span class="name">Random Cat</span>
         <span class="arrow">open ↗</span>
       </button>
     </div>
@@ -145,6 +163,9 @@
     if (kind === 'ig') return 'https://www.instagram.com/' + rand(IG) + '/';
     if (kind === 'img') return 'https://picsum.photos/seed/' + Math.random().toString(36).slice(2) + '/1600/900';
     if (kind === 'reddit') return 'https://www.reddit.com/r/' + rand(SUBS) + '/top/?t=week';
+    if (kind === 'wiki') return 'https://en.wikipedia.org/wiki/Special:Random';
+    if (kind === 'street') return 'https://randomstreetview.com/';
+    if (kind === 'cat') return 'https://cataas.com/cat?rand=' + Math.random().toString(36).slice(2);
     // youtube: the worker searches a random keyword and returns a top result
     try {
       const r = await fetch('/api/random/youtube', { cache: 'no-store' });
