@@ -79,9 +79,28 @@
   // Website: real random client-side. YouTube/Instagram: the worker searches a
   // random keyword and returns one of the top results; falls back to a curated
   // list if the worker isn't deployed.
+  // Wikipedia's random article is repeated a few times so a big share of clicks
+  // land on a genuinely different page each time; the rest are fun corners of the web.
   const WEB = [
-    'https://en.wikipedia.org/wiki/Special:Random', 'https://neal.fun', 'https://pointerpointer.com',
-    'https://radio.garden', 'https://window-swap.com', 'https://theuselessweb.com/', 'https://mapcrunch.com'
+    'https://en.wikipedia.org/wiki/Special:Random', 'https://en.wikipedia.org/wiki/Special:Random',
+    'https://en.wikipedia.org/wiki/Special:Random', 'https://en.wikipedia.org/wiki/Special:Random',
+    'https://neal.fun', 'https://pointerpointer.com', 'https://window-swap.com', 'https://radio.garden',
+    'https://mapcrunch.com', 'https://theuselessweb.com/', 'https://cat-bounce.com/', 'https://thisissand.com/',
+    'https://koalastothemax.com/', 'https://eelslap.com/', 'https://thatsthefinger.com/', 'https://papertoilet.com/',
+    'https://hackertyper.net/', 'https://drawing.garden/', 'https://puginarug.com/', 'https://corndog.io/',
+    'https://procatinator.com/', 'https://rainymood.com/', 'https://www.incredibox.com/', 'https://www.shadertoy.com/',
+    'https://www.sporcle.com/', 'https://www.geoguessr.com/', 'https://quickdraw.withgoogle.com/',
+    'https://experiments.withgoogle.com/', 'https://artsandculture.google.com/', 'https://patatap.com/',
+    'https://weavesilk.com/', 'https://www.jacksonpollock.org/', 'https://everynoise.com/', 'https://ncase.me/',
+    'https://explorabl.es/', 'https://stellarium-web.org/', 'https://htwins.net/scale2/', 'https://www.windy.com/',
+    'https://www.flightradar24.com/', 'https://www.marinetraffic.com/', 'https://zombo.com/',
+    'https://findtheinvisiblecow.com/', 'https://staggeringbeauty.com/', 'https://longdogechallenge.com/',
+    'https://thispersondoesnotexist.com/', 'https://www.boredbutton.com/', 'https://dwitter.net/',
+    'https://littlealchemy2.com/', 'https://sandspiel.club/', 'https://orb.farm/',
+    'https://musiclab.chromeexperiments.com/', 'https://earth.google.com/web/', 'https://www.openculture.com/',
+    'https://archive.org/', 'https://www.gutenberg.org/', 'https://unsplash.com/', 'https://coolors.co/',
+    'https://neal.fun/deep-sea/', 'https://neal.fun/size-of-space/', 'https://neal.fun/space-elevator/',
+    'https://www.pinball.org/', 'https://tholman.com/', 'https://css-tricks.com/', 'https://a.singlediv.com/'
   ];
   const FALLBACK_YT = ['https://www.youtube.com/watch?v=jNQXAC9IVRw', 'https://www.youtube.com/watch?v=jfKfPfyJRdk', 'https://www.youtube.com/watch?v=5qap5aO4i9A'];
   // ~300 big public Instagram accounts (celebs, athletes, brands, creators, orgs)
