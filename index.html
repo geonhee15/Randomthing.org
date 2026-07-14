@@ -126,6 +126,7 @@
   .cps-card  { background: radial-gradient(120% 120% at 80% 12%, #ff7a45 0%, #d1401e 52%, #6e1c0c 100%); }
   .rps-card  { background: radial-gradient(120% 120% at 20% 12%, #454db0 0%, #262a68 52%, #12142e 100%); }
   .sf-card   { background: radial-gradient(120% 120% at 50% 10%, #52233a 0%, #2c1420 52%, #130a10 100%); }
+  .rand-card { background: linear-gradient(135deg, #f9ce34 0%, #ee2a7b 48%, #6228d7 100%); }
   .calc-card .mini {
     flex: 0 0 auto;
     width: 92px;
@@ -202,6 +203,14 @@
   }
   .rps-card .mini svg { width:23px; height:23px; color:#dfe2ff; }
   .sf-card .kicker { color:#ff9db0; }
+  .rand-card .kicker { color: rgba(255,255,255,.85); }
+  /* Take me to a random… card artwork: a shuffle tile */
+  .rand-card .mini {
+    flex:0 0 auto; width:92px; height:92px; border-radius:16px; display:flex; align-items:center; justify-content:center;
+    background:rgba(255,255,255,.16); box-shadow:0 10px 22px rgba(0,0,0,.3), inset 0 0 0 1px rgba(255,255,255,.25);
+    transform:rotate(-4deg); transition:transform .2s ease;
+  }
+  .rand-card .mini svg { width:48px; height:48px; color:#fff; filter:drop-shadow(0 2px 4px rgba(0,0,0,.25)); }
   /* Stickman Fight card artwork: two stick fighters over a lava pit */
   .sf-card .mini {
     flex:0 0 auto; width:92px; height:92px; border-radius:16px; position:relative; overflow:hidden;
@@ -528,6 +537,17 @@
         </div>
       </a>
 
+      <a class="card art-card rand-card" href="/Take-Me-To-A-Random.../">
+        <div class="mini" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M4 20L21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l5 5"/></svg>
+        </div>
+        <div class="txt">
+          <span class="kicker">Surprise me</span>
+          <span class="name">Take me to a random…</span>
+          <span class="desc">A random website, video, or&nbsp;post.</span>
+        </div>
+      </a>
+
       <a class="card art-card sf-card" href="/Stickman-Fight/">
         <div class="mini" aria-hidden="true">
           <svg viewBox="0 0 60 60" fill="none" stroke-linecap="round">
@@ -716,6 +736,8 @@
         'Stickman Fight — smarter computer opponent (weapon-aware spacing, dodges when it is losing, stays clear of the lava)',
         'Stickman Fight — three more weapons: a thrown shuriken, a long spear, and an overhead hammer (five in all)',
         'CPS Test — ignores clicks for 2 seconds after a result so the final burst doesn’t restart it',
+        'Added “Take me to a random…” — jump to a random website, YouTube video, or Instagram post',
+        'Stickman Fight — the top-left back link now works from the mode menu',
       ] },
       { date: '26.7.12', open: false, items: [
         'Clocks — pick any country / time zone next to the clock selector, or keep your local time',
