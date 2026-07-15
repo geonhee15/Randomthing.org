@@ -60,7 +60,16 @@
     letter-spacing: -1px;
     line-height: 1;
     margin: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: clamp(10px, 1.6vw, 18px);
   }
+  .logo .ico {
+    width: clamp(40px, 7vw, 74px); height: auto; flex: 0 0 auto;
+    filter: drop-shadow(0 5px 12px rgba(30,30,60,.18));
+    transform: rotate(-6deg); transition: transform .25s ease;
+  }
+  .logo:hover .ico { transform: rotate(6deg) scale(1.06); }
   .logo .org { color: #ff5a5f; }
   .tagline {
     color: var(--muted);
@@ -458,7 +467,7 @@
     <button class="np-x" id="npX" aria-label="Stop">✕</button>
   </div>
   <header class="hero">
-    <h1 class="logo">Randomthing<span class="org">.org</span></h1>
+    <h1 class="logo"><img class="ico" src="/favicon.svg" alt="" aria-hidden="true" /><span class="wm">Randomthing<span class="org">.org</span></span></h1>
     <div class="tagline">random things, made for fun</div>
     <button class="log-btn" id="logBtn" type="button" aria-label="Update log" title="Update log">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -785,6 +794,7 @@
       { date: '26.7.14', open: true, items: [
         'Homepage — animated card icons: the Background gradient drifts, Brick Break plays itself, and the clock got a moving second hand',
         'Homepage — the Color Guesser icon shows a fresh hand-picked 4-colour palette (one of 12) on every visit',
+        'Homepage — the dice logo icon now sits beside the Randomthing.org wordmark',
       ] },
       { date: '26.7.13', open: false, items: [
         'Stickman Fight — a setup screen: pick any colour from a palette and choose your weapon (spinning axe or thrusting katana)',
