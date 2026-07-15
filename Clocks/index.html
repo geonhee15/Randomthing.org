@@ -30,8 +30,13 @@
   }
 
   .topbar {
-    position: fixed; top: 18px; left: 18px; z-index: 20;
+    position: fixed; top: max(18px, env(safe-area-inset-top)); left: max(18px, env(safe-area-inset-left)); z-index: 20;
     display: flex; align-items: center; gap: 12px;
+  }
+  @media (max-width: 560px) {
+    .topbar { right: max(18px, env(safe-area-inset-right)); flex-wrap: wrap; gap: 8px; }
+    .topbar .zone select, .topbar .menu-btn { max-width: 44vw; }
+    .topbar .zone select { text-overflow: ellipsis; }
   }
   .brand {
     font-family: "Baloo 2", sans-serif; font-weight: 800; font-size: 19px;
@@ -694,5 +699,6 @@ if (Number.isInteger(savedZone) && savedZone > 0 && savedZone < ZONES.length){ z
 requestAnimationFrame(tick);
 </script>
   <script defer src="/cookie-consent.js"></script>
+  <script defer src="/now-playing.js"></script>
 </body>
 </html>

@@ -35,19 +35,6 @@
   }
   .online.show { opacity: 1; }
 
-  .nowplay { position: fixed; left: 16px; bottom: 16px; z-index: 60; display: flex; align-items: center; gap: 10px;
-    background: #fff; color: #1d1d1f; border: 1px solid rgba(0,0,0,.08); box-shadow: 0 10px 30px rgba(0,0,0,.16);
-    border-radius: 14px; padding: 9px 10px 9px 11px; max-width: min(320px, 82vw); }
-  .nowplay.hide { display: none; }
-  .nowplay .np-toggle { flex: 0 0 auto; width: 34px; height: 34px; border-radius: 9px; border: none; cursor: pointer;
-    background: #1d1d1f; color: #fff; display: flex; align-items: center; justify-content: center; }
-  .nowplay .np-toggle svg { width: 15px; height: 15px; }
-  .nowplay .np-txt { display: flex; flex-direction: column; min-width: 0; }
-  .nowplay .np-k { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #9a9aa2; }
-  .nowplay .np-name { font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .nowplay .np-x { flex: 0 0 auto; width: 26px; height: 26px; border-radius: 8px; border: none; cursor: pointer;
-    background: rgba(0,0,0,.06); color: #6a6a72; font-size: 13px; }
-  .nowplay .np-x:hover { background: rgba(226,59,46,.16); color: #d33; }
 
   header.hero {
     text-align: center;
@@ -71,6 +58,11 @@
   }
   .logo:hover .ico { transform: rotate(6deg) scale(1.06); }
   .logo .org { color: #ff5a5f; }
+  @media (max-width: 380px) {
+    header.hero { padding: 40px 14px 24px; }
+    .logo { font-size: clamp(25px, 8.5vw, 40px); gap: 6px; letter-spacing: -.5px; }
+    .logo .ico { width: clamp(32px, 11vw, 46px); }
+  }
   .tagline {
     color: var(--muted);
     font-size: clamp(15px, 2vw, 19px);
@@ -83,12 +75,13 @@
     margin: 0 auto;
     padding: 0 20px 80px;
   }
-  /* Canonical responsive grid: cards never go below ~340px, wrap on their
+  /* Canonical responsive grid: cards never go below ~300px, wrap on their
      own, and the track width is explicit (not content-based) so card
-     internals can't collapse. Reusable as-is for every future item. */
+     internals can't collapse. 300px lets a squarish foldable (~690px+)
+     show two columns while desktop stays three. Reusable for every item. */
   .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
     gap: 22px;
   }
 
@@ -479,11 +472,6 @@
 </head>
 <body>
   <div class="online" id="online" aria-live="polite"></div>
-  <div class="nowplay hide" id="nowplay">
-    <button class="np-toggle" id="npToggle" aria-label="Play or pause"></button>
-    <div class="np-txt"><span class="np-k">Now Playing</span><span class="np-name" id="npName"></span></div>
-    <button class="np-x" id="npX" aria-label="Stop">✕</button>
-  </div>
   <header class="hero">
     <h1 class="logo"><img class="ico" src="/favicon.svg" alt="" aria-hidden="true" /><span class="wm">Randomthing<span class="org">.org</span></span></h1>
     <div class="tagline">random things, made for fun</div>
@@ -750,41 +738,6 @@
       connect();
     })();
 
-    // Now Playing — if the Audio Player was playing when you came here, keep it going
-    // in a small chip. The ✕ stops it; to restart, go back to the Audio Player.
-    (function(){
-      var np; try { np = JSON.parse(localStorage.getItem('ap_now') || 'null'); } catch(e){ np = null; }
-      if (!np || !np.playing || np.id == null) return;
-      var el = document.getElementById('nowplay'), nameEl = document.getElementById('npName'),
-          tg = document.getElementById('npToggle'), xb = document.getElementById('npX');
-      var PLAY = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
-      var PAUSE = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>';
-      var audio = new Audio(), url = null, playing = false;
-      function icon(){ tg.innerHTML = playing ? PAUSE : PLAY; }
-      function stop(){ try { audio.pause(); } catch(e){} if (url){ URL.revokeObjectURL(url); url = null; } try { localStorage.removeItem('ap_now'); } catch(e){} el.classList.add('hide'); }
-      try {
-        var rq = indexedDB.open('ap_playlist', 1);
-        rq.onsuccess = function(e){
-          var dbc = e.target.result;
-          try {
-            var g = dbc.transaction('tracks', 'readonly').objectStore('tracks').get(np.id);
-            g.onsuccess = function(){
-              var rec = g.result; if (!rec || !rec.blob) return;
-              url = URL.createObjectURL(rec.blob); audio.src = url;
-              audio.addEventListener('loadedmetadata', function(){ try { audio.currentTime = Math.min(np.time || 0, (audio.duration || 1e9) - 0.2); } catch(_){} });
-              audio.addEventListener('ended', function(){ playing = false; icon(); });
-              nameEl.textContent = np.name || 'Track'; el.classList.remove('hide'); icon();
-              audio.play().then(function(){ playing = true; icon(); }).catch(function(){ playing = false; icon(); });
-            };
-          } catch(_){}
-        };
-      } catch(e){}
-      tg.addEventListener('click', function(){
-        if (playing){ audio.pause(); playing = false; icon(); }
-        else { audio.play().then(function(){ playing = true; icon(); }).catch(function(){}); }
-      });
-      xb.addEventListener('click', stop);
-    })();
     // easter egg: the calculator thumbnail shows a random 1–99 each visit
     document.getElementById('calcScreen').textContent = Math.floor(Math.random() * 99) + 1;
     // the Clocks thumbnail tells the real time
@@ -828,6 +781,8 @@
         'Homepage — the Color Guesser icon shows a fresh hand-picked 4-colour palette (one of 12) on every visit',
         'Homepage — the dice logo icon now sits beside the Randomthing.org wordmark',
         'Added Sudoku — Easy 4×4, Medium 6×6, Hard 9×9, plus a custom size (only real box-splittable sizes; 5, 7, and other odd ones are blocked)',
+        'Now Playing follows you everywhere — the mini player rides along into every panel and keeps the track going until you stop it',
+        'Mobile & foldables — tuned every layout for tall phones and Flip/Fold ratios: nothing overflows sideways, the logo and controls scale down, and a squarish foldable shows two columns',
       ] },
       { date: '26.7.13', open: false, items: [
         'Stickman Fight — a setup screen: pick any colour from a palette and choose your weapon (spinning axe or thrusting katana)',
@@ -917,5 +872,6 @@
     })();
   </script>
   <script defer src="/cookie-consent.js"></script>
+  <script defer src="/now-playing.js"></script>
 </body>
 </html>

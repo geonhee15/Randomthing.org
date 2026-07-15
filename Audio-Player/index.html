@@ -99,7 +99,8 @@
   .platter .tick { position:absolute; width:4px; height:4px; border-radius:50%; background:#b6b6af; }
 
   /* controls row */
-  .controls { display:flex; align-items:flex-end; gap:10px; }
+  .controls { display:flex; align-items:flex-end; gap:10px; flex-wrap:wrap; row-gap:14px; }
+  @media (max-width:430px){ .controls { justify-content:center; } }
   .keys { display:flex; gap:9px; }
   .key {
     width:62px; height:58px; border-radius:13px; border:none; cursor:pointer;
