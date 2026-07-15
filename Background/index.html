@@ -463,7 +463,10 @@ window.addEventListener('touchstart', e => {
   setMouseFromTouch(e); pressing = true;
   click.x = mouse.tx; click.y = mouse.ty; click.t = (performance.now() - start)/1000;
 }, {passive:true});
-window.addEventListener('touchmove', setMouseFromTouch, {passive:true});
+// non-passive so we can preventDefault: some mobile browsers otherwise steal the
+// drag as a scroll/refresh gesture and stop sending touchmove. Nothing scrolls
+// on this full-screen page, so blocking the default is safe.
+window.addEventListener('touchmove', e => { setMouseFromTouch(e); if (e.cancelable) e.preventDefault(); }, {passive:false});
 window.addEventListener('touchend', () => pressing = false, {passive:true});
 window.addEventListener('touchcancel', () => pressing = false, {passive:true});
 
