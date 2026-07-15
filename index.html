@@ -228,19 +228,11 @@
     display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
     box-shadow: 0 10px 22px rgba(0,0,0,.4), inset 0 0 0 1px rgba(255,255,255,.15);
     transform: rotate(-4deg); transition: transform .2s ease;
-    animation: cgSpin 5s ease-in-out infinite;
   }
   .cg-card .mini i { display:block; }
-  @keyframes cgSpin {
-    0%,13%   { transform: rotate(-4deg); }
-    23%,38%  { transform: rotate(86deg); }
-    48%,63%  { transform: rotate(176deg); }
-    73%,88%  { transform: rotate(266deg); }
-    100%     { transform: rotate(356deg); }
-  }
   @media (prefers-reduced-motion: reduce) {
     .bg-card .mini::before, .bb-card .mini .ball, .bb-card .mini .pad, .bb-card .mini b,
-    .clk-card .mini #clkSec, .cg-card .mini { animation: none !important; }
+    .clk-card .mini #clkSec { animation: none !important; }
   }
   /* Reaction Time card artwork */
   .rt-card .mini {
@@ -764,12 +756,35 @@
       }
       tick(); setInterval(tick, 15000);
     })();
+    // the Color Guesser thumbnail shows a fresh hand-picked 4-colour palette each visit
+    (function(){
+      var PALETTES = [
+        ['#ef476f','#ffd166','#06d6a0','#118ab2'],
+        ['#ff6b6b','#feca57','#48dbfb','#1dd1a1'],
+        ['#f94144','#f8961e','#90be6d','#577590'],
+        ['#264653','#2a9d8f','#e9c46a','#e76f51'],
+        ['#f72585','#7209b7','#4361ee','#4cc9f0'],
+        ['#ff595e','#ffca3a','#8ac926','#1982c4'],
+        ['#e63946','#f4a261','#2a9d8f','#457b9d'],
+        ['#d00000','#ffba08','#3f88c5','#136f63'],
+        ['#f15bb5','#fee440','#00bbf9','#00f5d4'],
+        ['#ee6c4d','#f0a202','#3d5a80','#98c1d9'],
+        ['#ff9f1c','#ffbf69','#2ec4b6','#4895ef'],
+        ['#9b5de5','#f15bb5','#fee440','#00bbf9']
+      ];
+      var cells = document.querySelectorAll('.cg-card .mini i');
+      if (cells.length === 4){
+        var p = PALETTES[Math.floor(Math.random() * PALETTES.length)];
+        cells.forEach(function(c, i){ c.style.background = p[i]; });
+      }
+    })();
 
     // ---------- update log ----------
     // Newest day first; items within a day are numbered date-1, date-2, …
     const LOGS = [
       { date: '26.7.14', open: true, items: [
-        'Homepage — animated card icons: the Background gradient drifts, Brick Break plays itself, the clock got a moving second hand, and Color Guesser spins in quarter turns',
+        'Homepage — animated card icons: the Background gradient drifts, Brick Break plays itself, and the clock got a moving second hand',
+        'Homepage — the Color Guesser icon shows a fresh hand-picked 4-colour palette (one of 12) on every visit',
       ] },
       { date: '26.7.13', open: false, items: [
         'Stickman Fight — a setup screen: pick any colour from a palette and choose your weapon (spinning axe or thrusting katana)',
