@@ -62,10 +62,10 @@
     margin: 0;
     display: inline-flex;
     align-items: center;
-    gap: clamp(10px, 1.6vw, 18px);
+    gap: clamp(6px, 1vw, 12px);
   }
   .logo .ico {
-    width: clamp(40px, 7vw, 74px); height: auto; flex: 0 0 auto;
+    width: clamp(48px, 8.4vw, 90px); height: auto; flex: 0 0 auto;
     filter: drop-shadow(0 5px 12px rgba(30,30,60,.18));
     transform: rotate(-6deg); transition: transform .25s ease;
   }
@@ -281,6 +281,24 @@
     box-shadow: 16px 16px 0 -1px #141418, 32px 32px 0 -1px #141418; }
   .fir-card .mini::after { background:radial-gradient(circle at 38% 35%,#fff,#d4d4da); top:40px; left:24px;
     box-shadow: inset 0 0 0 1px #c8c8cc, 16px -16px 0 -1px #fff; }
+  /* Sudoku card artwork: a mini 4×4 grid with 2×2 box dividers */
+  .sudoku-card { background: radial-gradient(120% 120% at 78% 12%, #22344a 0%, #16232f 55%, #0a1017 100%); }
+  .sudoku-card .kicker { color:#93c5fd; }
+  .sudoku-card .mini {
+    flex:0 0 auto; width:92px; height:92px; border-radius:16px; background:#0c1420; padding:8px; position:relative;
+    display:grid; grid-template-columns:repeat(4,1fr); grid-template-rows:repeat(4,1fr); gap:2px;
+    box-shadow:0 10px 22px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.08);
+    transform:rotate(-4deg); transition:transform .2s ease;
+  }
+  .sudoku-card .mini i {
+    display:flex; align-items:center; justify-content:center; border-radius:3px; background:rgba(255,255,255,.05);
+    font-family:"Space Grotesk",sans-serif; font-weight:700; font-size:13px; color:#e7edf5; line-height:1; font-style:normal;
+  }
+  .sudoku-card .mini i.a { color:#60a5fa; }
+  .sudoku-card .mini::before, .sudoku-card .mini::after { content:""; position:absolute; background:rgba(255,255,255,.28); z-index:2; }
+  .sudoku-card .mini::before { left:50%; top:6px; bottom:6px; width:2px; transform:translateX(-1px); }
+  .sudoku-card .mini::after { top:50%; left:6px; right:6px; height:2px; transform:translateY(-1px); }
+
   /* Stretch! card artwork: a face with a red hand print */
   .stretch-card .mini {
     flex: 0 0 auto; width: 92px; height: 92px; border-radius: 16px; position: relative; overflow: hidden;
@@ -676,6 +694,20 @@
           <span class="desc">Line up five stones to&nbsp;win.</span>
         </div>
       </a>
+
+      <a class="card art-card sudoku-card" href="/Sudoku/">
+        <div class="mini" aria-hidden="true">
+          <i class="a">5</i><i></i><i></i><i>3</i>
+          <i></i><i>2</i><i></i><i></i>
+          <i></i><i></i><i>4</i><i></i>
+          <i>1</i><i></i><i></i><i class="a">2</i>
+        </div>
+        <div class="txt">
+          <span class="kicker">Number puzzle</span>
+          <span class="name">Sudoku</span>
+          <span class="desc">4×4, 6×6, 9×9 or your own&nbsp;size.</span>
+        </div>
+      </a>
     </div>
   </main>
 
@@ -795,6 +827,7 @@
         'Homepage — animated card icons: the Background gradient drifts, Brick Break plays itself, and the clock got a moving second hand',
         'Homepage — the Color Guesser icon shows a fresh hand-picked 4-colour palette (one of 12) on every visit',
         'Homepage — the dice logo icon now sits beside the Randomthing.org wordmark',
+        'Added Sudoku — Easy 4×4, Medium 6×6, Hard 9×9, plus a custom size (only real box-splittable sizes; 5, 7, and other odd ones are blocked)',
       ] },
       { date: '26.7.13', open: false, items: [
         'Stickman Fight — a setup screen: pick any colour from a palette and choose your weapon (spinning axe or thrusting katana)',

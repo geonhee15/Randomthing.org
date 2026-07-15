@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Sudoku — Randomthing.org</title>
+<meta name="description" content="Play Sudoku — Easy 4×4, Medium 6×6, Hard 9×9, or a custom size. Fill every row, column, and box." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
+<style>
+  :root { --ui:"Inter",system-ui,-apple-system,sans-serif; --ink:#1b1b20; --muted:#8a8a93; --line:#e8e8ec; --grid:#1b1b20; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; padding:0; }
+  body { font-family:var(--ui); color:var(--ink); background:#f6f6f8; min-height:100vh; -webkit-font-smoothing:antialiased;
+    -webkit-user-select:none; user-select:none; }
+  .nav { display:flex; align-items:center; gap:12px; padding:14px 20px; }
+  .brand { font-family:"Baloo 2",sans-serif; font-weight:800; font-size:20px; letter-spacing:-.4px; color:var(--ink); text-decoration:none; padding:5px 8px; border-radius:10px; }
+  .brand:hover { background:rgba(0,0,0,.05); }
+  .brand .org { color:#ff5a5f; }
+  .nav .sep { color:#cfcfd4; } .nav h1 { font-size:15px; font-weight:600; margin:0; color:#56565e; }
+
+  .wrap { max-width:520px; margin:0 auto; padding:6px 18px 60px; display:flex; flex-direction:column; align-items:center; gap:14px; }
+  .modes { display:flex; flex-wrap:wrap; gap:7px; justify-content:center; }
+  .modes button { border:1px solid var(--line); background:#fff; color:var(--muted); cursor:pointer; font:600 13px var(--ui); padding:9px 15px; border-radius:999px; transition:all .14s; }
+  .modes button:hover { color:var(--ink); }
+  .modes button.on { background:#1b1b20; color:#fff; border-color:#1b1b20; }
+  .custom { display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:center; font-size:13px; color:var(--muted); }
+  .custom.hide { display:none; }
+  .custom input { width:70px; border:1px solid var(--line); border-radius:10px; padding:8px 11px; font:600 14px var(--ui); text-align:center; }
+  .custom .go { border:none; background:#1b1b20; color:#fff; border-radius:10px; padding:8px 16px; font:700 13px var(--ui); cursor:pointer; }
+  .custom .go:disabled { background:#c8c8ce; cursor:default; }
+  .custom .hint b { color:var(--ink); }
+  .custom .hint.bad { color:#e5484d; }
+
+  .status { font-size:14px; font-weight:600; color:var(--muted); min-height:1.2em; }
+
+  .board { display:grid; gap:0; background:var(--grid); border:3px solid var(--grid); border-radius:9px; overflow:hidden;
+    width:min(92vw, 460px); aspect-ratio:1/1; box-shadow:0 12px 30px rgba(0,0,0,.12); }
+  .cell { background:#fff; border:1px solid #dcdce2; display:flex; align-items:center; justify-content:center;
+    font-family:"Space Grotesk",var(--ui); font-weight:700; cursor:pointer; line-height:1;
+    font-size:calc(min(92vw,460px) / var(--n) * 0.46); }
+  .cell.given { color:var(--ink); font-weight:800; background:#eef0f4; cursor:default; }
+  .cell:not(.given) { color:#2563eb; }
+  .cell.peer { background:#eef2ff; }
+  .cell.samev { background:#dbe6ff; }
+  .cell.sel { background:#bcd4ff !important; box-shadow: inset 0 0 0 2px #2563eb; }
+  .cell.bad { color:#e5484d !important; background:#fdecec !important; }
+  .cell.br { border-right:2px solid var(--grid); }
+  .cell.bb { border-bottom:2px solid var(--grid); }
+
+  .pad { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; max-width:460px; }
+  .pad button { min-width:40px; height:44px; border:1px solid var(--line); background:#fff; border-radius:11px; cursor:pointer;
+    font-family:"Space Grotesk",var(--ui); font-weight:700; font-size:18px; color:var(--ink); padding:0 12px; transition:all .12s; }
+  .pad button:hover { background:#f0f0f4; } .pad button:active { transform:translateY(1px); }
+  .pad button.erase { color:#e5484d; font-size:14px; }
+
+  .actions { display:flex; gap:10px; }
+  .btn { font-family:"Baloo 2",sans-serif; font-weight:800; font-size:15px; border:none; border-radius:12px; padding:11px 22px; cursor:pointer; }
+  .btn.primary { background:#1b1b20; color:#fff; } .btn.primary:hover { background:#000; }
+  .btn.ghost { background:#fff; color:var(--ink); border:1px solid var(--line); } .btn.ghost:hover { background:#fafafa; }
+
+  .win { position:fixed; inset:0; z-index:40; display:flex; align-items:center; justify-content:center; padding:24px;
+    background:rgba(20,20,28,.55); -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px); }
+  .win.hide { display:none; }
+  .win-card { background:#fff; border-radius:20px; padding:30px 34px; text-align:center; box-shadow:0 20px 50px rgba(0,0,0,.3); }
+  .win-card h2 { font-family:"Baloo 2",sans-serif; font-size:34px; margin:0 0 6px; }
+  .win-card p { color:var(--muted); margin:0 0 18px; font-size:14px; }
+</style>
+</head>
+<body>
+  <nav class="nav">
+    <a class="brand" href="/">Randomthing<span class="org">.org</span></a>
+    <span class="sep">/</span><h1>Sudoku</h1>
+  </nav>
+
+  <div class="wrap">
+    <div class="modes" id="modes">
+      <button data-n="4">Easy · 4×4</button>
+      <button data-n="6">Medium · 6×6</button>
+      <button data-n="9" class="on">Hard · 9×9</button>
+      <button data-mode="custom">Custom</button>
+    </div>
+    <div class="custom hide" id="customRow">
+      <input type="number" id="customN" min="4" max="16" placeholder="size" inputmode="numeric" />
+      <span class="hint" id="customHint">Enter a size (4, 6, 8, 9, 10, 12, …)</span>
+      <button class="go" id="customGo" disabled>Start</button>
+    </div>
+
+    <div class="status" id="status"></div>
+    <div class="board" id="board"></div>
+    <div class="pad" id="pad"></div>
+    <div class="actions">
+      <button class="btn primary" id="newBtn">New game</button>
+      <button class="btn ghost" id="eraseBtn">Erase</button>
+    </div>
+  </div>
+
+  <div class="win hide" id="win">
+    <div class="win-card">
+      <h2 id="winTitle">Solved! 🎉</h2>
+      <p id="winSub"></p>
+      <button class="btn primary" id="winAgain">New game</button>
+    </div>
+  </div>
+
+<script>
+  const $ = id => document.getElementById(id);
+  const boardEl = $('board'), padEl = $('pad'), statusEl = $('status');
+
+  let N = 9, P = 3, Q = 3;
+  let grid = [], given = [], sel = null;
+
+  // biggest near-square factor pair; null if none (prime or < 4) → not a valid Sudoku size
+  function boxDims(n){ for (let p = Math.floor(Math.sqrt(n)); p >= 2; p--){ if (n % p === 0) return [p, n / p]; } return null; }
+  const sym = v => v < 10 ? String(v) : String.fromCharCode(55 + v);   // 10→A … 16→G
+  function shuffle(a){ for (let i = a.length - 1; i > 0; i--){ const j = (Math.random() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+  function makePuzzle(n){
+    const [p, q] = boxDims(n);
+    const g = Array.from({ length: n }, () => new Array(n).fill(0));
+    const ok = (r, c, v) => {
+      for (let i = 0; i < n; i++) if (g[r][i] === v || g[i][c] === v) return false;
+      const br = Math.floor(r / p) * p, bc = Math.floor(c / q) * q;
+      for (let i = 0; i < p; i++) for (let j = 0; j < q; j++) if (g[br + i][bc + j] === v) return false;
+      return true;
+    };
+    (function fill(k){
+      if (k === n * n) return true;
+      const r = (k / n) | 0, c = k % n;
+      for (const v of shuffle(Array.from({ length: n }, (_, i) => i + 1)))
+        if (ok(r, c, v)){ g[r][c] = v; if (fill(k + 1)) return true; g[r][c] = 0; }
+      return false;
+    })(0);
+    const keep = n <= 4 ? 0.56 : n <= 6 ? 0.5 : 0.44;
+    const puzzle = g.map(row => row.slice());
+    const idx = shuffle(Array.from({ length: n * n }, (_, i) => i));
+    const remove = Math.round(n * n * (1 - keep));
+    for (let i = 0; i < remove; i++){ const t = idx[i]; puzzle[(t / n) | 0][t % n] = 0; }
+    return { puzzle, p, q };
+  }
+
+  function start(n){
+    N = n; [P, Q] = boxDims(n);
+    const { puzzle } = makePuzzle(n);
+    grid = puzzle.map(r => r.slice());
+    given = puzzle.map(r => r.map(v => v !== 0));
+    sel = null;
+    boardEl.style.setProperty('--n', N);
+    boardEl.style.gridTemplateColumns = 'repeat(' + N + ', 1fr)';
+    buildBoard(); buildPad();
+    statusEl.textContent = N + '×' + N + '  ·  ' + P + '×' + Q + ' boxes';
+    $('win').classList.add('hide');
+  }
+
+  function buildBoard(){
+    boardEl.innerHTML = '';
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++){
+      const d = document.createElement('div');
+      d.className = 'cell';
+      if (c % Q === Q - 1 && c !== N - 1) d.classList.add('br');
+      if (r % P === P - 1 && r !== N - 1) d.classList.add('bb');
+      d.dataset.r = r; d.dataset.c = c;
+      d.addEventListener('pointerdown', () => { sel = { r, c }; paint(); });
+      boardEl.appendChild(d);
+    }
+    paint();
+  }
+  function buildPad(){
+    padEl.innerHTML = '';
+    for (let v = 1; v <= N; v++){
+      const b = document.createElement('button'); b.textContent = sym(v);
+      b.addEventListener('click', () => place(v));
+      padEl.appendChild(b);
+    }
+    const e = document.createElement('button'); e.className = 'erase'; e.textContent = 'Erase';
+    e.addEventListener('click', () => place(0)); padEl.appendChild(e);
+  }
+
+  function conflicts(){
+    const bad = new Set();
+    const key = (r, c) => r + ',' + c;
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++){
+      const v = grid[r][c]; if (!v) continue;
+      for (let i = 0; i < N; i++){
+        if (i !== c && grid[r][i] === v){ bad.add(key(r, c)); bad.add(key(r, i)); }
+        if (i !== r && grid[i][c] === v){ bad.add(key(r, c)); bad.add(key(i, c)); }
+      }
+      const br = Math.floor(r / P) * P, bc = Math.floor(c / Q) * Q;
+      for (let i = 0; i < P; i++) for (let j = 0; j < Q; j++){
+        const rr = br + i, cc = bc + j;
+        if ((rr !== r || cc !== c) && grid[rr][cc] === v){ bad.add(key(r, c)); bad.add(key(rr, cc)); }
+      }
+    }
+    return bad;
+  }
+
+  function paint(){
+    const bad = conflicts();
+    const selV = sel ? grid[sel.r][sel.c] : 0;
+    const cells = boardEl.children;
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++){
+      const el = cells[r * N + c], v = grid[r][c];
+      el.textContent = v ? sym(v) : '';
+      el.classList.toggle('given', given[r][c]);
+      el.classList.toggle('bad', bad.has(r + ',' + c));
+      el.classList.remove('sel', 'peer', 'samev');
+      if (sel){
+        const inBox = Math.floor(r / P) === Math.floor(sel.r / P) && Math.floor(c / Q) === Math.floor(sel.c / Q);
+        if (r === sel.r && c === sel.c) el.classList.add('sel');
+        else if (r === sel.r || c === sel.c || inBox) el.classList.add('peer');
+        if (v && v === selV && !(r === sel.r && c === sel.c)) el.classList.add('samev');
+      }
+    }
+  }
+
+  function place(v){
+    if (!sel || given[sel.r][sel.c]) return;
+    grid[sel.r][sel.c] = v; paint(); checkWin();
+  }
+  function checkWin(){
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (!grid[r][c]) return;
+    if (conflicts().size) return;
+    $('winSub').textContent = 'You filled the ' + N + '×' + N + ' grid with no conflicts.';
+    $('win').classList.remove('hide');
+  }
+
+  // keyboard
+  addEventListener('keydown', e => {
+    if (!sel) return;
+    if (e.key === 'Backspace' || e.key === 'Delete' || e.key === '0'){ place(0); e.preventDefault(); return; }
+    if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)){
+      if (e.key === 'ArrowUp') sel.r = (sel.r + N - 1) % N;
+      if (e.key === 'ArrowDown') sel.r = (sel.r + 1) % N;
+      if (e.key === 'ArrowLeft') sel.c = (sel.c + N - 1) % N;
+      if (e.key === 'ArrowRight') sel.c = (sel.c + 1) % N;
+      paint(); e.preventDefault(); return;
+    }
+    let v = 0;
+    if (/^[1-9]$/.test(e.key)) v = +e.key;
+    else if (/^[a-gA-G]$/.test(e.key)) v = e.key.toUpperCase().charCodeAt(0) - 55;
+    if (v >= 1 && v <= N) place(v);
+  });
+
+  // controls
+  $('modes').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    if (b.dataset.mode === 'custom'){
+      $('modes').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+      $('customRow').classList.remove('hide'); $('customN').focus();
+      return;
+    }
+    $('customRow').classList.add('hide');
+    $('modes').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    start(+b.dataset.n);
+  }));
+
+  function validateCustom(){
+    const n = parseInt($('customN').value, 10);
+    const hint = $('customHint'), go = $('customGo');
+    if (!n || n < 4){ hint.textContent = 'Too small — 4 is the minimum'; hint.classList.add('bad'); go.disabled = true; return; }
+    if (n > 16){ hint.textContent = 'Keep it 16 or under'; hint.classList.add('bad'); go.disabled = true; return; }
+    const d = boxDims(n);
+    if (!d){ hint.textContent = n + '×' + n + " can't be split into boxes — pick 4, 6, 8, 9, 10, 12, 14, 15, 16"; hint.classList.add('bad'); go.disabled = true; return; }
+    hint.innerHTML = '<b>' + n + '×' + n + '</b> · ' + d[0] + '×' + d[1] + ' boxes'; hint.classList.remove('bad'); go.disabled = false;
+  }
+  $('customN').addEventListener('input', validateCustom);
+  $('customGo').addEventListener('click', () => { const n = parseInt($('customN').value, 10); if (boxDims(n) && n >= 4 && n <= 16) start(n); });
+  $('newBtn').addEventListener('click', () => start(N));
+  $('eraseBtn').addEventListener('click', () => place(0));
+  $('winAgain').addEventListener('click', () => start(N));
+
+  start(9);
+</script>
+  <script defer src="/cookie-consent.js"></script>
+</body>
+</html>
