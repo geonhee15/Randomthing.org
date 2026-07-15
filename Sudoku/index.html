@@ -21,7 +21,7 @@
   .brand .org { color:#ff5a5f; }
   .nav .sep { color:#cfcfd4; } .nav h1 { font-size:15px; font-weight:600; margin:0; color:#56565e; }
 
-  .wrap { max-width:520px; margin:0 auto; padding:6px 18px 60px; display:flex; flex-direction:column; align-items:center; gap:14px; }
+  .wrap { max-width:560px; margin:0 auto; padding:6px 18px 60px; display:flex; flex-direction:column; align-items:center; gap:14px; }
   .modes { display:flex; flex-wrap:wrap; gap:7px; justify-content:center; }
   .modes button { border:1px solid var(--line); background:#fff; color:var(--muted); cursor:pointer; font:600 13px var(--ui); padding:9px 15px; border-radius:999px; transition:all .14s; }
   .modes button:hover { color:var(--ink); }
@@ -36,11 +36,11 @@
 
   .status { font-size:14px; font-weight:600; color:var(--muted); min-height:1.2em; }
 
-  .board { display:grid; gap:0; background:var(--grid); border:3px solid var(--grid); border-radius:9px; overflow:hidden;
-    width:min(92vw, 460px); aspect-ratio:1/1; box-shadow:0 12px 30px rgba(0,0,0,.12); }
+  .board { --bsz: min(92vw, 500px); display:grid; gap:0; background:var(--grid); border:3px solid var(--grid); border-radius:9px; overflow:hidden;
+    width:var(--bsz); aspect-ratio:1/1; box-shadow:0 12px 30px rgba(0,0,0,.12); }
   .cell { background:#fff; border:1px solid #dcdce2; display:flex; align-items:center; justify-content:center;
     font-family:"Space Grotesk",var(--ui); font-weight:700; cursor:pointer; line-height:1;
-    font-size:calc(min(92vw,460px) / var(--n) * 0.46); }
+    font-size:calc(var(--bsz) / var(--n) * 0.46); }
   .cell.given { color:var(--ink); font-weight:800; background:#eef0f4; cursor:default; }
   .cell:not(.given) { color:#2563eb; }
   .cell.peer { background:#eef2ff; }
@@ -87,10 +87,16 @@
   .cell { position:relative; }
   .cell .notes { position:absolute; inset:1px; display:grid; pointer-events:none; }
   .cell .notes span { display:flex; align-items:center; justify-content:center; line-height:1; color:#8a8a97;
-    font-family:var(--ui); font-weight:600; font-size:calc(min(92vw,460px) / var(--n) * 0.2); }
+    font-family:var(--ui); font-weight:600; font-size:calc(var(--bsz) / var(--n) * 0.2); }
 
   /* Notes toggle active state */
   #notesBtn.on { background:#2563eb; color:#fff; border-color:#2563eb; }
+
+  /* iPad / tablet portrait: give the board room to breathe (placed last so it wins) */
+  @media (min-width: 768px) and (orientation: portrait) {
+    .wrap { max-width: 720px; }
+    .board { --bsz: min(84vw, 76vh, 640px); }
+  }
 </style>
 </head>
 <body>
@@ -252,7 +258,7 @@
     e.addEventListener('click', () => place(0)); padEl.appendChild(e);
   }
   function buildHearts(){
-    const HEART = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7.5-4.9-10-9.3C.4 8.4 1.9 4.9 5.2 4.9c2 0 3.4 1.2 4.3 2.6.9-1.4 2.3-2.6 4.3-2.6 3.3 0 4.8 3.5 3.2 6.8C19.5 16.1 12 21 12 21z"/></svg>';
+    const HEART = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>';
     heartsEl.innerHTML = '';
     for (let i = 0; i < MAX_LIVES; i++){
       const s = document.createElement('span');

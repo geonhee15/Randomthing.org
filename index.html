@@ -52,11 +52,12 @@
     gap: clamp(6px, 1vw, 12px);
   }
   .logo .ico {
-    width: clamp(48px, 8.4vw, 90px); height: auto; flex: 0 0 auto;
+    width: clamp(48px, 8.4vw, 90px); height: auto; flex: 0 0 auto; cursor: pointer;
     filter: drop-shadow(0 5px 12px rgba(30,30,60,.18));
     transform: rotate(-6deg); transition: transform .25s ease;
   }
-  .logo:hover .ico { transform: rotate(6deg) scale(1.06); }
+  .logo .ico:hover { transform: rotate(6deg) scale(1.06); }
+  .logo .ico:active { transform: rotate(-16deg) scale(.94); }
   .logo .org { color: #ff5a5f; }
   @media (max-width: 380px) {
     header.hero { padding: 40px 14px 24px; }
@@ -738,6 +739,8 @@
       connect();
     })();
 
+    // clicking the dice logo re-rolls the page (fresh random easter eggs each time)
+    (function(){ var d = document.querySelector('.logo .ico'); if (d) d.addEventListener('click', function(){ location.reload(); }); })();
     // easter egg: the calculator thumbnail shows a random 1–99 each visit
     document.getElementById('calcScreen').textContent = Math.floor(Math.random() * 99) + 1;
     // the Clocks thumbnail tells the real time
@@ -784,6 +787,9 @@
         'Now Playing follows you everywhere — the mini player rides along into every panel and keeps the track going until you stop it',
         'Mobile & foldables — tuned every layout for tall phones and Flip/Fold ratios: nothing overflows sideways, the logo and controls scale down, and a squarish foldable shows two columns',
         'Sudoku — pencil notes (toggle Notes, jot small candidates in a cell), 3 hearts (three mistakes and the board resets), a remaining-count under each number, and puzzles are now generated with a single solution for fair difficulty',
+        'Sudoku — cleaner heart icons and a roomier board on tablets/iPad',
+        'Homepage — click the dice logo to re-roll the page',
+        'Background — on touch screens, drag your finger to sculpt the Cubes (and the other pointer-driven wallpapers)',
       ] },
       { date: '26.7.13', open: false, items: [
         'Stickman Fight — a setup screen: pick any colour from a palette and choose your weapon (spinning axe or thrusting katana)',

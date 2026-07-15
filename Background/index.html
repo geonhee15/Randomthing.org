@@ -449,6 +449,24 @@ window.addEventListener('pointerup', () => pressing = false);
 window.addEventListener('pointercancel', () => pressing = false);
 window.addEventListener('blur', () => pressing = false);
 
+// Mobile has no hover, so treat a touch-drag as the hover pointer: while a
+// finger is down and moving, it drives the same position the mouse would.
+// (touch events only fire on touch devices, so this is mobile-only by nature.)
+function setMouseFromTouch(e){
+  const t = e.touches && e.touches[0]; if (!t) return;
+  mouse.tx = t.clientX / (window.innerWidth || 1);
+  mouse.ty = 1.0 - t.clientY / (window.innerHeight || 1);
+  lastMove = performance.now();
+  ui.classList.remove('idle');
+}
+window.addEventListener('touchstart', e => {
+  setMouseFromTouch(e); pressing = true;
+  click.x = mouse.tx; click.y = mouse.ty; click.t = (performance.now() - start)/1000;
+}, {passive:true});
+window.addEventListener('touchmove', setMouseFromTouch, {passive:true});
+window.addEventListener('touchend', () => pressing = false, {passive:true});
+window.addEventListener('touchcancel', () => pressing = false, {passive:true});
+
 // ----- dock -----
 const dock = document.getElementById('dock');
 const capName = document.getElementById('capName');
