@@ -92,6 +92,36 @@
   /* Notes toggle active state */
   #notesBtn.on { background:#2563eb; color:#fff; border-color:#2563eb; }
 
+  /* hud top line: hearts + timer */
+  .topline { display:flex; align-items:center; justify-content:center; gap:14px; }
+  .timer { font-family:"Space Grotesk",var(--ui); font-weight:700; font-size:16px; color:var(--muted);
+    font-variant-numeric:tabular-nums; min-width:44px; text-align:left; }
+
+  .statsbtn { margin-top:2px; }
+
+  /* My Stats popup */
+  .stats-modal { position:fixed; inset:0; z-index:50; display:flex; align-items:center; justify-content:center; padding:20px;
+    background:rgba(20,20,28,.55); -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px); }
+  .stats-modal.hide { display:none; }
+  .stats-card { background:#fff; border-radius:20px; padding:22px 22px 24px; width:min(440px,100%); max-height:86vh; overflow-y:auto;
+    box-shadow:0 20px 50px rgba(0,0,0,.3); }
+  .stats-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  .stats-head h2 { font-family:"Baloo 2",sans-serif; font-size:24px; margin:0; }
+  .stats-x { border:none; background:rgba(0,0,0,.06); width:32px; height:32px; border-radius:9px; cursor:pointer; color:#6a6a72;
+    display:flex; align-items:center; justify-content:center; padding:0; }
+  .stats-x svg { width:16px; height:16px; }
+  .stats-x:hover { background:rgba(0,0,0,.1); color:var(--ink); }
+  .stats-tabs { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px; }
+  .stats-tabs button { border:1px solid var(--line); background:#fff; color:var(--muted); cursor:pointer;
+    font:600 12.5px var(--ui); padding:7px 12px; border-radius:999px; transition:all .12s; }
+  .stats-tabs button:hover { color:var(--ink); }
+  .stats-tabs button.on { background:#1b1b20; color:#fff; border-color:#1b1b20; }
+  .stats-body { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  .stat { background:#f4f4f7; border-radius:14px; padding:16px 8px; text-align:center; }
+  .stat-n { font-family:"Space Grotesk",var(--ui); font-weight:700; font-size:25px; color:var(--ink);
+    font-variant-numeric:tabular-nums; line-height:1; word-break:break-word; }
+  .stat-l { margin-top:6px; font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; }
+
   /* iPad / tablet portrait: give the board room to breathe (placed last so it wins) */
   @media (min-width: 768px) and (orientation: portrait) {
     .wrap { max-width: 720px; }
@@ -119,7 +149,10 @@
     </div>
 
     <div class="hud">
-      <div class="hearts" id="hearts" aria-label="Lives"></div>
+      <div class="topline">
+        <div class="hearts" id="hearts" aria-label="Lives"></div>
+        <div class="timer" id="timer" aria-label="Time">0:00</div>
+      </div>
       <div class="status" id="status"></div>
     </div>
     <div class="board" id="board"></div>
@@ -129,6 +162,7 @@
       <button class="btn ghost" id="notesBtn" aria-pressed="false">Notes: Off</button>
       <button class="btn ghost" id="eraseBtn">Erase</button>
     </div>
+    <button class="btn ghost statsbtn" id="statsBtn">My Stats</button>
   </div>
 
   <div class="win hide" id="win">
@@ -136,6 +170,23 @@
       <h2 id="winTitle">Solved!</h2>
       <p id="winSub"></p>
       <button class="btn primary" id="winAgain">New game</button>
+    </div>
+  </div>
+
+  <div class="stats-modal hide" id="statsModal">
+    <div class="stats-card">
+      <div class="stats-head">
+        <h2>My Stats</h2>
+        <button class="stats-x" id="statsX" aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <div class="stats-tabs" id="statsTabs"></div>
+      <div class="stats-body">
+        <div class="stat"><div class="stat-n" id="stSuccess">0</div><div class="stat-l">Successes</div></div>
+        <div class="stat"><div class="stat-n" id="stFail">0</div><div class="stat-l">Fails</div></div>
+        <div class="stat"><div class="stat-n" id="stBest">—</div><div class="stat-l">Best Time</div></div>
+      </div>
     </div>
   </div>
 
@@ -147,6 +198,34 @@
   let N = 9, P = 3, Q = 3;
   let grid = [], given = [], solved = [], notes = [], sel = null;
   let lives = MAX_LIVES, dead = false, notesMode = false;
+  let startedAt = 0, finished = false, timerId = 0;
+
+  // ---------- timer ----------
+  function fmtTime(ms){
+    const t = Math.floor(ms / 1000), h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
+    const mm = h ? String(m).padStart(2, '0') : String(m);
+    return (h ? h + ':' : '') + mm + ':' + String(s).padStart(2, '0');
+  }
+  function tickTimer(){ if (!finished) $('timer').textContent = fmtTime(performance.now() - startedAt); }
+  function startTimer(){ startedAt = performance.now(); finished = false; clearInterval(timerId); timerId = setInterval(tickTimer, 250); tickTimer(); }
+  function stopTimer(){ finished = true; clearInterval(timerId); }
+
+  // ---------- stats (per size, persisted) ----------
+  function loadStats(){ try { return JSON.parse(localStorage.getItem('sudoku_stats')) || {}; } catch (e) { return {}; } }
+  function saveStats(s){ try { localStorage.setItem('sudoku_stats', JSON.stringify(s)); } catch (e) {} }
+  function recordResult(n, won, ms){
+    const s = loadStats(), k = String(n);
+    if (!s[k]) s[k] = { success: 0, fail: 0, best: null };
+    if (won){ s[k].success++; if (ms != null && (s[k].best == null || ms < s[k].best)) s[k].best = ms; }
+    else s[k].fail++;
+    saveStats(s);
+  }
+  function modeLabel(n){
+    if (n === 4) return 'Easy · 4×4';
+    if (n === 6) return 'Medium · 6×6';
+    if (n === 9) return 'Hard · 9×9';
+    return n + '×' + n;
+  }
 
   // biggest near-square factor pair; null if none (prime or < 4) → not a valid Sudoku size
   function boxDims(n){ for (let p = Math.floor(Math.sqrt(n)); p >= 2; p--){ if (n % p === 0) return [p, n / p]; } return null; }
@@ -230,6 +309,7 @@
     buildBoard(); buildPad(); buildHearts();
     statusEl.textContent = N + '×' + N + '  ·  ' + P + '×' + Q + ' boxes';
     $('win').classList.add('hide');
+    startTimer();
     paint();
   }
 
@@ -360,12 +440,20 @@
 
   function checkWin(){
     for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (grid[r][c] !== solved[r][c]) return;
+    const ms = performance.now() - startedAt;
+    stopTimer();
+    $('timer').textContent = fmtTime(ms); $('timer').dataset.ms = ms;
+    recordResult(N, true, ms);
+    const mistakes = MAX_LIVES - lives;
     $('winTitle').textContent = 'Solved!';
-    $('winSub').textContent = 'You filled the ' + N + '×' + N + ' grid' + (lives === MAX_LIVES ? ' with no mistakes.' : ' with ' + (MAX_LIVES - lives) + ' mistake' + (MAX_LIVES - lives === 1 ? '' : 's') + '.');
+    $('winSub').textContent = 'You solved the ' + N + '×' + N + ' grid in ' + fmtTime(ms) +
+      (mistakes ? ' with ' + mistakes + ' mistake' + (mistakes === 1 ? '' : 's') : ' with no mistakes') + '.';
     $('winAgain').textContent = 'New game';
     $('win').classList.remove('hide');
   }
   function gameOver(){
+    stopTimer();
+    recordResult(N, false, null);
     $('winTitle').textContent = 'Out of hearts';
     $('winSub').textContent = 'Three mistakes — the board resets. Give it another go.';
     $('winAgain').textContent = 'Restart';
@@ -425,6 +513,43 @@
   $('notesBtn').addEventListener('click', () => setNotesMode(!notesMode));
   $('eraseBtn').addEventListener('click', () => place(0));
   $('winAgain').addEventListener('click', () => start(N));
+
+  // ---------- My Stats popup ----------
+  let statsTab = 'all';
+  function renderStatsBody(){
+    const s = loadStats();
+    let st;
+    if (statsTab === 'all'){
+      st = { success: 0, fail: 0, best: null };
+      for (const k in s){ st.success += s[k].success; st.fail += s[k].fail;
+        if (s[k].best != null && (st.best == null || s[k].best < st.best)) st.best = s[k].best; }
+    } else {
+      st = s[statsTab] || { success: 0, fail: 0, best: null };
+    }
+    $('stSuccess').textContent = st.success;
+    $('stFail').textContent = st.fail;
+    $('stBest').textContent = st.best != null ? fmtTime(st.best) : '—';
+  }
+  function buildStatsTabs(){
+    const s = loadStats();
+    const sizes = new Set([4, 6, 9]);
+    Object.keys(s).forEach(k => sizes.add(+k));
+    const tabs = [{ id: 'all', label: 'All Modes' }].concat(
+      [...sizes].sort((a, b) => a - b).map(n => ({ id: String(n), label: modeLabel(n) })));
+    if (!tabs.some(t => t.id === statsTab)) statsTab = 'all';
+    const wrap = $('statsTabs'); wrap.innerHTML = '';
+    tabs.forEach(t => {
+      const b = document.createElement('button');
+      b.textContent = t.label; b.classList.toggle('on', t.id === statsTab);
+      b.addEventListener('click', () => { statsTab = t.id; buildStatsTabs(); renderStatsBody(); });
+      wrap.appendChild(b);
+    });
+  }
+  function openStats(){ buildStatsTabs(); renderStatsBody(); $('statsModal').classList.remove('hide'); }
+  function closeStats(){ $('statsModal').classList.add('hide'); }
+  $('statsBtn').addEventListener('click', openStats);
+  $('statsX').addEventListener('click', closeStats);
+  $('statsModal').addEventListener('click', e => { if (e.target === $('statsModal')) closeStats(); });
 
   start(9);
 </script>
