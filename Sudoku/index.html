@@ -67,6 +67,30 @@
   .win-card { background:#fff; border-radius:20px; padding:30px 34px; text-align:center; box-shadow:0 20px 50px rgba(0,0,0,.3); }
   .win-card h2 { font-family:"Baloo 2",sans-serif; font-size:34px; margin:0 0 6px; }
   .win-card p { color:var(--muted); margin:0 0 18px; font-size:14px; }
+
+  /* hearts + status row */
+  .hud { display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .hearts { display:flex; align-items:center; gap:5px; min-height:26px; }
+  .hearts svg { width:24px; height:24px; transition:transform .18s ease, color .18s ease; }
+  .hearts .full { color:#e5484d; }
+  .hearts .lost { color:#dcdce2; transform:scale(.82); }
+
+  /* number pad: each key shows the digit with the remaining count below it */
+  .pad button { min-width:44px; height:auto; padding:6px 12px 5px; display:flex; flex-direction:column; align-items:center; gap:1px; }
+  .pad button .d { font-family:"Space Grotesk",var(--ui); font-weight:700; font-size:19px; line-height:1; }
+  .pad button .cnt { font-size:10px; font-weight:600; color:var(--muted); line-height:1; }
+  .pad button.done { opacity:.4; }
+  .pad button.done .cnt { color:#c0c0c8; }
+  .pad button.erase { justify-content:center; padding:0 16px; height:44px; color:#e5484d; font-size:14px; }
+
+  /* pencil notes inside a cell */
+  .cell { position:relative; }
+  .cell .notes { position:absolute; inset:1px; display:grid; pointer-events:none; }
+  .cell .notes span { display:flex; align-items:center; justify-content:center; line-height:1; color:#8a8a97;
+    font-family:var(--ui); font-weight:600; font-size:calc(min(92vw,460px) / var(--n) * 0.2); }
+
+  /* Notes toggle active state */
+  #notesBtn.on { background:#2563eb; color:#fff; border-color:#2563eb; }
 </style>
 </head>
 <body>
@@ -88,11 +112,15 @@
       <button class="go" id="customGo" disabled>Start</button>
     </div>
 
-    <div class="status" id="status"></div>
+    <div class="hud">
+      <div class="hearts" id="hearts" aria-label="Lives"></div>
+      <div class="status" id="status"></div>
+    </div>
     <div class="board" id="board"></div>
     <div class="pad" id="pad"></div>
     <div class="actions">
       <button class="btn primary" id="newBtn">New game</button>
+      <button class="btn ghost" id="notesBtn" aria-pressed="false">Notes: Off</button>
       <button class="btn ghost" id="eraseBtn">Erase</button>
     </div>
   </div>
@@ -107,15 +135,45 @@
 
 <script>
   const $ = id => document.getElementById(id);
-  const boardEl = $('board'), padEl = $('pad'), statusEl = $('status');
+  const boardEl = $('board'), padEl = $('pad'), statusEl = $('status'), heartsEl = $('hearts');
+  const MAX_LIVES = 3;
 
   let N = 9, P = 3, Q = 3;
-  let grid = [], given = [], sel = null;
+  let grid = [], given = [], solved = [], notes = [], sel = null;
+  let lives = MAX_LIVES, dead = false, notesMode = false;
 
   // biggest near-square factor pair; null if none (prime or < 4) → not a valid Sudoku size
   function boxDims(n){ for (let p = Math.floor(Math.sqrt(n)); p >= 2; p--){ if (n % p === 0) return [p, n / p]; } return null; }
   const sym = v => v < 10 ? String(v) : String.fromCharCode(55 + v);   // 10→A … 16→G
   function shuffle(a){ for (let i = a.length - 1; i > 0; i--){ const j = (Math.random() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+  // count solutions of a puzzle, stopping at `limit` (used to keep puzzles unique)
+  function countSolutions(puz, n, p, q, limit){
+    const g = puz.map(r => r.slice());
+    let count = 0;
+    const ok = (r, c, v) => {
+      for (let i = 0; i < n; i++) if (g[r][i] === v || g[i][c] === v) return false;
+      const br = Math.floor(r / p) * p, bc = Math.floor(c / q) * q;
+      for (let i = 0; i < p; i++) for (let j = 0; j < q; j++) if (g[br + i][bc + j] === v) return false;
+      return true;
+    };
+    (function rec(){
+      if (count >= limit) return;
+      let er = -1, ec = -1;
+      for (let r = 0; r < n && er < 0; r++) for (let c = 0; c < n; c++) if (!g[r][c]){ er = r; ec = c; break; }
+      if (er < 0){ count++; return; }
+      for (let v = 1; v <= n; v++){ if (ok(er, ec, v)){ g[er][ec] = v; rec(); g[er][ec] = 0; if (count >= limit) return; } }
+    })();
+    return count;
+  }
+
+  // how many clues to leave on the board — tuned so each size plays fair (with lives in mind)
+  function cluesFor(n){
+    if (n === 4) return 8;
+    if (n === 6) return 18;
+    if (n === 9) return 36;
+    return Math.round(n * n * 0.45);
+  }
 
   function makePuzzle(n){
     const [p, q] = boxDims(n);
@@ -133,25 +191,40 @@
         if (ok(r, c, v)){ g[r][c] = v; if (fill(k + 1)) return true; g[r][c] = 0; }
       return false;
     })(0);
-    const keep = n <= 4 ? 0.56 : n <= 6 ? 0.5 : 0.44;
+
+    const full = g.map(row => row.slice());
     const puzzle = g.map(row => row.slice());
-    const idx = shuffle(Array.from({ length: n * n }, (_, i) => i));
-    const remove = Math.round(n * n * (1 - keep));
-    for (let i = 0; i < remove; i++){ const t = idx[i]; puzzle[(t / n) | 0][t % n] = 0; }
-    return { puzzle, p, q };
+    const order = shuffle(Array.from({ length: n * n }, (_, i) => i));
+    const target = cluesFor(n);
+    const unique = n <= 12;         // uniqueness check is too slow for very large custom boards
+    let clues = n * n;
+    for (const idx of order){
+      if (clues <= target) break;
+      const r = (idx / n) | 0, c = idx % n;
+      if (!puzzle[r][c]) continue;
+      const saved = puzzle[r][c];
+      puzzle[r][c] = 0;
+      if (unique && countSolutions(puzzle, n, p, q, 2) !== 1){ puzzle[r][c] = saved; continue; }
+      clues--;
+    }
+    return { puzzle, full, p, q };
   }
 
   function start(n){
     N = n; [P, Q] = boxDims(n);
-    const { puzzle } = makePuzzle(n);
-    grid = puzzle.map(r => r.slice());
-    given = puzzle.map(r => r.map(v => v !== 0));
-    sel = null;
+    const res = makePuzzle(n);
+    grid = res.puzzle.map(r => r.slice());
+    solved = res.full;
+    given = res.puzzle.map(r => r.map(v => v !== 0));
+    notes = Array.from({ length: N }, () => Array.from({ length: N }, () => new Set()));
+    sel = null; lives = MAX_LIVES; dead = false;
+    setNotesMode(false);
     boardEl.style.setProperty('--n', N);
     boardEl.style.gridTemplateColumns = 'repeat(' + N + ', 1fr)';
-    buildBoard(); buildPad();
+    buildBoard(); buildPad(); buildHearts();
     statusEl.textContent = N + '×' + N + '  ·  ' + P + '×' + Q + ' boxes';
     $('win').classList.add('hide');
+    paint();
   }
 
   function buildBoard(){
@@ -162,20 +235,34 @@
       if (c % Q === Q - 1 && c !== N - 1) d.classList.add('br');
       if (r % P === P - 1 && r !== N - 1) d.classList.add('bb');
       d.dataset.r = r; d.dataset.c = c;
-      d.addEventListener('pointerdown', () => { sel = { r, c }; paint(); });
+      d.addEventListener('pointerdown', () => { if (dead) return; sel = { r, c }; paint(); });
       boardEl.appendChild(d);
     }
-    paint();
   }
   function buildPad(){
     padEl.innerHTML = '';
     for (let v = 1; v <= N; v++){
-      const b = document.createElement('button'); b.textContent = sym(v);
+      const b = document.createElement('button');
+      b.dataset.v = v;
+      b.innerHTML = '<span class="d">' + sym(v) + '</span><span class="cnt"></span>';
       b.addEventListener('click', () => place(v));
       padEl.appendChild(b);
     }
     const e = document.createElement('button'); e.className = 'erase'; e.textContent = 'Erase';
     e.addEventListener('click', () => place(0)); padEl.appendChild(e);
+  }
+  function buildHearts(){
+    const HEART = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7.5-4.9-10-9.3C.4 8.4 1.9 4.9 5.2 4.9c2 0 3.4 1.2 4.3 2.6.9-1.4 2.3-2.6 4.3-2.6 3.3 0 4.8 3.5 3.2 6.8C19.5 16.1 12 21 12 21z"/></svg>';
+    heartsEl.innerHTML = '';
+    for (let i = 0; i < MAX_LIVES; i++){
+      const s = document.createElement('span');
+      s.className = 'h ' + (i < lives ? 'full' : 'lost');
+      s.innerHTML = HEART;
+      heartsEl.appendChild(s);
+    }
+  }
+  function updateHearts(){
+    [...heartsEl.children].forEach((s, i) => { s.className = 'h ' + (i < lives ? 'full' : 'lost'); });
   }
 
   function conflicts(){
@@ -202,9 +289,19 @@
     const cells = boardEl.children;
     for (let r = 0; r < N; r++) for (let c = 0; c < N; c++){
       const el = cells[r * N + c], v = grid[r][c];
-      el.textContent = v ? sym(v) : '';
+      // wrong = filled, not a clue, and doesn't match the one true solution
+      const wrong = v && !given[r][c] && v !== solved[r][c];
+      if (v){
+        el.innerHTML = '<span class="val">' + sym(v) + '</span>';
+      } else if (notes[r][c].size){
+        let html = '<div class="notes" style="grid-template-columns:repeat(' + Q + ',1fr)">';
+        for (let k = 1; k <= N; k++) html += '<span>' + (notes[r][c].has(k) ? sym(k) : '') + '</span>';
+        el.innerHTML = html + '</div>';
+      } else {
+        el.textContent = '';
+      }
       el.classList.toggle('given', given[r][c]);
-      el.classList.toggle('bad', bad.has(r + ',' + c));
+      el.classList.toggle('bad', wrong || bad.has(r + ',' + c));
       el.classList.remove('sel', 'peer', 'samev');
       if (sel){
         const inBox = Math.floor(r / P) === Math.floor(sel.r / P) && Math.floor(c / Q) === Math.floor(sel.c / Q);
@@ -213,22 +310,74 @@
         if (v && v === selV && !(r === sel.r && c === sel.c)) el.classList.add('samev');
       }
     }
+    // remaining count under each pad key: each digit appears N times in a full grid
+    const used = new Array(N + 1).fill(0);
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (grid[r][c]) used[grid[r][c]]++;
+    padEl.querySelectorAll('button[data-v]').forEach(b => {
+      const v = +b.dataset.v, left = Math.max(0, N - used[v]);
+      b.querySelector('.cnt').textContent = left;
+      b.classList.toggle('done', left === 0);
+    });
+  }
+
+  function clearPeerNotes(r, c, v){
+    for (let i = 0; i < N; i++){ notes[r][i].delete(v); notes[i][c].delete(v); }
+    const br = Math.floor(r / P) * P, bc = Math.floor(c / Q) * Q;
+    for (let i = 0; i < P; i++) for (let j = 0; j < Q; j++) notes[br + i][bc + j].delete(v);
   }
 
   function place(v){
-    if (!sel || given[sel.r][sel.c]) return;
-    grid[sel.r][sel.c] = v; paint(); checkWin();
+    if (dead || !sel) return;
+    const { r, c } = sel;
+    if (given[r][c]) return;
+
+    // notes mode: toggle a pencil mark (never costs a life)
+    if (notesMode && v > 0){
+      if (grid[r][c]) return;                 // can't annotate a filled cell
+      const s = notes[r][c];
+      s.has(v) ? s.delete(v) : s.add(v);
+      paint(); return;
+    }
+
+    if (v === 0){ grid[r][c] = 0; notes[r][c].clear(); paint(); return; }   // erase
+    if (grid[r][c] === v){ grid[r][c] = 0; paint(); return; }               // tap same digit → clear
+
+    grid[r][c] = v; notes[r][c].clear();
+    if (v === solved[r][c]){
+      clearPeerNotes(r, c, v);
+    } else {
+      lives--; updateHearts();
+      if (lives <= 0){ dead = true; paint(); gameOver(); return; }
+    }
+    paint(); checkWin();
   }
+
   function checkWin(){
-    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (!grid[r][c]) return;
-    if (conflicts().size) return;
-    $('winSub').textContent = 'You filled the ' + N + '×' + N + ' grid with no conflicts.';
+    for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (grid[r][c] !== solved[r][c]) return;
+    $('winTitle').textContent = 'Solved!';
+    $('winSub').textContent = 'You filled the ' + N + '×' + N + ' grid' + (lives === MAX_LIVES ? ' with no mistakes.' : ' with ' + (MAX_LIVES - lives) + ' mistake' + (MAX_LIVES - lives === 1 ? '' : 's') + '.');
+    $('winAgain').textContent = 'New game';
     $('win').classList.remove('hide');
+  }
+  function gameOver(){
+    $('winTitle').textContent = 'Out of hearts';
+    $('winSub').textContent = 'Three mistakes — the board resets. Give it another go.';
+    $('winAgain').textContent = 'Restart';
+    $('win').classList.remove('hide');
+  }
+
+  function setNotesMode(on){
+    notesMode = on;
+    const b = $('notesBtn');
+    b.classList.toggle('on', on);
+    b.textContent = 'Notes: ' + (on ? 'On' : 'Off');
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
   }
 
   // keyboard
   addEventListener('keydown', e => {
-    if (!sel) return;
+    if (e.key === 'n' || e.key === 'N'){ setNotesMode(!notesMode); e.preventDefault(); return; }
+    if (!sel || dead) return;
     if (e.key === 'Backspace' || e.key === 'Delete' || e.key === '0'){ place(0); e.preventDefault(); return; }
     if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)){
       if (e.key === 'ArrowUp') sel.r = (sel.r + N - 1) % N;
@@ -267,6 +416,7 @@
   $('customN').addEventListener('input', validateCustom);
   $('customGo').addEventListener('click', () => { const n = parseInt($('customN').value, 10); if (boxDims(n) && n >= 4 && n <= 16) start(n); });
   $('newBtn').addEventListener('click', () => start(N));
+  $('notesBtn').addEventListener('click', () => setNotesMode(!notesMode));
   $('eraseBtn').addEventListener('click', () => place(0));
   $('winAgain').addEventListener('click', () => start(N));
 
