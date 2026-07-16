@@ -478,37 +478,108 @@
     $('over').classList.remove('hide');
   }
 
-  // ---------- AI ----------
+  // ---------- AI: a spacing-and-timing fighter ----------
+  // The only controls are move + jump; weapons swing on their own and only ever
+  // point the way you face. So the whole game is spacing and timing: face the
+  // enemy, stand at exactly your weapon's range, and be there when YOUR blade is
+  // live but slip OUT when theirs is. This AI reads the opponent's weapon phase,
+  // leads their movement, dives in on their recovery and backs off during their
+  // attack, dodges thrown stars, kites with the shuriken, climbs to their level
+  // and never walks into the lava — with a little reaction lag, spacing jitter
+  // and streaky aggression so it feels human, not frame-perfect.
+  // horizontal centre-to-centre distance at which each weapon actually lands
+  // (kept in step with the values the game shipped with, so the AI never whiffs)
+  function weaponReach(w){
+    return w === 'shuriken' ? 240 : w === 'spear' ? 100 : w === 'katana' ? 72 : w === 'hammer' ? 52 : 46;
+  }
+  function aiMem(f){
+    if (!f.aiMem) f.aiMem = { react:0, evade:0, commit:0, commitCd:1 + Math.random()*2,
+      jitter:(Math.random()*2 - 1)*5, style:Math.random(), hop:0 };
+    return f.aiMem;
+  }
   function aiThink(f, o, dt){
     const inp = { left:0, right:0, jump:0 };
-    const lc = legCount(f);
+    const lc = legCount(f), m = aiMem(f);
+    m.react -= dt; m.evade -= dt; m.commit -= dt; m.commitCd -= dt; m.hop -= dt;
     if (lc === 0){ f.ai = inp; return; }
-    const dx = o.x - f.x, adx = Math.abs(dx), dir = dx > 0 ? 1 : -1;
-    const myReach = f.weapon === 'shuriken' ? 260 : f.weapon === 'spear' ? 100 : f.weapon === 'katana' ? 72 : f.weapon === 'hammer' ? 52 : 46;
-    const losing = limbsLeft(f) < limbsLeft(o);         // play safe when behind
-    const want = myReach - 6;                           // sit at the edge of my range
-    let move = 0;
 
-    if (adx > want + 14) move = dir;                    // close the gap
-    else if (adx < want - 18) move = -dir;              // too close — back out of a bad trade
-    else if (f.weapon === 'axe' && !losing) move = (Math.sin(f.spin) > 0 ? dir : 0);   // graze the spinning axe in
-    // if the katana is out (extended), press the attack; if retracting, hold
-    else if (f.weapon === 'katana' && !losing) move = (Math.sin(f.spin) > 0.3 ? dir : 0);
+    const kind = !hasAxe(f) ? 'none' : (f.weapon === 'shuriken' ? 'range' : 'melee');
+    const myReach = weaponReach(f.weapon), enReach = weaponReach(o.weapon);
+    const oArmed = hasAxe(o);                            // a disarmed enemy can't hurt me
+    const losing = limbsLeft(f) < limbsLeft(o), winning = limbsLeft(f) > limbsLeft(o);
 
-    if (losing && adx < myReach){ move = -dir; if (f.onGround && Math.random() < 0.05) inp.jump = 1; }  // dodge away
+    // perceived enemy — lead their motion a touch so it meets a moving target
+    const ox = o.x + o.vx * (0.10 + 0.05 * m.style);
+    const adx = Math.abs(ox - f.x);
+    const dir = (o.x > f.x) ? 1 : -1;                    // toward the enemy
 
-    // never step into the lava; hop across to keep chasing if the target is beyond it
-    const nx = f.x + move * 7;
-    if (move !== 0 && nx > PIT.l - 2 && nx < PIT.r + 2 && f.onGround){ if (adx > myReach) inp.jump = 1; else move = 0; }
-    // keep off the very lip so a knockback doesn't drop me in
-    if (f.onGround && f.x > PIT.l - 12 && f.x < PIT.l + 3) move = -1;
+    // an incoming thrown star aimed at me?
+    let incoming = false;
+    const oOwner = (o === f1) ? 1 : 2;
+    for (const pr of projs){
+      if (pr.owner === oOwner && Math.sign(pr.vx) === Math.sign(f.x - pr.x) &&
+          Math.abs(pr.x - f.x) < 170 && Math.abs(pr.y - f.y) < 70){ incoming = true; break; }
+    }
+
+    // is the enemy's blade about to catch me? (facing me, live, and in range)
+    const oFacingMe = Math.sign(f.x - o.x) === o.face;
+    const outrange = myReach > enReach + 10;             // my weapon clearly reaches farther
+    // Only the slow, big, telegraphed pokes (spear / hammer) are worth slipping;
+    // a fast katana or a spinning axe can't be dodged, and when I outrange them I
+    // just poke from safety instead of flinching.
+    const dodgeable = oArmed && (o.weapon === 'spear' || o.weapon === 'hammer');
+    const enemyHot = dodgeable && Math.sin(o.spin) > 0.25 && Math.cos(o.spin) > -0.3;
+    if (oFacingMe && enemyHot && !outrange && adx < enReach + 10 && m.react <= 0 && m.commit <= 0){
+      m.evade = 0.10 + 0.08 * (1 - m.style);            // slip the poke, briefly
+      m.react = 0.10 + 0.10 * m.style;                  // ...then a human beat before reacting again
+    }
+    // streaks of pure aggression (hold the strike distance, don't flinch) so it
+    // never just stalls at range — feels like a player deciding to press.
+    if (m.commitCd <= 0){ m.commitCd = 2.2 + Math.random()*2.6;
+      if (kind === 'melee' && adx < myReach + 70 && Math.random() < (losing ? 0.85 : 0.55)) m.commit = 0.45; }
+
+    // ---- pick a target distance, then walk toward it ----
+    let move = 0, target;
+    if (kind === 'none'){
+      target = enReach + 60; if (adx < target) move = -dir;          // disarmed → survive
+    } else if (kind === 'range'){
+      target = myReach - 10 + 18 * m.style;
+      if (o.weapon !== 'shuriken' && adx < 150) move = -dir;         // a melee rushing in → keep away
+      else if (adx > target + 16) move = dir;
+      else if (adx < target - 16) move = -dir;
+    } else {
+      let want = myReach - 7 + m.jitter * 0.3;          // sit a hair inside range so hits land cleanly
+      if (outrange) want = myReach - 3;                 // outranging → near my max, still out of theirs
+      else if (losing) want = myReach - 10;             // behind → crowd in for damage
+      // press in only when it is genuinely safe — a fleeting "they're recovering"
+      // window closes before I arrive, but a disarmed or legless enemy stays open
+      const safeToRush = !oArmed || legCount(o) === 0;
+      target = safeToRush ? myReach - 8 : want;
+      if (m.evade > 0)  target = Math.max(enReach + 14, want);        // slip outside their reach
+      // (a commit streak simply suppresses evading above, so it stays on the attack)
+      const err = adx - target;
+      if (err > 5) move = dir; else if (err < -5) move = -dir; else move = 0;
+    }
+
+    // ---- decide on a jump (single-press, shared cooldown) ----
+    let jump = false;
+    if (incoming && f.onGround) jump = true;                              // hop the star
+    else if (o.y < f.y - 44 && f.onGround && adx < 190) jump = true;      // climb to their level
+    else if ((f.x < 58 || f.x > W - 58) && oFacingMe && enemyHot && f.onGround) jump = true;  // escape a corner
+
+    // ---- lava: never step in. Only a melee fighter leaps across to engage;
+    //      a ranged fighter holds at the near edge and throws over it. ----
+    const nx = f.x + move * 8;
+    if (move !== 0 && nx > PIT.l - 2 && nx < PIT.r + 2 && f.onGround){
+      const across = Math.sign(o.x - 500) !== Math.sign(f.x - 500);   // enemy really is on the far side
+      if (kind === 'melee' && adx > myReach && across) jump = true; else move = 0;
+    }
+    if (f.onGround && f.x > PIT.l - 12 && f.x < PIT.l + 3) move = -1;      // hug off the lip
     if (f.onGround && f.x > PIT.r - 3 && f.x < PIT.r + 12) move = 1;
 
-    if (o.y < f.y - 40 && f.onGround && adx < 160) inp.jump = 1;   // chase onto a platform / to their height
-    f.aiTimer -= dt;
-    if (f.aiTimer <= 0){ f.aiTimer = 0.5 + Math.random()*1.1; if (f.onGround && Math.random() < (losing ? 0.5 : 0.22)) inp.jump = 1; }
+    if (jump && m.hop <= 0){ inp.jump = 1; m.hop = 0.42; }
 
-    if (move === 0) f.face = dir;   // keep facing the enemy while holding (matters for the katana)
+    if (move === 0) f.face = dir;                        // hold and aim the weapon at the enemy
     if (move > 0) inp.right = 1; else if (move < 0) inp.left = 1;
     f.ai = inp;
   }
