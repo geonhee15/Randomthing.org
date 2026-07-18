@@ -293,6 +293,24 @@
   .sudoku-card .mini::before { left:50%; top:6px; bottom:6px; width:2px; transform:translateX(-1px); }
   .sudoku-card .mini::after { top:50%; left:6px; right:6px; height:2px; transform:translateY(-1px); }
 
+  /* Speed Math card artwork: the four operators */
+  .smath-card { background: radial-gradient(120% 120% at 22% 12%, #3b4bd8 0%, #232a72 55%, #12143a 100%); }
+  .smath-card .kicker { color:#b7c0ff; }
+  .smath-card .mini {
+    flex:0 0 auto; width:92px; height:92px; border-radius:16px; background:#12143a; padding:9px;
+    display:grid; grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; gap:6px;
+    box-shadow:0 10px 22px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.08);
+    transform:rotate(-4deg); transition:transform .2s ease;
+  }
+  .smath-card .mini i {
+    display:flex; align-items:center; justify-content:center; border-radius:8px; background:rgba(255,255,255,.06);
+    font-family:"Space Grotesk",sans-serif; font-weight:700; font-size:26px; font-style:normal; line-height:1;
+  }
+  .smath-card .mini i:nth-child(1){ color:#8ff0c0; }
+  .smath-card .mini i:nth-child(2){ color:#ffd166; }
+  .smath-card .mini i:nth-child(3){ color:#7cc4ff; }
+  .smath-card .mini i:nth-child(4){ color:#ff9ecb; }
+
   /* Stretch! card artwork: a face with a red hand print */
   .stretch-card .mini {
     flex: 0 0 auto; width: 92px; height: 92px; border-radius: 16px; position: relative; overflow: hidden;
@@ -697,6 +715,15 @@
           <span class="desc">4×4, 6×6, 9×9 or your own&nbsp;size.</span>
         </div>
       </a>
+
+      <a class="card art-card smath-card" href="/Speed-Math/">
+        <div class="mini" aria-hidden="true"><i>+</i><i>−</i><i>×</i><i>÷</i></div>
+        <div class="txt">
+          <span class="kicker">Mental math</span>
+          <span class="name">Speed Math</span>
+          <span class="desc">10 problems, 5 levels — beat your&nbsp;time.</span>
+        </div>
+      </a>
     </div>
   </main>
 
@@ -779,7 +806,10 @@
     // ---------- update log ----------
     // Newest day first; items within a day are numbered date-1, date-2, …
     const LOGS = [
-      { date: '26.7.15', open: true, items: [
+      { date: '26.7.17', open: true, items: [
+        'Added Speed Math — race through 10 mental-math problems across five levels (Easy, Normal, Hard, Very Hard, Genius), each keeping its own best time',
+      ] },
+      { date: '26.7.15', open: false, items: [
         'Sudoku — a solve timer, plus a My Stats popup with successes, fails and best time per size (Easy 4×4 / Medium 6×6 / Hard 9×9, an All-Modes overview, and a section for every custom size you play)',
         'Background — the Cubes wallpaper now tracks touch on mobile (it was too heavy to keep up before)',
         'Stickman Fight — a much smarter computer opponent: it reads your weapon, holds the exact range to land hits, slips telegraphed spear/hammer pokes, dodges thrown stars, kites with the shuriken, finishes you when you are disarmed, and stops walking itself into the lava',

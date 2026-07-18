@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Speed Math — Randomthing.org</title>
+<meta name="description" content="Race through 10 mental-math problems. Five levels from Easy to Genius, each with its own best time." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root { --ui:"Inter",system-ui,-apple-system,sans-serif; --mono:"Space Grotesk",var(--ui); --ink:#1b1b20; --muted:#8a8a93; --line:#e8e8ec; --accent:#4c6ef5; --accent-ink:#2f4bc9; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; padding:0; }
+  body { font-family:var(--ui); color:var(--ink); background:#f6f6f8; min-height:100vh;
+    -webkit-font-smoothing:antialiased; -webkit-user-select:none; user-select:none; }
+
+  .nav { display:flex; align-items:center; gap:12px; padding:14px 20px; padding-left:max(20px, env(safe-area-inset-left)); }
+  .brand { font-family:"Baloo 2",sans-serif; font-weight:800; font-size:20px; letter-spacing:-.4px; color:var(--ink); text-decoration:none; padding:5px 8px; border-radius:10px; }
+  .brand:hover { background:rgba(0,0,0,.05); }
+  .brand .org { color:#ff5a5f; }
+  .nav .sep { color:#cfcfd4; } .nav h1 { font-size:15px; font-weight:600; margin:0; color:#56565e; }
+
+  .wrap { max-width:560px; margin:0 auto; padding:4px 18px 60px; display:flex; flex-direction:column; align-items:center; gap:16px; }
+
+  /* level selector */
+  .levels { display:flex; flex-wrap:wrap; gap:7px; justify-content:center; }
+  .levels button { border:1px solid var(--line); background:#fff; color:var(--muted); cursor:pointer; font:700 13px var(--ui); padding:9px 15px; border-radius:999px; transition:all .14s; }
+  .levels button:hover { color:var(--ink); }
+  .levels button.on { background:var(--accent); color:#fff; border-color:var(--accent); }
+
+  /* best-time records for every level */
+  .records { display:grid; grid-template-columns:repeat(5,1fr); gap:7px; width:100%; }
+  .rec { background:#fff; border:1px solid var(--line); border-radius:12px; padding:9px 4px; text-align:center; }
+  .rec.on { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent); }
+  .rec .rl { font-size:10px; font-weight:700; letter-spacing:.02em; text-transform:uppercase; color:var(--muted); white-space:nowrap; }
+  .rec .rt { font-family:var(--mono); font-weight:700; font-size:14px; color:var(--ink); margin-top:3px; font-variant-numeric:tabular-nums; }
+  .rec .rt.none { color:#c4c4cc; }
+
+  /* stage card */
+  .stage { width:100%; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:20px; box-shadow:0 12px 30px rgba(30,30,60,.06);
+    padding:30px 24px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:8px; }
+  .lv-name { font-family:"Baloo 2",sans-serif; font-weight:800; font-size:30px; line-height:1; }
+  .lv-desc { color:var(--muted); font-size:14px; font-weight:500; max-width:34ch; line-height:1.5; }
+  .lv-best { margin-top:6px; font-size:13px; font-weight:600; color:var(--accent-ink); font-variant-numeric:tabular-nums; }
+  .btn { font-family:"Baloo 2",sans-serif; font-weight:800; font-size:16px; border:none; border-radius:13px; padding:13px 26px; cursor:pointer; transition:transform .06s, background .15s; }
+  .btn:active { transform:translateY(1px); }
+  .btn.primary { background:var(--accent); color:#fff; } .btn.primary:hover { background:var(--accent-ink); }
+  .btn.ghost { background:#fff; color:var(--ink); border:1px solid var(--line); } .btn.ghost:hover { background:#fafafa; }
+  .card .start { margin-top:12px; }
+  .card .row { display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; justify-content:center; }
+
+  /* running */
+  .run { background:#fff; border:1px solid var(--line); border-radius:20px; box-shadow:0 12px 30px rgba(30,30,60,.06);
+    padding:22px 22px 26px; display:flex; flex-direction:column; align-items:center; gap:18px; }
+  .run-top { width:100%; display:flex; align-items:center; justify-content:space-between; }
+  .prog { font-family:var(--mono); font-weight:700; font-size:15px; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .timer { font-family:var(--mono); font-weight:700; font-size:22px; color:var(--accent); font-variant-numeric:tabular-nums; }
+  .bar { width:100%; height:6px; border-radius:99px; background:#eef0f4; overflow:hidden; }
+  .bar > i { display:block; height:100%; width:0; background:var(--accent); border-radius:99px; transition:width .2s ease; }
+  .problem { font-family:var(--mono); font-weight:600; font-size:clamp(30px,8vw,46px); line-height:1.15; letter-spacing:.5px; word-break:break-word; }
+  .answer { width:100%; max-width:300px; border:2px solid var(--line); border-radius:14px; padding:13px 16px; text-align:center;
+    font-family:var(--mono); font-weight:700; font-size:26px; color:var(--ink); outline:none; transition:border-color .12s; -webkit-user-select:text; user-select:text; }
+  .answer:focus { border-color:var(--accent); }
+  .answer.flash { animation:ok .3s ease; }
+  @keyframes ok { 0%{ border-color:#22c55e; background:#f0fdf4; } 100%{ border-color:var(--line); background:#fff; } }
+
+  /* done */
+  .done-title { font-family:"Baloo 2",sans-serif; font-weight:800; font-size:26px; }
+  .done-time { font-family:var(--mono); font-weight:700; font-size:52px; line-height:1; color:var(--accent); font-variant-numeric:tabular-nums; margin:4px 0; }
+  .done-sub { font-size:14px; font-weight:600; color:var(--muted); }
+  .done-sub.record { color:#16a34a; }
+
+  .hide { display:none !important; }
+
+  @media (max-width:420px){
+    .records { grid-template-columns:repeat(5,1fr); gap:5px; }
+    .rec { padding:8px 2px; } .rec .rl { font-size:9px; } .rec .rt { font-size:12px; }
+    .lv-name { font-size:26px; }
+  }
+</style>
+</head>
+<body>
+  <nav class="nav">
+    <a class="brand" href="/">Randomthing<span class="org">.org</span></a>
+    <span class="sep">/</span><h1>Speed Math</h1>
+  </nav>
+
+  <div class="wrap">
+    <div class="levels" id="levels"></div>
+    <div class="records" id="records"></div>
+
+    <div class="stage">
+      <!-- idle -->
+      <div class="card" id="idle">
+        <div class="lv-name" id="lvName">Easy</div>
+        <div class="lv-desc" id="lvDesc"></div>
+        <div class="lv-best" id="lvBest"></div>
+        <button class="btn primary start" id="startBtn">Start 10 questions</button>
+      </div>
+
+      <!-- running -->
+      <div class="run hide" id="run">
+        <div class="run-top"><span class="prog" id="prog">1 / 10</span><span class="timer" id="timer">0.0s</span></div>
+        <div class="bar"><i id="barFill"></i></div>
+        <div class="problem" id="problem">1 + 1</div>
+        <input class="answer" id="answer" inputmode="numeric" autocomplete="off" autocorrect="off" spellcheck="false" aria-label="Answer" />
+      </div>
+
+      <!-- done -->
+      <div class="card hide" id="done">
+        <div class="done-title" id="doneLv">Easy — done!</div>
+        <div class="done-time" id="doneTime">0.0s</div>
+        <div class="done-sub" id="doneSub"></div>
+        <div class="row">
+          <button class="btn primary" id="againBtn">Play again</button>
+          <button class="btn ghost" id="menuBtn">Change level</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const $ = id => document.getElementById(id);
+
+  // ---------- helpers ----------
+  const ri = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+  const round1 = x => Math.round(x * 10) / 10;
+  const MINUS = '−', TIMES = '×', DIV = '÷';
+
+  // ---------- problem generators (answers are always ≥ 0) ----------
+  function genEasy(){
+    if (Math.random() < 0.5){ const a = ri(1,20), b = ri(1,20); return { q:`${a} + ${b}`, a:a+b }; }
+    const a = ri(2,20), b = ri(1,a); return { q:`${a} ${MINUS} ${b}`, a:a-b };
+  }
+  function genNormal(){
+    const r = Math.random();
+    if (r < 0.38){ const a = ri(11,99), b = ri(11,99); return { q:`${a} + ${b}`, a:a+b }; }
+    if (r < 0.72){ const a = ri(25,99), b = ri(10,a); return { q:`${a} ${MINUS} ${b}`, a:a-b }; }
+    const a = ri(2,12), b = ri(2,12); return { q:`${a} ${TIMES} ${b}`, a:a*b };
+  }
+  function genHard(){
+    const r = Math.random();
+    if (r < 0.28){ const a = ri(100,999), b = ri(100,999); return { q:`${a} + ${b}`, a:a+b }; }
+    if (r < 0.52){ const a = ri(250,999), b = ri(100,a); return { q:`${a} ${MINUS} ${b}`, a:a-b }; }
+    if (r < 0.78){ const a = ri(12,99), b = ri(3,9); return { q:`${a} ${TIMES} ${b}`, a:a*b }; }
+    const b = ri(2,9), res = ri(2,12); return { q:`${b*res} ${DIV} ${b}`, a:res };
+  }
+  function genVeryHard(){
+    const r = Math.random();
+    if (r < 0.18){ const a = ri(1000,9999), b = ri(1000,9999); return { q:`${a} + ${b}`, a:a+b }; }
+    if (r < 0.36){ const a = ri(2000,9999), b = ri(1000,a); return { q:`${a} ${MINUS} ${b}`, a:a-b }; }
+    if (r < 0.58){ const a = ri(13,99), b = ri(13,99); return { q:`${a} ${TIMES} ${b}`, a:a*b }; }
+    if (r < 0.76){ const b = ri(3,19), res = ri(11,60); return { q:`${b*res} ${DIV} ${b}`, a:res }; }
+    // decimal add / subtract, one decimal place (kept in tenths to stay exact)
+    if (Math.random() < 0.5){ const aT = ri(15,999), bT = ri(15,999); return { q:`${(aT/10).toFixed(1)} + ${(bT/10).toFixed(1)}`, a:round1((aT+bT)/10) }; }
+    const aT = ri(120,999), bT = ri(15,aT); return { q:`${(aT/10).toFixed(1)} ${MINUS} ${(bT/10).toFixed(1)}`, a:round1((aT-bT)/10) };
+  }
+  function genGenius(){
+    switch (ri(0,6)){
+      case 0: { const a=ri(6,15), b=ri(6,15), c=ri(4,12), d=ri(4,12); return { q:`${a} ${TIMES} ${b} + ${c} ${TIMES} ${d}`, a:a*b+c*d }; }
+      case 1: { const a=ri(7,15), b=ri(7,15), A=a*b, c=ri(2,A-1); return { q:`${a} ${TIMES} ${b} ${MINUS} ${c}`, a:A-c }; }
+      case 2: { const a=ri(11,40), b=ri(11,40), c=ri(2,9); return { q:`(${a} + ${b}) ${TIMES} ${c}`, a:(a+b)*c }; }
+      case 3: { const b=ri(2,9), res=ri(3,15), c=b*res, a=ri(6,15), d=ri(6,15); return { q:`${a} ${TIMES} ${d} + ${c} ${DIV} ${b}`, a:a*d+res }; }
+      case 4: { const b=ri(2,9), res=ri(5,20), aa=b*res, c=ri(4,12), d=ri(4,12); return { q:`${aa} ${DIV} ${b} + ${c} ${TIMES} ${d}`, a:res+c*d }; }
+      case 5: { const a=ri(15,50), b=ri(2,a-1), c=ri(2,9), d=ri(5,40); return { q:`(${a} ${MINUS} ${b}) ${TIMES} ${c} + ${d}`, a:(a-b)*c+d }; }
+      default:{ const a=ri(9,15), b=ri(9,15), A=a*b, c=ri(3,9), d=ri(3,9); return { q:`${a} ${TIMES} ${b} ${MINUS} ${c} ${TIMES} ${d}`, a:A-c*d }; }
+    }
+  }
+
+  const LEVELS = [
+    { id:'easy',     name:'Easy',      short:'Easy',  desc:'Simple addition & subtraction.',                         gen:genEasy,     dec:false },
+    { id:'normal',   name:'Normal',    short:'Norm',  desc:'Bigger add & subtract, plus simple multiplication.',     gen:genNormal,   dec:false },
+    { id:'hard',     name:'Hard',      short:'Hard',  desc:'Tough add, subtract, multiply, and simple division.',    gen:genHard,     dec:false },
+    { id:'veryhard', name:'Very Hard', short:'V.Hard',desc:'Big multiplication & division, and decimal add/subtract.',gen:genVeryHard, dec:true  },
+    { id:'genius',   name:'Genius',    short:'Genius',desc:'Mixed multi-step expressions with everything at once.',   gen:genGenius,   dec:false },
+  ];
+  const QCOUNT = 10;
+
+  // ---------- best times (per level, seconds) ----------
+  const bestKey = id => 'speedmath_best_' + id;
+  function loadBest(id){ const v = parseFloat(localStorage.getItem(bestKey(id))); return v > 0 ? v : null; }
+  function saveBest(id, sec){ try { localStorage.setItem(bestKey(id), sec.toFixed(2)); } catch(e){} }
+  function fmt(sec){
+    if (sec == null) return '—';
+    if (sec < 60) return sec.toFixed(1) + 's';
+    const m = Math.floor(sec / 60), s = sec - m * 60;
+    return m + ':' + (s < 10 ? '0' : '') + s.toFixed(1);
+  }
+
+  // ---------- state ----------
+  let level = LEVELS[0];
+  let state = 'idle';                 // idle | run | done
+  let queue = [], idx = 0, startAt = 0, raf = 0, cur = null;
+  const answerEl = $('answer');
+
+  // ---------- build UI ----------
+  const levelsEl = $('levels'), recordsEl = $('records');
+  LEVELS.forEach(lv => {
+    const b = document.createElement('button');
+    b.textContent = lv.name; b.dataset.id = lv.id;
+    b.addEventListener('click', () => selectLevel(lv.id));
+    levelsEl.appendChild(b);
+
+    const r = document.createElement('div');
+    r.className = 'rec'; r.dataset.id = lv.id;
+    r.innerHTML = '<div class="rl">' + lv.short + '</div><div class="rt none">—</div>';
+    r.addEventListener('click', () => selectLevel(lv.id));
+    recordsEl.appendChild(r);
+  });
+
+  function renderRecords(){
+    LEVELS.forEach(lv => {
+      const b = loadBest(lv.id);
+      const rt = recordsEl.querySelector('.rec[data-id="' + lv.id + '"] .rt');
+      rt.textContent = b ? fmt(b) : '—';
+      rt.classList.toggle('none', !b);
+      recordsEl.querySelector('.rec[data-id="' + lv.id + '"]').classList.toggle('on', lv.id === level.id);
+    });
+    levelsEl.querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.id === level.id));
+  }
+
+  function selectLevel(id){
+    level = LEVELS.find(l => l.id === id) || LEVELS[0];
+    stopTimer();
+    goIdle();
+  }
+
+  function goIdle(){
+    state = 'idle';
+    $('run').classList.add('hide'); $('done').classList.add('hide'); $('idle').classList.remove('hide');
+    $('lvName').textContent = level.name;
+    $('lvDesc').textContent = level.desc;
+    const b = loadBest(level.id);
+    $('lvBest').textContent = b ? 'Best time: ' + fmt(b) : 'No record yet — set one!';
+    answerEl.inputMode = level.dec ? 'decimal' : 'numeric';
+    renderRecords();
+  }
+
+  // ---------- run ----------
+  function start(){
+    queue = []; let prev = '';
+    for (let i = 0; i < QCOUNT; i++){ let p; do { p = level.gen(); } while (p.q === prev); prev = p.q; queue.push(p); }
+    idx = 0; state = 'run';
+    $('idle').classList.add('hide'); $('done').classList.add('hide'); $('run').classList.remove('hide');
+    answerEl.value = '';
+    showProblem();
+    answerEl.focus();
+    startAt = performance.now();
+    tick();
+  }
+  function showProblem(){
+    cur = queue[idx];
+    $('problem').textContent = cur.q;
+    $('prog').textContent = (idx + 1) + ' / ' + QCOUNT;
+    $('barFill').style.width = (idx / QCOUNT * 100) + '%';
+  }
+  function tick(){
+    if (state !== 'run') return;
+    $('timer').textContent = fmt((performance.now() - startAt) / 1000);
+    raf = requestAnimationFrame(tick);
+  }
+  function stopTimer(){ cancelAnimationFrame(raf); }
+
+  answerEl.addEventListener('input', () => {
+    if (state !== 'run') return;
+    const v = answerEl.value.trim();
+    if (v === '' || v === '-' || v === '.' || v === '-.') return;
+    const num = parseFloat(v);
+    if (isNaN(num)) return;
+    if (Math.abs(num - cur.a) < 1e-6) correct();
+  });
+  // guard against Enter submitting anything / form-like behaviour
+  answerEl.addEventListener('keydown', e => { if (e.key === 'Enter') e.preventDefault(); });
+
+  function correct(){
+    answerEl.value = '';
+    answerEl.classList.remove('flash'); void answerEl.offsetWidth; answerEl.classList.add('flash');
+    idx++;
+    if (idx >= QCOUNT){ finish(); return; }
+    showProblem();
+  }
+
+  function finish(){
+    stopTimer();
+    state = 'done';
+    const total = (performance.now() - startAt) / 1000;
+    $('barFill').style.width = '100%';
+    const prev = loadBest(level.id);
+    const record = prev == null || total < prev;
+    if (record) saveBest(level.id, total);
+    $('run').classList.add('hide'); $('idle').classList.add('hide'); $('done').classList.remove('hide');
+    $('doneLv').textContent = level.name + ' — done!';
+    $('doneTime').textContent = fmt(total);
+    const sub = $('doneSub');
+    if (record){ sub.textContent = prev == null ? 'First record set!' : 'New best! (was ' + fmt(prev) + ')'; sub.classList.add('record'); }
+    else { sub.textContent = 'Best: ' + fmt(prev); sub.classList.remove('record'); }
+    renderRecords();
+  }
+
+  // ---------- controls ----------
+  $('startBtn').addEventListener('click', start);
+  $('againBtn').addEventListener('click', start);
+  $('menuBtn').addEventListener('click', goIdle);
+
+  goIdle();
+</script>
+  <script defer src="/cookie-consent.js"></script>
+  <script defer src="/now-playing.js"></script>
+</body>
+</html>
