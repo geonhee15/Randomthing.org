@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Guess Who — Randomthing.org</title>
+<meta name="description" content="A blurred photo sharpens second by second — name the famous face before it comes into focus. 200 people from Korea, the US and around the world." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="preconnect" href="https://upload.wikimedia.org" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root { --ui:"Inter",system-ui,-apple-system,sans-serif; --mono:"Space Grotesk",var(--ui);
+    --ink:#f4f4f7; --muted:#9a9aa6; --line:rgba(255,255,255,.12); --accent:#f0b429; --accent-ink:#3a2a05; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; padding:0; }
+  body { font-family:var(--ui); color:var(--ink); min-height:100vh; -webkit-font-smoothing:antialiased;
+    -webkit-user-select:none; user-select:none;
+    background: radial-gradient(120% 100% at 50% 0%, #2a2145 0%, #171532 45%, #0c0b18 100%); background-attachment:fixed; }
+
+  .nav { display:flex; align-items:center; gap:12px; padding:14px 20px; padding-left:max(20px, env(safe-area-inset-left)); }
+  .brand { font-family:"Baloo 2",sans-serif; font-weight:800; font-size:20px; letter-spacing:-.4px; color:var(--ink); text-decoration:none; padding:5px 8px; border-radius:10px; }
+  .brand:hover { background:rgba(255,255,255,.08); }
+  .brand .org { color:#ff5a5f; }
+  .nav .sep { color:rgba(255,255,255,.3); } .nav h1 { font-size:15px; font-weight:600; margin:0; color:#b9b9c6; }
+
+  .wrap { max-width:520px; margin:0 auto; padding:2px 18px 56px; display:flex; flex-direction:column; align-items:center; gap:14px; }
+
+  .regions { display:flex; flex-wrap:wrap; gap:7px; justify-content:center; }
+  .regions button { border:1px solid var(--line); background:rgba(255,255,255,.05); color:var(--muted); cursor:pointer;
+    font:700 13px var(--ui); padding:9px 15px; border-radius:999px; transition:all .14s; }
+  .regions button:hover { color:var(--ink); background:rgba(255,255,255,.1); }
+  .regions button.on { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
+
+  .card { width:100%; background:rgba(255,255,255,.05); border:1px solid var(--line); border-radius:20px;
+    padding:26px 22px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:9px;
+    backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
+  .card h2 { font-family:"Baloo 2",sans-serif; font-weight:800; font-size:30px; margin:0; line-height:1.1; }
+  .card p { color:var(--muted); font-size:14px; font-weight:500; margin:0; max-width:36ch; line-height:1.55; }
+  .best { font-family:var(--mono); font-weight:700; font-size:13px; color:var(--accent); font-variant-numeric:tabular-nums; margin-top:2px; }
+  .btn { font-family:"Baloo 2",sans-serif; font-weight:800; font-size:16px; border:none; border-radius:13px;
+    padding:13px 26px; cursor:pointer; transition:transform .06s, filter .15s; }
+  .btn:active { transform:translateY(1px); }
+  .btn.primary { background:var(--accent); color:var(--accent-ink); } .btn.primary:hover { filter:brightness(1.08); }
+  .btn.ghost { background:rgba(255,255,255,.08); color:var(--ink); border:1px solid var(--line); }
+  .btn.ghost:hover { background:rgba(255,255,255,.14); }
+  .card .btn { margin-top:10px; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-top:12px; }
+
+  /* ---- play area ---- */
+  .play { width:100%; display:flex; flex-direction:column; align-items:center; gap:13px; }
+  .hud { width:100%; display:flex; align-items:center; justify-content:space-between; font-family:var(--mono);
+    font-weight:700; font-size:14px; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .hud .sc { color:var(--accent); }
+  .bar { width:100%; height:5px; border-radius:99px; background:rgba(255,255,255,.1); overflow:hidden; }
+  .bar > i { display:block; height:100%; width:100%; background:var(--accent); border-radius:99px; }
+
+  .photo { width:min(78vw, 300px); aspect-ratio:1/1; border-radius:22px; overflow:hidden; position:relative;
+    background:#1a1830; box-shadow:0 18px 40px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.09); }
+  .photo img { width:100%; height:100%; object-fit:cover; object-position:50% 22%; display:block;
+    transform:scale(1.25); filter:blur(var(--bl, 28px)); transition:filter .18s linear; }
+  .photo.reveal img { transform:scale(1.02); transition:filter .5s ease, transform .5s ease; }
+  .photo .spin { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:13px; font-weight:600; }
+  .photo.ok  { box-shadow:0 18px 40px rgba(0,0,0,.45), inset 0 0 0 3px #34d399; }
+  .photo.bad { box-shadow:0 18px 40px rgba(0,0,0,.45), inset 0 0 0 3px #f87171; }
+
+  .opts { width:100%; display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .opts button { border:1px solid var(--line); background:rgba(255,255,255,.06); color:var(--ink); cursor:pointer;
+    font:700 14px var(--ui); padding:13px 10px; border-radius:13px; transition:all .12s; min-height:50px; line-height:1.25; }
+  .opts button:hover:not(:disabled) { background:rgba(255,255,255,.13); }
+  .opts button:disabled { cursor:default; }
+  .opts button.right { background:#34d399; border-color:#34d399; color:#05291d; }
+  .opts button.wrong { background:#f87171; border-color:#f87171; color:#2b0707; }
+  .opts button.dim { opacity:.4; }
+
+  .result { width:100%; min-height:64px; display:flex; flex-direction:column; align-items:center; gap:4px; text-align:center; }
+  .result .verdict { font-family:"Baloo 2",sans-serif; font-weight:800; font-size:19px; }
+  .result .verdict.ok { color:#34d399; } .result .verdict.bad { color:#f87171; }
+  .result .who { font-size:14px; font-weight:600; }
+  .result .desc { font-size:12.5px; color:var(--muted); font-weight:500; }
+  .result .credit { font-size:10.5px; color:#6f6f7d; margin-top:3px; line-height:1.45; max-width:42ch; }
+  .result .credit a { color:#8a8a99; }
+  .hide { display:none !important; }
+
+  .foot { font-size:11px; color:#5f5f6d; text-align:center; line-height:1.6; max-width:40ch; }
+  .foot a { color:#7b7b8b; }
+
+  @media (max-width:380px){
+    .opts { grid-template-columns:1fr; }
+    .card h2 { font-size:26px; }
+  }
+</style>
+</head>
+<body>
+  <nav class="nav">
+    <a class="brand" href="/">Randomthing<span class="org">.org</span></a>
+    <span class="sep">/</span><h1>Guess Who</h1>
+  </nav>
+
+  <div class="wrap">
+    <div class="regions" id="regions"></div>
+
+    <!-- idle -->
+    <div class="card" id="idle">
+      <h2 id="idleTitle">Guess Who</h2>
+      <p id="idleDesc">A blurred face sharpens second by second. Name it before it comes into focus — the blurrier it still is, the more points you get.</p>
+      <div class="best" id="idleBest"></div>
+      <button class="btn primary" id="startBtn">Start 10 rounds</button>
+    </div>
+
+    <!-- playing -->
+    <div class="play hide" id="play">
+      <div class="hud"><span id="roundLbl">Round 1 / 10</span><span class="sc" id="scoreLbl">0</span></div>
+      <div class="bar"><i id="barFill"></i></div>
+      <div class="photo" id="photo"><div class="spin" id="spin">Loading…</div><img id="img" alt="" /></div>
+      <div class="opts" id="opts"></div>
+      <div class="result" id="result"></div>
+    </div>
+
+    <!-- done -->
+    <div class="card hide" id="done">
+      <h2 id="doneTitle">Round over</h2>
+      <div class="best" id="doneScore"></div>
+      <p id="doneSub"></p>
+      <div class="row">
+        <button class="btn primary" id="againBtn">Play again</button>
+        <button class="btn ghost" id="menuBtn">Change region</button>
+      </div>
+    </div>
+
+    <div class="foot">Photos are loaded live from Wikipedia and remain under their own licences, credited on each answer. People are public figures only.</div>
+  </div>
+
+<script>
+  const PEOPLE = [
+    ["IU","IU (singer)","kr"],
+    ["Psy","Psy","kr"],
+    ["G-Dragon","G-Dragon","kr"],
+    ["Taeyang","Taeyang","kr"],
+    ["RM","RM (musician)","kr"],
+    ["Jin","Jin (singer)","kr"],
+    ["Suga","Suga (rapper)","kr"],
+    ["J-Hope","J-Hope","kr"],
+    ["Jimin","Jimin","kr"],
+    ["V","V (singer)","kr"],
+    ["Jungkook","Jungkook","kr"],
+    ["Jisoo","Jisoo","kr"],
+    ["Jennie","Jennie (singer)","kr"],
+    ["Rosé","Rosé (singer)","kr"],
+    ["Lisa","Lisa (rapper)","kr"],
+    ["Taeyeon","Taeyeon","kr"],
+    ["BoA","BoA","kr"],
+    ["Rain","Rain (entertainer)","kr"],
+    ["Lee Hyori","Lee Hyori","kr"],
+    ["Hwasa","Hwasa","kr"],
+    ["Cha Eun-woo","Cha Eun-woo","kr"],
+    ["Jang Won-young","Jang Won-young","kr"],
+    ["Song Joong-ki","Song Joong-ki","kr"],
+    ["Song Hye-kyo","Song Hye-kyo","kr"],
+    ["Lee Min-ho","Lee Min-ho (actor)","kr"],
+    ["Park Seo-joon","Park Seo-joon","kr"],
+    ["Gong Yoo","Gong Yoo","kr"],
+    ["Hyun Bin","Hyun Bin","kr"],
+    ["Son Ye-jin","Son Ye-jin","kr"],
+    ["Jun Ji-hyun","Jun Ji-hyun","kr"],
+    ["Bae Suzy","Bae Suzy","kr"],
+    ["Kim Soo-hyun","Kim Soo-hyun","kr"],
+    ["Lee Byung-hun","Lee Byung-hun","kr"],
+    ["Song Kang-ho","Song Kang-ho","kr"],
+    ["Choi Min-sik","Choi Min-sik","kr"],
+    ["Ma Dong-seok","Ma Dong-seok","kr"],
+    ["Jung Woo-sung","Jung Woo-sung","kr"],
+    ["Bae Doona","Bae Doona","kr"],
+    ["Youn Yuh-jung","Youn Yuh-jung","kr"],
+    ["Lee Jung-jae","Lee Jung-jae","kr"],
+    ["Jung Ho-yeon","Jung Ho-yeon","kr"],
+    ["Kim Go-eun","Kim Go-eun","kr"],
+    ["Bong Joon-ho","Bong Joon-ho","kr"],
+    ["Park Chan-wook","Park Chan-wook","kr"],
+    ["Hwang Dong-hyuk","Hwang Dong-hyuk","kr"],
+    ["Son Heung-min","Son Heung-min","kr"],
+    ["Kim Yuna","Kim Yuna","kr"],
+    ["Park Ji-sung","Park Ji-sung","kr"],
+    ["Ryu Hyun-jin","Ryu Hyun-jin","kr"],
+    ["Yoo Jae-suk","Yoo Jae-suk","kr"],
+    ["Tom Cruise","Tom Cruise","us"],
+    ["Brad Pitt","Brad Pitt","us"],
+    ["Leonardo DiCaprio","Leonardo DiCaprio","us"],
+    ["Johnny Depp","Johnny Depp","us"],
+    ["Will Smith","Will Smith","us"],
+    ["Denzel Washington","Denzel Washington","us"],
+    ["Morgan Freeman","Morgan Freeman","us"],
+    ["Tom Hanks","Tom Hanks","us"],
+    ["Robert Downey Jr.","Robert Downey Jr.","us"],
+    ["Scarlett Johansson","Scarlett Johansson","us"],
+    ["Jennifer Lawrence","Jennifer Lawrence","us"],
+    ["Emma Stone","Emma Stone","us"],
+    ["Angelina Jolie","Angelina Jolie","us"],
+    ["Meryl Streep","Meryl Streep","us"],
+    ["Julia Roberts","Julia Roberts","us"],
+    ["Dwayne Johnson","Dwayne Johnson","us"],
+    ["Zendaya","Zendaya","us"],
+    ["Samuel L. Jackson","Samuel L. Jackson","us"],
+    ["Steven Spielberg","Steven Spielberg","us"],
+    ["Quentin Tarantino","Quentin Tarantino","us"],
+    ["Taylor Swift","Taylor Swift","us"],
+    ["Beyoncé","Beyoncé","us"],
+    ["Ariana Grande","Ariana Grande","us"],
+    ["Billie Eilish","Billie Eilish","us"],
+    ["Bruno Mars","Bruno Mars","us"],
+    ["Kanye West","Kanye West","us"],
+    ["Eminem","Eminem","us"],
+    ["Snoop Dogg","Snoop Dogg","us"],
+    ["Lady Gaga","Lady Gaga","us"],
+    ["Katy Perry","Katy Perry","us"],
+    ["Madonna","Madonna","us"],
+    ["Michael Jackson","Michael Jackson","us"],
+    ["Elvis Presley","Elvis Presley","us"],
+    ["Bob Dylan","Bob Dylan","us"],
+    ["Selena Gomez","Selena Gomez","us"],
+    ["Kendrick Lamar","Kendrick Lamar","us"],
+    ["LeBron James","LeBron James","us"],
+    ["Stephen Curry","Stephen Curry","us"],
+    ["Michael Jordan","Michael Jordan","us"],
+    ["Kobe Bryant","Kobe Bryant","us"],
+    ["Serena Williams","Serena Williams","us"],
+    ["Tom Brady","Tom Brady","us"],
+    ["Muhammad Ali","Muhammad Ali","us"],
+    ["Tiger Woods","Tiger Woods","us"],
+    ["Elon Musk","Elon Musk","us"],
+    ["Bill Gates","Bill Gates","us"],
+    ["Mark Zuckerberg","Mark Zuckerberg","us"],
+    ["Steve Jobs","Steve Jobs","us"],
+    ["Oprah Winfrey","Oprah Winfrey","us"],
+    ["Barack Obama","Barack Obama","us"],
+    ["Emma Watson","Emma Watson","world"],
+    ["Daniel Radcliffe","Daniel Radcliffe","world"],
+    ["Ed Sheeran","Ed Sheeran","world"],
+    ["Adele","Adele","world"],
+    ["Harry Styles","Harry Styles","world"],
+    ["Benedict Cumberbatch","Benedict Cumberbatch","world"],
+    ["Idris Elba","Idris Elba","world"],
+    ["Kate Winslet","Kate Winslet","world"],
+    ["Tom Holland","Tom Holland","world"],
+    ["Elton John","Elton John","world"],
+    ["Paul McCartney","Paul McCartney","world"],
+    ["John Lennon","John Lennon","world"],
+    ["Freddie Mercury","Freddie Mercury","world"],
+    ["David Bowie","David Bowie","world"],
+    ["Rowan Atkinson","Rowan Atkinson","world"],
+    ["Daniel Craig","Daniel Craig","world"],
+    ["Elizabeth II","Elizabeth II","world"],
+    ["Diana, Princess of Wales","Diana, Princess of Wales","world"],
+    ["Winston Churchill","Winston Churchill","world"],
+    ["Stephen Hawking","Stephen Hawking","world"],
+    ["Dua Lipa","Dua Lipa","world"],
+    ["Lionel Messi","Lionel Messi","world"],
+    ["Cristiano Ronaldo","Cristiano Ronaldo","world"],
+    ["Neymar","Neymar","world"],
+    ["Kylian Mbappé","Kylian Mbappé","world"],
+    ["Pelé","Pelé","world"],
+    ["Diego Maradona","Diego Maradona","world"],
+    ["Zinedine Zidane","Zinedine Zidane","world"],
+    ["Ronaldinho","Ronaldinho","world"],
+    ["Luka Modrić","Luka Modrić","world"],
+    ["Erling Haaland","Erling Haaland","world"],
+    ["Robert Lewandowski","Robert Lewandowski","world"],
+    ["Mohamed Salah","Mohamed Salah","world"],
+    ["Kevin De Bruyne","Kevin De Bruyne","world"],
+    ["Andrés Iniesta","Andrés Iniesta","world"],
+    ["Ronaldo","Ronaldo (Brazilian footballer)","world"],
+    ["Zlatan Ibrahimović","Zlatan Ibrahimović","world"],
+    ["David Beckham","David Beckham","world"],
+    ["Lewis Hamilton","Lewis Hamilton","world"],
+    ["Andy Murray","Andy Murray","world"],
+    ["Harry Kane","Harry Kane","world"],
+    ["Jude Bellingham","Jude Bellingham","world"],
+    ["Roger Federer","Roger Federer","world"],
+    ["Rafael Nadal","Rafael Nadal","world"],
+    ["Novak Djokovic","Novak Djokovic","world"],
+    ["Usain Bolt","Usain Bolt","world"],
+    ["Hayao Miyazaki","Hayao Miyazaki","world"],
+    ["Shohei Ohtani","Shohei Ohtani","world"],
+    ["Naomi Osaka","Naomi Osaka","world"],
+    ["Ken Watanabe","Ken Watanabe","world"],
+    ["Takeshi Kitano","Takeshi Kitano","world"],
+    ["Hideo Kojima","Hideo Kojima","world"],
+    ["Ichiro Suzuki","Ichiro Suzuki","world"],
+    ["Haruki Murakami","Haruki Murakami","world"],
+    ["Shigeru Miyamoto","Shigeru Miyamoto","world"],
+    ["Jackie Chan","Jackie Chan","world"],
+    ["Bruce Lee","Bruce Lee","world"],
+    ["Jet Li","Jet Li","world"],
+    ["Zhang Ziyi","Zhang Ziyi","world"],
+    ["Chow Yun-fat","Chow Yun-fat","world"],
+    ["Andy Lau","Andy Lau","world"],
+    ["Jay Chou","Jay Chou","world"],
+    ["Donnie Yen","Donnie Yen","world"],
+    ["Gong Li","Gong Li","world"],
+    ["Shah Rukh Khan","Shah Rukh Khan","world"],
+    ["Priyanka Chopra","Priyanka Chopra","world"],
+    ["Deepika Padukone","Deepika Padukone","world"],
+    ["Amitabh Bachchan","Amitabh Bachchan","world"],
+    ["Aamir Khan","Aamir Khan","world"],
+    ["Virat Kohli","Virat Kohli","world"],
+    ["Sachin Tendulkar","Sachin Tendulkar","world"],
+    ["Mahatma Gandhi","Mahatma Gandhi","world"],
+    ["Justin Bieber","Justin Bieber","world"],
+    ["Drake","Drake (musician)","world"],
+    ["The Weeknd","The Weeknd","world"],
+    ["Ryan Gosling","Ryan Gosling","world"],
+    ["Jim Carrey","Jim Carrey","world"],
+    ["Keanu Reeves","Keanu Reeves","world"],
+    ["Chris Hemsworth","Chris Hemsworth","world"],
+    ["Margot Robbie","Margot Robbie","world"],
+    ["Hugh Jackman","Hugh Jackman","world"],
+    ["Nicole Kidman","Nicole Kidman","world"],
+    ["Cate Blanchett","Cate Blanchett","world"],
+    ["Shakira","Shakira","world"],
+    ["Bad Bunny","Bad Bunny","world"],
+    ["Salma Hayek","Salma Hayek","world"],
+    ["Sofía Vergara","Sofía Vergara","world"],
+    ["Karol G","Karol G","world"],
+    ["Frida Kahlo","Frida Kahlo","world"],
+    ["Rihanna","Rihanna","world"],
+    ["Nelson Mandela","Nelson Mandela","world"],
+    ["Albert Einstein","Albert Einstein","world"],
+    ["Marie Curie","Marie Curie","world"],
+    ["Audrey Hepburn","Audrey Hepburn","world"],
+    ["Charlie Chaplin","Charlie Chaplin","world"],
+    ["Pope Francis","Pope Francis","world"],
+    ["Greta Thunberg","Greta Thunberg","world"],
+    ["Vincent van Gogh","Vincent van Gogh","world"],
+    ["Leonardo da Vinci","Leonardo da Vinci","world"],
+    ["Bob Marley","Bob Marley","world"]
+  ];
+
+  const $ = id => document.getElementById(id);
+  const REGIONS = [
+    { id:'all',   label:'All 200' },
+    { id:'kr',    label:'Korea' },
+    { id:'us',    label:'USA' },
+    { id:'world', label:'World' },
+  ];
+  const ROUNDS = 10, START_BLUR = 28, SHARP_AT = 11, DEADLINE = 14;   // seconds
+
+  let region = 'all';
+  let deck = [], idx = 0, score = 0, answered = false;
+  let raf = 0, roundStart = 0, curBlur = START_BLUR;
+  const meta = new Map();     // wiki title -> {thumb, desc, file, artist, licence}
+
+  // ---------- best scores ----------
+  const bestKey = r => 'guesswho_best_' + r;
+  const loadBest = r => { const v = parseInt(localStorage.getItem(bestKey(r)), 10); return v > 0 ? v : 0; };
+  function saveBest(r, s){ try { if (s > loadBest(r)) localStorage.setItem(bestKey(r), String(s)); } catch(e){} }
+
+  // ---------- ui ----------
+  const regionsEl = $('regions');
+  REGIONS.forEach(r => {
+    const b = document.createElement('button');
+    b.textContent = r.label; b.dataset.id = r.id;
+    b.addEventListener('click', () => { region = r.id; goIdle(); });
+    regionsEl.appendChild(b);
+  });
+  const pool = r => r === 'all' ? PEOPLE : PEOPLE.filter(p => p[2] === r);
+
+  function goIdle(){
+    stop();
+    $('play').classList.add('hide'); $('done').classList.add('hide'); $('idle').classList.remove('hide');
+    regionsEl.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.id === region));
+    const label = REGIONS.find(r => r.id === region).label;
+    $('idleTitle').textContent = region === 'all' ? 'Guess Who' : label;
+    const n = pool(region).length;
+    $('idleDesc').textContent = 'A blurred face sharpens second by second. Name it before it comes into focus — the blurrier it still is, the more points you get. ' + n + ' faces in this set.';
+    const b = loadBest(region);
+    $('idleBest').textContent = b ? 'Best score: ' + b + ' / 1000' : 'No score yet — set one.';
+  }
+
+  // ---------- wikipedia ----------
+  const API = 'https://en.wikipedia.org/w/api.php';
+  const stripHtml = s => { const d = document.createElement('div'); d.innerHTML = s || ''; return (d.textContent || '').replace(/\s+/g,' ').trim(); };
+
+  async function loadMeta(titles){
+    const need = titles.filter(t => !meta.has(t));
+    if (!need.length) return;
+    // 1) lead image + short description
+    const u1 = API + '?action=query&format=json&formatversion=2&origin=*&redirects=1'
+      + '&prop=pageimages|description&piprop=thumbnail|name&pithumbsize=640'
+      + '&titles=' + need.map(encodeURIComponent).join('%7C');
+    const q1 = (await (await fetch(u1)).json()).query || {};
+    // map resolved titles back to what we asked for
+    const back = new Map(need.map(t => [t, t]));
+    (q1.normalized || []).forEach(n => back.set(n.to, back.get(n.from) || n.from));
+    (q1.redirects  || []).forEach(r => back.set(r.to, back.get(r.from) || r.from));
+    const files = [];
+    (q1.pages || []).forEach(p => {
+      const asked = back.get(p.title) || p.title;
+      if (p.thumbnail) {
+        meta.set(asked, { thumb:p.thumbnail.source, desc:p.description || '', file:p.pageimage || '', page:p.title, artist:'', licence:'' });
+        if (p.pageimage) files.push('File:' + p.pageimage);
+      }
+    });
+    // 2) photo credit for those files
+    if (files.length){
+      try {
+        const u2 = API + '?action=query&format=json&formatversion=2&origin=*&prop=imageinfo&iiprop=extmetadata'
+          + '&iiextmetadatafilter=Artist%7CLicenseShortName&titles=' + files.map(encodeURIComponent).join('%7C');
+        const q2 = (await (await fetch(u2)).json()).query || {};
+        // the API echoes file titles with spaces while pageimage uses underscores
+        const key = s => String(s || '').replace(/^File:/, '').replace(/_/g, ' ').trim();
+        const byFile = new Map();
+        (q2.pages || []).forEach(p => {
+          const em = (p.imageinfo && p.imageinfo[0] && p.imageinfo[0].extmetadata) || {};
+          byFile.set(key(p.title), {
+            artist: stripHtml(em.Artist && em.Artist.value),
+            licence: stripHtml(em.LicenseShortName && em.LicenseShortName.value),
+          });
+        });
+        meta.forEach(m => {
+          const c = m.file && byFile.get(key(m.file));
+          if (c){ m.artist = c.artist; m.licence = c.licence; }
+        });
+      } catch(e){ /* credit is best-effort */ }
+    }
+  }
+
+  const preload = src => new Promise(res => { const i = new Image(); i.onload = () => res(true); i.onerror = () => res(false); i.src = src; });
+
+  // ---------- game ----------
+  function shuffle(a){ for (let i=a.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [a[i],a[j]]=[a[j],a[i]]; } return a; }
+
+  async function start(){
+    const p = shuffle(pool(region).slice());
+    deck = p.slice(0, ROUNDS);
+    idx = 0; score = 0;
+    $('idle').classList.add('hide'); $('done').classList.add('hide'); $('play').classList.remove('hide');
+    $('scoreLbl').textContent = '0';
+    $('opts').innerHTML = ''; $('result').innerHTML = '';
+    $('spin').textContent = 'Loading…'; $('spin').classList.remove('hide');
+    try {
+      await loadMeta(deck.map(d => d[1]));
+    } catch(e){
+      $('spin').textContent = 'Could not reach Wikipedia — check your connection.';
+      return;
+    }
+    // drop anyone whose photo did not come back, top up from the rest of the pool
+    const spare = p.slice(ROUNDS);
+    for (let i = 0; i < deck.length; i++){
+      while (!meta.get(deck[i][1]) && spare.length){
+        const s = spare.shift();
+        try { await loadMeta([s[1]]); } catch(e){}
+        deck[i] = s;
+      }
+    }
+    deck = deck.filter(d => meta.get(d[1]));
+    if (!deck.length){ $('spin').textContent = 'No photos available right now.'; return; }
+    showRound();
+  }
+
+  async function showRound(){
+    answered = false;
+    const person = deck[idx];
+    const m = meta.get(person[1]);
+    $('roundLbl').textContent = 'Round ' + (idx + 1) + ' / ' + deck.length;
+    $('result').innerHTML = '';
+    const ph = $('photo'); ph.classList.remove('reveal','ok','bad');
+    curBlur = START_BLUR; ph.style.setProperty('--bl', START_BLUR + 'px');
+    $('img').style.visibility = 'hidden'; $('spin').classList.remove('hide'); $('spin').textContent = 'Loading…';
+
+    // options: the answer + 3 others from the same region
+    const same = PEOPLE.filter(x => x[2] === person[2] && x[0] !== person[0]);
+    const opts = shuffle([person].concat(shuffle(same).slice(0, 3)));
+    const oe = $('opts'); oe.innerHTML = '';
+    opts.forEach(o => {
+      const b = document.createElement('button');
+      b.textContent = o[0];
+      b.addEventListener('click', () => answer(b, o, person));
+      oe.appendChild(b);
+    });
+
+    const okImg = await preload(m.thumb);
+    if (!okImg){ next(); return; }                       // skip a broken photo
+    $('img').src = m.thumb; $('img').style.visibility = ''; $('spin').classList.add('hide');
+
+    // prefetch the next photo so the following round starts instantly
+    if (deck[idx+1]) { const nm = meta.get(deck[idx+1][1]); if (nm) preload(nm.thumb); }
+
+    roundStart = performance.now();
+    tick();
+  }
+
+  function tick(){
+    if (answered) return;
+    const t = (performance.now() - roundStart) / 1000;
+    curBlur = Math.max(0, START_BLUR * (1 - t / SHARP_AT));
+    $('photo').style.setProperty('--bl', curBlur.toFixed(2) + 'px');
+    $('barFill').style.width = Math.max(0, 100 * (1 - t / DEADLINE)) + '%';
+    if (t >= DEADLINE){ answer(null, null, deck[idx]); return; }
+    raf = requestAnimationFrame(tick);
+  }
+  function stop(){ cancelAnimationFrame(raf); answered = true; }
+
+  function answer(btn, picked, person){
+    if (answered) return;
+    stop();
+    const right = picked && picked[0] === person[0];
+    const gained = right ? Math.max(10, Math.round(100 * (curBlur / START_BLUR))) : 0;
+    score += gained;
+    $('scoreLbl').textContent = score;
+
+    const ph = $('photo');
+    ph.classList.add('reveal', right ? 'ok' : 'bad');
+    ph.style.setProperty('--bl', '0px');
+
+    $('opts').querySelectorAll('button').forEach(b => {
+      b.disabled = true;
+      if (b.textContent === person[0]) b.classList.add('right');
+      else if (b === btn) b.classList.add('wrong');
+      else b.classList.add('dim');
+    });
+
+    const m = meta.get(person[1]) || {};
+    const credit = [m.artist, m.licence].filter(Boolean).join(' · ');
+    const wikiUrl = 'https://en.wikipedia.org/wiki/' + encodeURIComponent(m.page || person[1]);
+    $('result').innerHTML =
+      '<div class="verdict ' + (right ? 'ok">+' + gained : 'bad">' + (picked ? 'Wrong' : 'Time!')) + '</div>' +
+      '<div class="who">' + person[0] + '</div>' +
+      '<div class="desc">' + (m.desc || '') + '</div>' +
+      '<div class="credit">Photo: ' + (credit || 'Wikimedia Commons') +
+        ' · <a href="' + wikiUrl + '" target="_blank" rel="noopener noreferrer">Wikipedia</a></div>';
+
+    const b = document.createElement('button');
+    b.className = 'btn primary'; b.style.marginTop = '10px';
+    b.textContent = (idx + 1 >= deck.length) ? 'See results' : 'Next';
+    b.addEventListener('click', next);
+    $('result').appendChild(b);
+  }
+
+  function next(){
+    idx++;
+    if (idx >= deck.length){ finish(); return; }
+    showRound();
+  }
+
+  function finish(){
+    const prev = loadBest(region);
+    const record = score > prev;
+    saveBest(region, score);
+    $('play').classList.add('hide'); $('done').classList.remove('hide');
+    $('doneTitle').textContent = score >= 800 ? 'Sharp eyes!' : score >= 500 ? 'Not bad' : 'Room to improve';
+    $('doneScore').textContent = score + ' / 1000';
+    $('doneSub').textContent = record
+      ? (prev ? 'New best for ' + REGIONS.find(r => r.id === region).label + ' — was ' + prev + '.' : 'First score for ' + REGIONS.find(r => r.id === region).label + '.')
+      : 'Best for ' + REGIONS.find(r => r.id === region).label + ': ' + prev + '.';
+  }
+
+  $('startBtn').addEventListener('click', start);
+  $('againBtn').addEventListener('click', start);
+  $('menuBtn').addEventListener('click', goIdle);
+
+  goIdle();
+</script>
+  <script defer src="/cookie-consent.js"></script>
+  <script defer src="/now-playing.js"></script>
+</body>
+</html>
