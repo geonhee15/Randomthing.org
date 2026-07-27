@@ -35,6 +35,21 @@
   }
   .online.show { opacity: 1; }
 
+  /* language switcher (top-right) */
+  .lang {
+    position: fixed; top: 12px; right: max(14px, env(safe-area-inset-right)); z-index: 60;
+    display: flex; gap: 2px; padding: 3px; border-radius: 999px;
+    background: rgba(0,0,0,.05); border: 1px solid rgba(0,0,0,.05);
+  }
+  .lang button {
+    border: none; background: transparent; cursor: pointer; color: #8a8a8e;
+    font-family: "Nunito", sans-serif; font-weight: 700; font-size: 12px;
+    padding: 6px 11px; border-radius: 999px; transition: color .14s, background .14s;
+  }
+  .lang button:hover { color: var(--ink); }
+  .lang button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.14); }
+  @media (max-width: 380px) { .lang button { padding: 5px 9px; font-size: 11px; } }
+
 
   header.hero {
     text-align: center;
@@ -526,6 +541,10 @@
 </head>
 <body>
   <div class="online" id="online" aria-live="polite"></div>
+  <div class="lang" id="lang">
+    <button type="button" data-l="en">EN</button>
+    <button type="button" data-l="ko">한국어</button>
+  </div>
   <header class="hero">
     <h1 class="logo"><img class="ico" src="/favicon.svg" alt="" aria-hidden="true" /><span class="wm">Randomthing<span class="org">.org</span></span></h1>
     <div class="tagline">random things, made for fun</div>
@@ -788,6 +807,103 @@
   <script>
     document.getElementById('yr').textContent = new Date().getFullYear();
 
+    // ---------- language (EN / KO) ----------
+    // English is whatever is already in the markup, captured once on load, so the
+    // English copy never has to be duplicated here. Korean lives in this table.
+    (function(){
+      var KO_CARDS = {
+        'calc-card':    ['조립 키트',   '계산기',        '노브가 잔뜩 달린 계산기. 나만의 계산기를 만들어 보세요.'],
+        'bg-card':      ['인터랙티브 셰이더', '배경화면',  '마우스에 반응하는 살아있는 배경화면.'],
+        'bb-card':      ['아케이드',    '벽돌깨기',      '공을 튕겨서 벽돌을 모두 없애세요.'],
+        'clk-card':     ['시간',        '시계',          '코드로 그린 시계와 타이머 여덟 가지.'],
+        'cg-card':      ['색 감별',     '컬러 맞히기',   '색을 보고 HEX 코드를 맞혀 보세요.'],
+        'rt-card':      ['반응 속도',   '반응속도 테스트', '초록색으로 바뀌는 순간 클릭하세요.'],
+        'ap-card':      ['턴테이블',    '오디오 플레이어', '음악을 올리고 디스크를 긁어 보세요.'],
+        'rand-card':    ['랜덤으로',    '랜덤한 곳으로…', '웹사이트, 영상, 이미지, 레딧, 계정까지.'],
+        'sf-card':      ['2인용',       '스틱맨 파이트',  '팔다리를 잘라내고 머리만 남기면 승리.'],
+        'cps-card':     ['클릭 속도',   'CPS 테스트',    '얼마나 빠르게 클릭할 수 있나요?'],
+        'rps-card':     ['로봇과 대결', '가위바위보',    '로봇과의 승부에서 이겨 보세요.'],
+        'stretch-card': ['얼굴 늘리기', 'Stretch!',      '얼굴 사진을 올리고 마음껏 늘려 보세요.'],
+        'ttt-card':     ['2인용',       '틱택토',        '친구 또는 컴퓨터와 대결하세요.'],
+        'fir-card':     ['전략 게임',   '오목',          '돌 다섯 개를 나란히 놓으면 승리.'],
+        'sudoku-card':  ['숫자 퍼즐',   '스도쿠',        '4×4, 6×6, 9×9 또는 직접 정한 크기로.'],
+        'smath-card':   ['암산',        '스피드 수학',   '10문제 5단계 — 최고 기록에 도전하세요.'],
+        'gw-card':      ['유명인 얼굴', '누구게?',       '선명해지기 전에 누구인지 맞혀 보세요.'],
+      };
+      var KO_UI = {
+        tagline: '재미로 만든 랜덤한 것들',
+        logTitle: '업데이트 로그',
+        logSub: 'Randomthing.org의 새로운 소식',
+        logBtn: '업데이트 로그',
+        credit: '개발: 김건희',
+      };
+
+      var tagEl = document.querySelector('.tagline');
+      var logBtn = document.getElementById('logBtn');
+      var logH2 = document.querySelector('.ulog-head h2');
+      var logSub = document.querySelector('.ulog-head .sub');
+      var creditEl = document.querySelector('footer .credit');
+
+      // stash the English original of everything we swap
+      function stash(el, key){ if (el && !el.dataset[key]) el.dataset[key] = el.innerHTML; }
+      stash(tagEl, 'en'); stash(logH2, 'en'); stash(logSub, 'en'); stash(creditEl, 'en');
+      if (logBtn && !logBtn.dataset.en) logBtn.dataset.en = logBtn.getAttribute('title') || 'Update log';
+      document.querySelectorAll('.art-card').forEach(function(card){
+        ['kicker','name','desc'].forEach(function(part){
+          var el = card.querySelector('.' + part);
+          if (el && !el.dataset.en) el.dataset.en = el.innerHTML;
+        });
+      });
+
+      function cardKey(card){
+        var hit = null;
+        card.classList.forEach(function(c){ if (KO_CARDS[c]) hit = c; });
+        return hit;
+      }
+
+      window.RT_LANG = 'en';
+      window.RT_ONLINE_TEXT = function(n){
+        return window.RT_LANG === 'ko' ? ('접속자 ' + n + '명') : ('Online Players: ' + n);
+      };
+
+      function apply(l){
+        var ko = (l === 'ko');
+        window.RT_LANG = l;
+        document.documentElement.lang = ko ? 'ko' : 'en';
+
+        if (tagEl) tagEl.innerHTML = ko ? KO_UI.tagline : tagEl.dataset.en;
+        if (logH2) logH2.innerHTML = ko ? KO_UI.logTitle : logH2.dataset.en;
+        if (logSub) logSub.innerHTML = ko ? KO_UI.logSub : logSub.dataset.en;
+        if (creditEl) creditEl.innerHTML = ko ? KO_UI.credit : creditEl.dataset.en;
+        if (logBtn){
+          var lb = ko ? KO_UI.logBtn : logBtn.dataset.en;
+          logBtn.setAttribute('title', lb); logBtn.setAttribute('aria-label', lb);
+        }
+        document.querySelectorAll('.art-card').forEach(function(card){
+          var key = cardKey(card), tr = key && KO_CARDS[key];
+          ['kicker','name','desc'].forEach(function(part, i){
+            var el = card.querySelector('.' + part);
+            if (!el) return;
+            el.innerHTML = (ko && tr) ? tr[i] : el.dataset.en;
+          });
+        });
+
+        document.querySelectorAll('#lang button').forEach(function(b){ b.classList.toggle('on', b.dataset.l === l); });
+        if (window.RT_RENDER_LOG) window.RT_RENDER_LOG();
+        try { localStorage.setItem('rt_lang', l); } catch(e){}
+        window.dispatchEvent(new CustomEvent('rt-lang', { detail: l }));
+      }
+
+      document.querySelectorAll('#lang button').forEach(function(b){
+        b.addEventListener('click', function(){ apply(b.dataset.l); });
+      });
+
+      var saved = null;
+      try { saved = localStorage.getItem('rt_lang'); } catch(e){}
+      if (!saved) saved = (navigator.language || '').toLowerCase().indexOf('ko') === 0 ? 'ko' : 'en';
+      apply(saved === 'ko' ? 'ko' : 'en');
+    })();
+
     // live online-player count — one WebSocket per tab to a Cloudflare Durable Object.
     // Fails soft: if the backend isn't there (e.g. local static preview), it stays hidden.
     (function(){
@@ -801,13 +917,16 @@
         ws.onopen = function(){ retry = 0; };
         ws.onmessage = function(ev){
           try { var d = JSON.parse(ev.data);
-            if (typeof d.count === 'number'){ el.textContent = 'Online Players: ' + d.count; el.classList.add('show'); }
+            if (typeof d.count === 'number'){ el.dataset.n = d.count; el.textContent = window.RT_ONLINE_TEXT(d.count); el.classList.add('show'); }
           } catch(e){}
         };
         ws.onclose = function(){ el.classList.remove('show'); schedule(); };
         ws.onerror = function(){ try { ws.close(); } catch(e){} };
       }
       connect();
+      window.addEventListener('rt-lang', function(){
+        if (el.dataset.n) el.textContent = window.RT_ONLINE_TEXT(+el.dataset.n);
+      });
     })();
 
     // clicking the dice logo re-rolls the page (fresh random easter eggs each time)
@@ -849,77 +968,114 @@
 
     // ---------- update log ----------
     // Newest day first; items within a day are numbered date-1, date-2, …
+    // Each item carries both languages; the log renders whichever is selected.
     const LOGS = [
       { date: '26.7.27', open: true, items: [
-        'Added Guess Who — a blurred famous face sharpens second by second and you name it from four options; the blurrier it still is when you answer, the more points you get. 200 people (50 Korean, 50 American, 100 from the rest of the world), with a best score kept per region',
+        { en:'Added Guess Who — a blurred famous face sharpens second by second and you name it from four options; the blurrier it still is when you answer, the more points you get. 200 people (50 Korean, 50 American, 100 from the rest of the world), with a best score kept per region',
+          ko:'“누구게?” 추가 — 흐릿한 유명인 사진이 초마다 선명해지고, 네 개의 보기 중에서 이름을 고릅니다. 흐릴 때 맞힐수록 점수가 높아요. 총 200명(한국 50명, 미국 50명, 그 외 100명)이고 지역별로 최고 점수가 저장됩니다' },
       ] },
       { date: '26.7.17', open: false, items: [
-        'Added Speed Math — race through 10 mental-math problems across five levels (Easy, Normal, Hard, Very Hard, Genius), each keeping its own best time',
-        'Homepage — freshened up the cards: the icon now alternates left/right with a mix of circle, squircle and rounded-square shapes and varied tilts, so the grid feels livelier instead of one repeated layout',
+        { en:'Added Speed Math — race through 10 mental-math problems across five levels (Easy, Normal, Hard, Very Hard, Genius), each keeping its own best time',
+          ko:'스피드 수학 추가 — 다섯 단계(Easy, Normal, Hard, Very Hard, Genius)로 10문제를 빠르게 푸는 게임이고, 단계마다 최고 기록이 따로 저장됩니다' },
+        { en:'Homepage — freshened up the cards: the icon now alternates left/right with a mix of circle, squircle and rounded-square shapes and varied tilts, so the grid feels livelier instead of one repeated layout',
+          ko:'메인 화면 — 카드 디자인을 다양화했습니다. 아이콘이 좌우로 번갈아 배치되고 원형·둥근 사각형·사각형이 섞이며 기울기도 제각각이라, 같은 레이아웃의 반복이 아니라 훨씬 생동감 있게 보입니다' },
       ] },
       { date: '26.7.15', open: false, items: [
-        'Sudoku — a solve timer, plus a My Stats popup with successes, fails and best time per size (Easy 4×4 / Medium 6×6 / Hard 9×9, an All-Modes overview, and a section for every custom size you play)',
-        'Background — the Cubes wallpaper now tracks touch on mobile (it was too heavy to keep up before)',
-        'Stickman Fight — a much smarter computer opponent: it reads your weapon, holds the exact range to land hits, slips telegraphed spear/hammer pokes, dodges thrown stars, kites with the shuriken, finishes you when you are disarmed, and stops walking itself into the lava',
+        { en:'Sudoku — a solve timer, plus a My Stats popup with successes, fails and best time per size (Easy 4×4 / Medium 6×6 / Hard 9×9, an All-Modes overview, and a section for every custom size you play)',
+          ko:'스도쿠 — 풀이 시간 타이머와 My Stats 팝업을 추가했습니다. 크기별(Easy 4×4 / Medium 6×6 / Hard 9×9)로 성공·실패·최고 기록을 보여주고, 전체 통계 섹션과 직접 만든 크기별 섹션도 있습니다' },
+        { en:'Background — the Cubes wallpaper now tracks touch on mobile (it was too heavy to keep up before)',
+          ko:'배경화면 — Cubes 배경이 모바일에서도 터치를 따라옵니다 (예전에는 너무 무거워서 따라오지 못했습니다)' },
+        { en:'Stickman Fight — a much smarter computer opponent: it reads your weapon, holds the exact range to land hits, slips telegraphed spear/hammer pokes, dodges thrown stars, kites with the shuriken, finishes you when you are disarmed, and stops walking itself into the lava',
+          ko:'스틱맨 파이트 — 컴퓨터가 훨씬 똑똑해졌습니다. 상대 무기를 파악해 타격이 닿는 거리를 정확히 유지하고, 창·해머의 큰 공격은 피하며, 날아오는 표창을 피하고, 표창으로는 거리를 두고 싸웁니다. 상대가 무기를 잃으면 파고들어 마무리하고, 스스로 용암에 빠지지 않습니다' },
       ] },
       { date: '26.7.14', open: false, items: [
-        'Homepage — animated card icons: the Background gradient drifts, Brick Break plays itself, and the clock got a moving second hand',
-        'Homepage — the Color Guesser icon shows a fresh hand-picked 4-colour palette (one of 12) on every visit',
-        'Homepage — the dice logo icon now sits beside the Randomthing.org wordmark',
-        'Added Sudoku — Easy 4×4, Medium 6×6, Hard 9×9, plus a custom size (only real box-splittable sizes; 5, 7, and other odd ones are blocked)',
-        'Now Playing follows you everywhere — the mini player rides along into every panel and keeps the track going until you stop it',
-        'Mobile & foldables — tuned every layout for tall phones and Flip/Fold ratios: nothing overflows sideways, the logo and controls scale down, and a squarish foldable shows two columns',
-        'Sudoku — pencil notes (toggle Notes, jot small candidates in a cell), 3 hearts (three mistakes and the board resets), a remaining-count under each number, and puzzles are now generated with a single solution for fair difficulty',
-        'Sudoku — cleaner heart icons and a roomier board on tablets/iPad',
-        'Homepage — click the dice logo to re-roll the page',
-        'Background — on touch screens, drag your finger to sculpt the Cubes (and the other pointer-driven wallpapers)',
+        { en:'Homepage — animated card icons: the Background gradient drifts, Brick Break plays itself, and the clock got a moving second hand',
+          ko:'메인 화면 — 카드 아이콘에 애니메이션을 넣었습니다. 배경화면 그라데이션이 흐르고, 벽돌깨기는 혼자 플레이되며, 시계에는 움직이는 초침이 생겼습니다' },
+        { en:'Homepage — the Color Guesser icon shows a fresh hand-picked 4-colour palette (one of 12) on every visit',
+          ko:'메인 화면 — 컬러 맞히기 아이콘이 방문할 때마다 엄선한 12가지 조합 중 하나의 새로운 4색 팔레트를 보여줍니다' },
+        { en:'Homepage — the dice logo icon now sits beside the Randomthing.org wordmark',
+          ko:'메인 화면 — 주사위 로고 아이콘을 Randomthing.org 글자 옆에 배치했습니다' },
+        { en:'Added Sudoku — Easy 4×4, Medium 6×6, Hard 9×9, plus a custom size (only real box-splittable sizes; 5, 7, and other odd ones are blocked)',
+          ko:'스도쿠 추가 — Easy 4×4, Medium 6×6, Hard 9×9와 직접 정하는 커스텀 크기를 지원합니다 (박스로 나눌 수 있는 크기만 가능하며 5, 7 등은 막혀 있습니다)' },
+        { en:'Now Playing follows you everywhere — the mini player rides along into every panel and keeps the track going until you stop it',
+          ko:'Now Playing이 어디든 따라옵니다 — 미니 플레이어가 모든 패널까지 따라가며, 직접 멈추기 전까지 음악이 계속 재생됩니다' },
+        { en:'Mobile & foldables — tuned every layout for tall phones and Flip/Fold ratios: nothing overflows sideways, the logo and controls scale down, and a squarish foldable shows two columns',
+          ko:'모바일·폴더블 — 세로로 긴 폰과 플립/폴드 비율에 맞춰 모든 레이아웃을 손봤습니다. 가로로 넘치는 곳이 없고, 로고와 조작부가 화면에 맞게 줄어들며, 정사각형에 가까운 폴더블에서는 2열로 보입니다' },
+        { en:'Sudoku — pencil notes (toggle Notes, jot small candidates in a cell), 3 hearts (three mistakes and the board resets), a remaining-count under each number, and puzzles are now generated with a single solution for fair difficulty',
+          ko:'스도쿠 — 메모 기능(Notes를 켜면 칸에 작은 후보 숫자를 적을 수 있음), 하트 3개(세 번 틀리면 판이 초기화), 숫자 버튼 아래 남은 개수 표시를 넣었고, 퍼즐은 정답이 하나뿐인 방식으로 생성되어 난이도가 공정해졌습니다' },
+        { en:'Sudoku — cleaner heart icons and a roomier board on tablets/iPad',
+          ko:'스도쿠 — 하트 아이콘을 더 깔끔하게 바꾸고, 태블릿·아이패드에서 판이 더 크게 보이도록 했습니다' },
+        { en:'Homepage — click the dice logo to re-roll the page',
+          ko:'메인 화면 — 주사위 로고를 클릭하면 페이지가 새로고침됩니다' },
+        { en:'Background — on touch screens, drag your finger to sculpt the Cubes (and the other pointer-driven wallpapers)',
+          ko:'배경화면 — 터치 화면에서 손가락을 끌어 Cubes(및 포인터에 반응하는 다른 배경)를 움직일 수 있습니다' },
       ] },
       { date: '26.7.13', open: false, items: [
-        'Stickman Fight — a setup screen: pick any colour from a palette and choose your weapon (spinning axe or thrusting katana)',
-        'Stickman Fight — smarter computer opponent (weapon-aware spacing, dodges when it is losing, stays clear of the lava)',
-        'Stickman Fight — three more weapons: a thrown shuriken, a long spear, and an overhead hammer (five in all)',
-        'CPS Test — ignores clicks for 2 seconds after a result so the final burst doesn’t restart it',
-        'Added “Take me to a random…” — a random website, a real YouTube video from a random search, or an Instagram account',
-        'Stickman Fight — the top-left back link now works from the mode menu',
-        'Take me to a random… — added Random Image and Random Subreddit, and grew the website list to ~120',
-        'Take me to a random… — three more sure-fire ones: Random Wikipedia Article, Random Street View, and Random Cat',
-        'Take me to a random… — added Random Dog',
+        { en:'Stickman Fight — a setup screen: pick any colour from a palette and choose your weapon (spinning axe or thrusting katana)',
+          ko:'스틱맨 파이트 — 설정 화면 추가. 팔레트에서 원하는 색을 고르고 무기(회전 도끼 또는 찌르는 카타나)를 선택할 수 있습니다' },
+        { en:'Stickman Fight — smarter computer opponent (weapon-aware spacing, dodges when it is losing, stays clear of the lava)',
+          ko:'스틱맨 파이트 — 컴퓨터가 더 똑똑해졌습니다 (무기에 맞는 거리 유지, 불리할 때 회피, 용암 피하기)' },
+        { en:'Stickman Fight — three more weapons: a thrown shuriken, a long spear, and an overhead hammer (five in all)',
+          ko:'스틱맨 파이트 — 무기 3종 추가: 던지는 표창, 긴 창, 내려찍는 해머 (총 5종)' },
+        { en:'CPS Test — ignores clicks for 2 seconds after a result so the final burst doesn’t restart it',
+          ko:'CPS 테스트 — 결과가 나온 뒤 2초 동안 클릭을 무시해서, 마지막 연타로 바로 다시 시작되지 않습니다' },
+        { en:'Added “Take me to a random…” — a random website, a real YouTube video from a random search, or an Instagram account',
+          ko:'“랜덤한 곳으로…” 추가 — 랜덤한 웹사이트, 랜덤 검색으로 찾은 실제 유튜브 영상, 인스타그램 계정으로 이동합니다' },
+        { en:'Stickman Fight — the top-left back link now works from the mode menu',
+          ko:'스틱맨 파이트 — 모드 선택 화면에서 왼쪽 위 뒤로가기 링크가 정상 동작합니다' },
+        { en:'Take me to a random… — added Random Image and Random Subreddit, and grew the website list to ~120',
+          ko:'랜덤한 곳으로… — 랜덤 이미지와 랜덤 서브레딧을 추가하고, 웹사이트 목록을 약 120개로 늘렸습니다' },
+        { en:'Take me to a random… — three more sure-fire ones: Random Wikipedia Article, Random Street View, and Random Cat',
+          ko:'랜덤한 곳으로… — 확실하게 랜덤한 3가지 추가: 랜덤 위키백과 문서, 랜덤 스트리트뷰, 랜덤 고양이' },
+        { en:'Take me to a random… — added Random Dog',
+          ko:'랜덤한 곳으로… — 랜덤 강아지 추가' },
       ] },
       { date: '26.7.12', open: false, items: [
-        'Clocks — pick any country / time zone next to the clock selector, or keep your local time',
-        'Homepage shows a live “Online Players” count of everyone on the site right now',
-        'Added CPS Test — measure your clicks per second over 1 / 5 / 10 / 30s or a custom time',
-        'Added Rock Paper Scissors — pick during the countdown, then reveal against a robot',
-        'Rock Paper Scissors got sound effects for the countdown, reveal, and result',
-        'Brick Break and Rock Paper Scissors now have a master sound control in the top-right',
-        'Added Stickman Fight — a 2-player brawl where spinning axes chop off limbs; leave only a head to win',
-        'Stickman Fight — added sound effects and smoother jump / edge landings',
-        'Stickman Fight — new modes: fight the Computer, or Online Matchmaking against a real person',
-        'Homepage — a “Now Playing” chip keeps your Audio Player track going here; press ✕ to stop it',
-        'Stickman Fight — a pre-match setup screen: choose your colour and remap the keys',
+        { en:'Clocks — pick any country / time zone next to the clock selector, or keep your local time',
+          ko:'시계 — 시계 선택기 옆에서 원하는 국가·시간대를 고르거나 현지 시각을 그대로 볼 수 있습니다' },
+        { en:'Homepage shows a live “Online Players” count of everyone on the site right now',
+          ko:'메인 화면에 지금 사이트에 접속해 있는 사람 수가 실시간으로 표시됩니다' },
+        { en:'Added CPS Test — measure your clicks per second over 1 / 5 / 10 / 30s or a custom time',
+          ko:'CPS 테스트 추가 — 1 / 5 / 10 / 30초 또는 직접 정한 시간 동안 초당 클릭 수를 측정합니다' },
+        { en:'Added Rock Paper Scissors — pick during the countdown, then reveal against a robot',
+          ko:'가위바위보 추가 — 카운트다운 동안 낼 것을 고르면 로봇과 동시에 공개됩니다' },
+        { en:'Rock Paper Scissors got sound effects for the countdown, reveal, and result',
+          ko:'가위바위보 — 카운트다운, 공개, 결과에 효과음을 넣었습니다' },
+        { en:'Brick Break and Rock Paper Scissors now have a master sound control in the top-right',
+          ko:'벽돌깨기와 가위바위보 오른쪽 위에 전체 소리 조절 기능이 생겼습니다' },
+        { en:'Added Stickman Fight — a 2-player brawl where spinning axes chop off limbs; leave only a head to win',
+          ko:'스틱맨 파이트 추가 — 회전하는 도끼로 팔다리를 잘라내는 2인 대전. 상대를 머리만 남기면 승리합니다' },
+        { en:'Stickman Fight — added sound effects and smoother jump / edge landings',
+          ko:'스틱맨 파이트 — 효과음을 넣고 점프와 가장자리 착지 판정을 더 자연스럽게 다듬었습니다' },
+        { en:'Stickman Fight — new modes: fight the Computer, or Online Matchmaking against a real person',
+          ko:'스틱맨 파이트 — 새 모드 추가: 컴퓨터와 대결하거나, 온라인 매칭으로 실제 사람과 겨룹니다' },
+        { en:'Homepage — a “Now Playing” chip keeps your Audio Player track going here; press ✕ to stop it',
+          ko:'메인 화면 — “Now Playing” 칩이 오디오 플레이어의 음악을 계속 재생해 줍니다. ✕를 누르면 멈춥니다' },
+        { en:'Stickman Fight — a pre-match setup screen: choose your colour and remap the keys',
+          ko:'스틱맨 파이트 — 경기 전 설정 화면 추가: 색상을 고르고 키 설정을 바꿀 수 있습니다' },
       ] },
       { date: '26.7.11', open: false, items: [
-        'Launched the site with the Calculator construction kit',
-        'Added Background — interactive shader wallpapers',
-        'Added Brick Break, an arcade brick-breaker',
-        'Added Clocks — eight clocks and timers, drawn in code',
-        'Added Color Guesser and Reaction Time',
-        'Added Audio Player — a turntable you can scratch',
-        'Added the dice favicon; the calculator thumbnail shows a random number',
-        'The clock thumbnail now tells the real time, and Brick Break got sound effects',
-        'Audio Player playlists (up to 99) that save between visits, plus a cookie notice',
-        'Added this update log',
-        'Added Tic-Tac-Toe — play a friend or the computer',
-        'Brick Break now has 3 save slots so you can resume mid-game',
-        'Tic-Tac-Toe got 4 difficulty levels and a first / second / random choice',
-        'Added Five in a Row (Gomoku) — play a friend or the computer',
-        'Fixed a Tic-Tac-Toe bug where fast clicks could let the computer move twice',
-        'Added Stretch! — drop in a face and stretch it around, elastic-man style',
-        'Five in a Row got 3 difficulty levels and a first / second / random choice',
-        'Stretch! — press P to pin a spot on the face, right-click a pin to pull it out',
-        'Stretch! — much cleaner cut-out using a higher-quality on-device background remover',
-        'Brick Break — you can now save on the level-up and after-death screens, not just mid-play',
-        'Five in a Row — your win / draw / loss record vs the computer is now saved between visits',
+        { en:'Launched the site with the Calculator construction kit', ko:'계산기 조립 키트와 함께 사이트를 시작했습니다' },
+        { en:'Added Background — interactive shader wallpapers', ko:'배경화면 추가 — 반응형 셰이더 배경화면' },
+        { en:'Added Brick Break, an arcade brick-breaker', ko:'벽돌깨기 추가 — 아케이드 스타일 벽돌깨기' },
+        { en:'Added Clocks — eight clocks and timers, drawn in code', ko:'시계 추가 — 코드로 그린 시계와 타이머 여덟 가지' },
+        { en:'Added Color Guesser and Reaction Time', ko:'컬러 맞히기와 반응속도 테스트 추가' },
+        { en:'Added Audio Player — a turntable you can scratch', ko:'오디오 플레이어 추가 — 디스크를 긁을 수 있는 턴테이블' },
+        { en:'Added the dice favicon; the calculator thumbnail shows a random number', ko:'주사위 파비콘 추가. 계산기 썸네일에 랜덤한 숫자가 표시됩니다' },
+        { en:'The clock thumbnail now tells the real time, and Brick Break got sound effects', ko:'시계 썸네일이 실제 시각을 가리키고, 벽돌깨기에 효과음이 생겼습니다' },
+        { en:'Audio Player playlists (up to 99) that save between visits, plus a cookie notice', ko:'오디오 플레이어에 재생목록(최대 99곡)이 생겨 다시 방문해도 유지되고, 쿠키 안내를 추가했습니다' },
+        { en:'Added this update log', ko:'이 업데이트 로그를 추가했습니다' },
+        { en:'Added Tic-Tac-Toe — play a friend or the computer', ko:'틱택토 추가 — 친구 또는 컴퓨터와 대결' },
+        { en:'Brick Break now has 3 save slots so you can resume mid-game', ko:'벽돌깨기에 저장 슬롯 3개가 생겨 게임 도중에도 이어서 할 수 있습니다' },
+        { en:'Tic-Tac-Toe got 4 difficulty levels and a first / second / random choice', ko:'틱택토에 난이도 4단계와 선공 / 후공 / 랜덤 선택을 넣었습니다' },
+        { en:'Added Five in a Row (Gomoku) — play a friend or the computer', ko:'오목 추가 — 친구 또는 컴퓨터와 대결' },
+        { en:'Fixed a Tic-Tac-Toe bug where fast clicks could let the computer move twice', ko:'틱택토에서 빠르게 클릭하면 컴퓨터가 두 번 두던 버그를 고쳤습니다' },
+        { en:'Added Stretch! — drop in a face and stretch it around, elastic-man style', ko:'Stretch! 추가 — 얼굴 사진을 올려 고무처럼 마음껏 늘려 보세요' },
+        { en:'Five in a Row got 3 difficulty levels and a first / second / random choice', ko:'오목에 난이도 3단계와 선공 / 후공 / 랜덤 선택을 넣었습니다' },
+        { en:'Stretch! — press P to pin a spot on the face, right-click a pin to pull it out', ko:'Stretch! — P를 누르면 얼굴에 못을 박고, 우클릭하면 못을 뽑습니다' },
+        { en:'Stretch! — much cleaner cut-out using a higher-quality on-device background remover', ko:'Stretch! — 더 좋은 기기 내 배경 제거 방식으로 바꿔 훨씬 깔끔하게 잘립니다' },
+        { en:'Brick Break — you can now save on the level-up and after-death screens, not just mid-play', ko:'벽돌깨기 — 플레이 도중뿐 아니라 레벨업 화면과 죽은 뒤 화면에서도 저장할 수 있습니다' },
+        { en:'Five in a Row — your win / draw / loss record vs the computer is now saved between visits', ko:'오목 — 컴퓨터와의 승 / 무 / 패 전적이 저장되어 다시 방문해도 유지됩니다' },
       ] },
     ];
 
@@ -934,18 +1090,21 @@
         btn.classList.toggle('has-new', seen !== sig());
       }
       function render(){
+        var ko = (window.RT_LANG === 'ko');
         body.innerHTML = LOGS.map(function(day){
           var rows = day.items.map(function(t, i){
+            var tx = (ko && t.ko) ? t.ko : t.en;
             return '<div class="ulog-row"><span class="ulog-tag">' + day.date + '-' + (i+1) +
-                   '</span><span class="ulog-tx">' + t + '</span></div>';
+                   '</span><span class="ulog-tx">' + tx + '</span></div>';
           }).join('');
           var chev = '<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>';
-          var cnt = day.items.length + ' update' + (day.items.length > 1 ? 's' : '');
+          var cnt = ko ? (day.items.length + '건') : (day.items.length + ' update' + (day.items.length > 1 ? 's' : ''));
           return '<details class="ulog-day"' + (day.open ? ' open' : '') + '><summary>' + chev +
                  '<span class="d">' + day.date + '</span><span class="cnt">' + cnt + '</span></summary>' +
                  '<div class="list">' + rows + '</div></details>';
         }).join('');
       }
+      window.RT_RENDER_LOG = function(){ if (!modal.classList.contains('hide')) render(); };
       function open(){
         render();
         modal.classList.remove('hide');
