@@ -32,6 +32,9 @@
     font:700 13px var(--ui); padding:9px 15px; border-radius:999px; transition:all .14s; }
   .regions button:hover { color:var(--ink); background:rgba(255,255,255,.1); }
   .regions button.on { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
+  .diffs { margin-top:-4px; }
+  .diffs button { font-size:12.5px; padding:7px 13px; }
+  .diffs button.on { background:#7c8cf8; color:#0d1030; border-color:#7c8cf8; }
 
   .card { width:100%; background:rgba(255,255,255,.05); border:1px solid var(--line); border-radius:20px;
     padding:26px 22px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:9px;
@@ -58,9 +61,9 @@
 
   .photo { width:min(78vw, 300px); aspect-ratio:1/1; border-radius:22px; overflow:hidden; position:relative;
     background:#1a1830; box-shadow:0 18px 40px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.09); }
-  .photo img { width:100%; height:100%; object-fit:cover; object-position:50% 22%; display:block;
-    transform:scale(1.25); filter:blur(var(--bl, 28px)); transition:filter .18s linear; }
-  .photo.reveal img { transform:scale(1.02); transition:filter .5s ease, transform .5s ease; }
+  .photo canvas { width:100%; height:100%; display:block;
+    transform:scale(1.12); filter:blur(var(--bl, 0px)); transition:filter .18s linear; }
+  .photo.reveal canvas { transform:scale(1); transition:filter .35s ease, transform .35s ease; }
   .photo .spin { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:13px; font-weight:600; }
   .photo.ok  { box-shadow:0 18px 40px rgba(0,0,0,.45), inset 0 0 0 3px #34d399; }
   .photo.bad { box-shadow:0 18px 40px rgba(0,0,0,.45), inset 0 0 0 3px #f87171; }
@@ -100,6 +103,7 @@
 
   <div class="wrap">
     <div class="regions" id="regions"></div>
+    <div class="regions diffs" id="diffs"></div>
 
     <!-- idle -->
     <div class="card" id="idle">
@@ -113,7 +117,7 @@
     <div class="play hide" id="play">
       <div class="hud"><span id="roundLbl">Round 1 / 10</span><span class="sc" id="scoreLbl">0</span></div>
       <div class="bar"><i id="barFill"></i></div>
-      <div class="photo" id="photo"><div class="spin" id="spin">Loading…</div><img id="img" alt="" /></div>
+      <div class="photo" id="photo"><div class="spin" id="spin">Loading…</div><canvas id="cv" width="512" height="512"></canvas></div>
       <div class="opts" id="opts"></div>
       <div class="result" id="result"></div>
     </div>
@@ -343,38 +347,95 @@
     { id:'us',    label:'USA' },
     { id:'world', label:'World' },
   ];
-  const ROUNDS = 10, START_BLUR = 28, SHARP_AT = 11, DEADLINE = 14;   // seconds
+  // Difficulty decides how the face is hidden. Everything is mosaicked; blur and a
+  // clear "peek" window are layered on top. peek = how sharp that window is (0 = none).
+  const DIFFS = [
+    // blur stays modest so the mosaic blocks still read through it
+    { id:'easy',   label:'Easy',   blur:0,  peek:1,    note:'Mosaic, with one spot always clear.' },
+    { id:'normal', label:'Normal', blur:9,  peek:0.55, note:'Mosaic and blur, with one spot a little clearer.' },
+    { id:'hard',   label:'Hard',   blur:13, peek:0,    note:'Mosaic and blur — nothing given away.' },
+  ];
+  const ROUNDS = 10, SHARP_AT = 6.5, DEADLINE = 9;   // seconds — quick, then it is sharp
+  const MIN_CELLS = 7, MAX_CELLS = 260;              // mosaic coarse -> fine
+  const PEEK_R = 0.19;                               // clear-window radius, share of the frame
 
-  let region = 'all';
+  let region = 'all', diffId = 'normal';
   let deck = [], idx = 0, score = 0, answered = false;
-  let raf = 0, roundStart = 0, curBlur = START_BLUR;
+  let raf = 0, roundStart = 0, prog = 0;             // prog 0 = fully hidden, 1 = sharp
+  let curImg = null, peekX = 0.5, peekY = 0.5;
   const meta = new Map();     // wiki title -> {thumb, desc, file, artist, licence}
+  const diff = () => DIFFS.find(d => d.id === diffId);
 
-  // ---------- best scores ----------
-  const bestKey = r => 'guesswho_best_' + r;
-  const loadBest = r => { const v = parseInt(localStorage.getItem(bestKey(r)), 10); return v > 0 ? v : 0; };
-  function saveBest(r, s){ try { if (s > loadBest(r)) localStorage.setItem(bestKey(r), String(s)); } catch(e){} }
+  // ---------- best scores (per region + difficulty) ----------
+  const bestKey = (r, d) => 'guesswho_best_' + r + '_' + d;
+  const loadBest = (r, d) => { const v = parseInt(localStorage.getItem(bestKey(r, d)), 10); return v > 0 ? v : 0; };
+  function saveBest(r, d, s){ try { if (s > loadBest(r, d)) localStorage.setItem(bestKey(r, d), String(s)); } catch(e){} }
 
   // ---------- ui ----------
-  const regionsEl = $('regions');
+  const regionsEl = $('regions'), diffsEl = $('diffs');
   REGIONS.forEach(r => {
     const b = document.createElement('button');
     b.textContent = r.label; b.dataset.id = r.id;
     b.addEventListener('click', () => { region = r.id; goIdle(); });
     regionsEl.appendChild(b);
   });
+  DIFFS.forEach(d => {
+    const b = document.createElement('button');
+    b.textContent = d.label; b.dataset.id = d.id;
+    b.addEventListener('click', () => { diffId = d.id; try { localStorage.setItem('guesswho_diff', d.id); } catch(e){} goIdle(); });
+    diffsEl.appendChild(b);
+  });
+  try { const sd = localStorage.getItem('guesswho_diff'); if (DIFFS.some(d => d.id === sd)) diffId = sd; } catch(e){}
   const pool = r => r === 'all' ? PEOPLE : PEOPLE.filter(p => p[2] === r);
+
+  // ---------- mosaic renderer ----------
+  const cv = $('cv'), ctx = cv.getContext('2d');
+  const tmp = document.createElement('canvas'), tctx = tmp.getContext('2d');
+  const S = cv.width;
+
+  // largest square crop, biased upward so the face tends to sit in frame
+  function coverRect(img){
+    if (img.width >= img.height){
+      const s = img.height; return { sx:(img.width - s)/2, sy:0, sw:s, sh:s };
+    }
+    const s = img.width; return { sx:0, sy:(img.height - s) * 0.22, sw:s, sh:s };
+  }
+  function paintMosaic(img, cells){
+    const r = coverRect(img);
+    if (cells >= MAX_CELLS){ ctx.imageSmoothingEnabled = true; ctx.drawImage(img, r.sx, r.sy, r.sw, r.sh, 0, 0, S, S); return; }
+    tmp.width = cells; tmp.height = cells;
+    tctx.imageSmoothingEnabled = true;
+    tctx.drawImage(img, r.sx, r.sy, r.sw, r.sh, 0, 0, cells, cells);
+    ctx.imageSmoothingEnabled = false;                    // blocky upscale = mosaic
+    ctx.drawImage(tmp, 0, 0, cells, cells, 0, 0, S, S);
+  }
+  function draw(p){
+    if (!curImg) return;
+    const d = diff();
+    const cells = Math.round(MIN_CELLS * Math.pow(MAX_CELLS / MIN_CELLS, Math.max(0, Math.min(1, p))));
+    ctx.clearRect(0, 0, S, S);
+    paintMosaic(curImg, cells);
+    if (d.peek > 0 && p < 1){                             // a window that is clearer than the rest
+      ctx.save();
+      ctx.beginPath(); ctx.arc(peekX * S, peekY * S, PEEK_R * S, 0, Math.PI * 2); ctx.clip();
+      paintMosaic(curImg, Math.round(cells + (MAX_CELLS - cells) * d.peek));
+      ctx.restore();
+    }
+    $('photo').style.setProperty('--bl', (d.blur * (1 - p)).toFixed(2) + 'px');
+  }
 
   function goIdle(){
     stop();
     $('play').classList.add('hide'); $('done').classList.add('hide'); $('idle').classList.remove('hide');
     regionsEl.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.id === region));
+    diffsEl.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.id === diffId));
     const label = REGIONS.find(r => r.id === region).label;
     $('idleTitle').textContent = region === 'all' ? 'Guess Who' : label;
     const n = pool(region).length;
-    $('idleDesc').textContent = 'A blurred face sharpens second by second. Name it before it comes into focus — the blurrier it still is, the more points you get. ' + n + ' faces in this set.';
-    const b = loadBest(region);
-    $('idleBest').textContent = b ? 'Best score: ' + b + ' / 1000' : 'No score yet — set one.';
+    $('idleDesc').textContent = 'A mosaicked face sharpens fast — name it before it resolves, and the rougher it still is, the more points you get. ' +
+      diff().note + ' ' + n + ' faces in this set.';
+    const b = loadBest(region, diffId);
+    $('idleBest').textContent = b ? 'Best score (' + diff().label + '): ' + b + ' / 1000' : 'No score yet on ' + diff().label + ' — set one.';
   }
 
   // ---------- wikipedia ----------
@@ -425,7 +486,7 @@
     }
   }
 
-  const preload = src => new Promise(res => { const i = new Image(); i.onload = () => res(true); i.onerror = () => res(false); i.src = src; });
+  const preload = src => new Promise(res => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; });
 
   // ---------- game ----------
   function shuffle(a){ for (let i=a.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [a[i],a[j]]=[a[j],a[i]]; } return a; }
@@ -465,8 +526,9 @@
     $('roundLbl').textContent = 'Round ' + (idx + 1) + ' / ' + deck.length;
     $('result').innerHTML = '';
     const ph = $('photo'); ph.classList.remove('reveal','ok','bad');
-    curBlur = START_BLUR; ph.style.setProperty('--bl', START_BLUR + 'px');
-    $('img').style.visibility = 'hidden'; $('spin').classList.remove('hide'); $('spin').textContent = 'Loading…';
+    prog = 0; curImg = null;
+    ph.style.setProperty('--bl', diff().blur + 'px');
+    $('cv').style.visibility = 'hidden'; $('spin').classList.remove('hide'); $('spin').textContent = 'Loading…';
 
     // options: the answer + 3 others from the same region
     const same = PEOPLE.filter(x => x[2] === person[2] && x[0] !== person[0]);
@@ -479,9 +541,12 @@
       oe.appendChild(b);
     });
 
-    const okImg = await preload(m.thumb);
-    if (!okImg){ next(); return; }                       // skip a broken photo
-    $('img').src = m.thumb; $('img').style.visibility = ''; $('spin').classList.add('hide');
+    const img = await preload(m.thumb);
+    if (!img){ next(); return; }                          // skip a broken photo
+    curImg = img;
+    peekX = 0.3 + Math.random() * 0.4; peekY = 0.28 + Math.random() * 0.38;   // where the clear window sits
+    draw(0);
+    $('cv').style.visibility = ''; $('spin').classList.add('hide');
 
     // prefetch the next photo so the following round starts instantly
     if (deck[idx+1]) { const nm = meta.get(deck[idx+1][1]); if (nm) preload(nm.thumb); }
@@ -493,8 +558,8 @@
   function tick(){
     if (answered) return;
     const t = (performance.now() - roundStart) / 1000;
-    curBlur = Math.max(0, START_BLUR * (1 - t / SHARP_AT));
-    $('photo').style.setProperty('--bl', curBlur.toFixed(2) + 'px');
+    prog = Math.max(0, Math.min(1, t / SHARP_AT));
+    draw(prog);
     $('barFill').style.width = Math.max(0, 100 * (1 - t / DEADLINE)) + '%';
     if (t >= DEADLINE){ answer(null, null, deck[idx]); return; }
     raf = requestAnimationFrame(tick);
@@ -505,12 +570,13 @@
     if (answered) return;
     stop();
     const right = picked && picked[0] === person[0];
-    const gained = right ? Math.max(10, Math.round(100 * (curBlur / START_BLUR))) : 0;
+    const gained = right ? Math.max(10, Math.round(100 * (1 - prog))) : 0;
     score += gained;
     $('scoreLbl').textContent = score;
 
     const ph = $('photo');
     ph.classList.add('reveal', right ? 'ok' : 'bad');
+    prog = 1; draw(1);                                    // straight to the sharp photo
     ph.style.setProperty('--bl', '0px');
 
     $('opts').querySelectorAll('button').forEach(b => {
@@ -544,15 +610,16 @@
   }
 
   function finish(){
-    const prev = loadBest(region);
+    const prev = loadBest(region, diffId);
     const record = score > prev;
-    saveBest(region, score);
+    saveBest(region, diffId, score);
     $('play').classList.add('hide'); $('done').classList.remove('hide');
     $('doneTitle').textContent = score >= 800 ? 'Sharp eyes!' : score >= 500 ? 'Not bad' : 'Room to improve';
     $('doneScore').textContent = score + ' / 1000';
+    const where = REGIONS.find(r => r.id === region).label + ' · ' + diff().label;
     $('doneSub').textContent = record
-      ? (prev ? 'New best for ' + REGIONS.find(r => r.id === region).label + ' — was ' + prev + '.' : 'First score for ' + REGIONS.find(r => r.id === region).label + '.')
-      : 'Best for ' + REGIONS.find(r => r.id === region).label + ': ' + prev + '.';
+      ? (prev ? 'New best for ' + where + ' — was ' + prev + '.' : 'First score for ' + where + '.')
+      : 'Best for ' + where + ': ' + prev + '.';
   }
 
   $('startBtn').addEventListener('click', start);
