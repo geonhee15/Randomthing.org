@@ -537,6 +537,7 @@
     opts.forEach(o => {
       const b = document.createElement('button');
       b.textContent = o[0];
+      b.person = o;                        // keep the data on the node — the label may be translated
       b.addEventListener('click', () => answer(b, o, person));
       oe.appendChild(b);
     });
@@ -581,7 +582,7 @@
 
     $('opts').querySelectorAll('button').forEach(b => {
       b.disabled = true;
-      if (b.textContent === person[0]) b.classList.add('right');
+      if (b.person && b.person[0] === person[0]) b.classList.add('right');
       else if (b === btn) b.classList.add('wrong');
       else b.classList.add('dim');
     });
