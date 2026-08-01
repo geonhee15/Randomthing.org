@@ -66,7 +66,8 @@
     // -- Background --
     'Background': '배경화면',
     'Nebula': '성운', 'Liquid': '리퀴드', 'Cubes': '큐브', 'Aurora': '오로라', 'Grid': '그리드',
-    'Move your mouse to warm the gas · click to ignite it': '마우스를 움직여 가스를 데우고 · 클릭해서 불을 붙여 보세요',
+    'Move to warm the gas · press and hold to ignite it': '움직여서 가스를 데우고 · 길게 누르면 불이 붙습니다',
+    'Move to push the blobs around · click for a pulse': '움직여서 방울을 밀어내고 · 클릭하면 파동이 퍼집니다',
     'Move — or drag your finger — to raise the cubes': '마우스를 움직이거나 손가락으로 끌어 큐브를 솟아오르게 하세요',
     'Your browser doesn’t support WebGL, so these wallpapers can’t run.':
       '이 브라우저는 WebGL을 지원하지 않아 배경화면을 실행할 수 없습니다.',
@@ -223,9 +224,93 @@
     // Calculator presets
     'Neo-brutal': '네오 브루탈', 'Terminal': '터미널', 'Pastel': '파스텔', 'Retro LCD': '레트로 LCD',
     // Stretch!
+    'Stretch!': '늘리기!',
     'Right-click': '우클릭', 'the silhouette to drop in a photo of someone': '해서 실루엣에 사진을 넣으세요',
     'Insert image': '사진 넣기', 'Insert Image': '사진 넣기', 'Analyzing image…': '이미지 분석 중…',
+    // its hints are assembled from fragments around <b> tags
+    'Press': '', ', then grab the face and fling it': '를 누르고 얼굴을 잡아 던져 보세요',
+    'Insert a photo first —': '먼저 사진을 넣으세요 —', 'right-click': '우클릭', 'the silhouette': '실루엣을',
+    'Grab and': '얼굴을', 'pull': '잡아 당기세요', 'the face · press': '·',
+    'to pin a spot ·': '를 누르면 못이 박히고 ·', 'a pin to remove it': '하면 못이 빠집니다',
   };
+
+  // Entries that should only apply on one page — the Guess Who roster in
+  // particular, since short stage names like "V" or "Rain" would be far too
+  // eager to match if they were live site-wide.
+  var PAGE_DICT = {
+    '/guess-who/': {
+      // Korea
+      'IU': '아이유', 'Psy': '싸이', 'G-Dragon': '지드래곤', 'Taeyang': '태양', 'RM': 'RM',
+      'Jin': '진', 'Suga': '슈가', 'J-Hope': '제이홉', 'Jimin': '지민', 'V': '뷔', 'Jungkook': '정국',
+      'Jisoo': '지수', 'Jennie': '제니', 'Rosé': '로제', 'Lisa': '리사', 'Taeyeon': '태연', 'BoA': '보아',
+      'Rain': '비', 'Lee Hyori': '이효리', 'Hwasa': '화사', 'Cha Eun-woo': '차은우', 'Jang Won-young': '장원영',
+      'Song Joong-ki': '송중기', 'Song Hye-kyo': '송혜교', 'Lee Min-ho': '이민호', 'Park Seo-joon': '박서준',
+      'Gong Yoo': '공유', 'Hyun Bin': '현빈', 'Son Ye-jin': '손예진', 'Jun Ji-hyun': '전지현',
+      'Bae Suzy': '배수지', 'Kim Soo-hyun': '김수현', 'Lee Byung-hun': '이병헌', 'Song Kang-ho': '송강호',
+      'Choi Min-sik': '최민식', 'Ma Dong-seok': '마동석', 'Jung Woo-sung': '정우성', 'Bae Doona': '배두나',
+      'Youn Yuh-jung': '윤여정', 'Lee Jung-jae': '이정재', 'Jung Ho-yeon': '정호연', 'Kim Go-eun': '김고은',
+      'Bong Joon-ho': '봉준호', 'Park Chan-wook': '박찬욱', 'Hwang Dong-hyuk': '황동혁',
+      'Son Heung-min': '손흥민', 'Kim Yuna': '김연아', 'Park Ji-sung': '박지성', 'Ryu Hyun-jin': '류현진',
+      'Yoo Jae-suk': '유재석',
+      // USA
+      'Tom Cruise': '톰 크루즈', 'Brad Pitt': '브래드 피트', 'Leonardo DiCaprio': '리어나도 디캐프리오',
+      'Johnny Depp': '조니 뎁', 'Will Smith': '윌 스미스', 'Denzel Washington': '덴젤 워싱턴',
+      'Morgan Freeman': '모건 프리먼', 'Tom Hanks': '톰 행크스', 'Robert Downey Jr.': '로버트 다우니 주니어',
+      'Scarlett Johansson': '스칼릿 조핸슨', 'Jennifer Lawrence': '제니퍼 로런스', 'Emma Stone': '엠마 스톤',
+      'Angelina Jolie': '앤절리나 졸리', 'Meryl Streep': '메릴 스트립', 'Julia Roberts': '줄리아 로버츠',
+      'Dwayne Johnson': '드웨인 존슨', 'Zendaya': '젠데이아', 'Samuel L. Jackson': '새뮤얼 L. 잭슨',
+      'Steven Spielberg': '스티븐 스필버그', 'Quentin Tarantino': '쿠엔틴 타란티노',
+      'Taylor Swift': '테일러 스위프트', 'Beyoncé': '비욘세', 'Ariana Grande': '아리아나 그란데',
+      'Billie Eilish': '빌리 아일리시', 'Bruno Mars': '브루노 마스', 'Kanye West': '칸예 웨스트',
+      'Eminem': '에미넴', 'Snoop Dogg': '스눕 독', 'Lady Gaga': '레이디 가가', 'Katy Perry': '케이티 페리',
+      'Madonna': '마돈나', 'Michael Jackson': '마이클 잭슨', 'Elvis Presley': '엘비스 프레슬리',
+      'Bob Dylan': '밥 딜런', 'Selena Gomez': '셀레나 고메즈', 'Kendrick Lamar': '켄드릭 라마',
+      'LeBron James': '르브론 제임스', 'Stephen Curry': '스테픈 커리', 'Michael Jordan': '마이클 조던',
+      'Kobe Bryant': '코비 브라이언트', 'Serena Williams': '세리나 윌리엄스', 'Tom Brady': '톰 브래디',
+      'Muhammad Ali': '무하마드 알리', 'Tiger Woods': '타이거 우즈', 'Elon Musk': '일론 머스크',
+      'Bill Gates': '빌 게이츠', 'Mark Zuckerberg': '마크 저커버그', 'Steve Jobs': '스티브 잡스',
+      'Oprah Winfrey': '오프라 윈프리', 'Barack Obama': '버락 오바마',
+      // World
+      'Emma Watson': '엠마 왓슨', 'Daniel Radcliffe': '대니얼 래드클리프', 'Ed Sheeran': '에드 시런',
+      'Adele': '아델', 'Harry Styles': '해리 스타일스', 'Benedict Cumberbatch': '베네딕트 컴버배치',
+      'Idris Elba': '이드리스 엘바', 'Kate Winslet': '케이트 윈슬럿', 'Tom Holland': '톰 홀랜드',
+      'Elton John': '엘튼 존', 'Paul McCartney': '폴 매카트니', 'John Lennon': '존 레넌',
+      'Freddie Mercury': '프레디 머큐리', 'David Bowie': '데이비드 보위', 'Rowan Atkinson': '로완 앳킨슨',
+      'Daniel Craig': '대니얼 크레이그', 'Elizabeth II': '엘리자베스 2세',
+      'Diana, Princess of Wales': '다이애나 왕세자비', 'Winston Churchill': '윈스턴 처칠',
+      'Stephen Hawking': '스티븐 호킹', 'Dua Lipa': '두아 리파', 'Lionel Messi': '리오넬 메시',
+      'Cristiano Ronaldo': '크리스티아누 호날두', 'Neymar': '네이마르', 'Kylian Mbappé': '킬리안 음바페',
+      'Pelé': '펠레', 'Diego Maradona': '디에고 마라도나', 'Zinedine Zidane': '지네딘 지단',
+      'Ronaldinho': '호나우지뉴', 'Luka Modrić': '루카 모드리치', 'Erling Haaland': '엘링 홀란',
+      'Robert Lewandowski': '로베르트 레반도프스키', 'Mohamed Salah': '모하메드 살라흐',
+      'Kevin De Bruyne': '케빈 더 브라위너', 'Andrés Iniesta': '안드레스 이니에스타', 'Ronaldo': '호나우두',
+      'Zlatan Ibrahimović': '즐라탄 이브라히모비치', 'David Beckham': '데이비드 베컴',
+      'Lewis Hamilton': '루이스 해밀턴', 'Andy Murray': '앤디 머리', 'Harry Kane': '해리 케인',
+      'Jude Bellingham': '주드 벨링엄', 'Roger Federer': '로저 페더러', 'Rafael Nadal': '라파엘 나달',
+      'Novak Djokovic': '노바크 조코비치', 'Usain Bolt': '우사인 볼트', 'Hayao Miyazaki': '미야자키 하야오',
+      'Shohei Ohtani': '오타니 쇼헤이', 'Naomi Osaka': '오사카 나오미', 'Ken Watanabe': '와타나베 켄',
+      'Takeshi Kitano': '기타노 다케시', 'Hideo Kojima': '코지마 히데오', 'Ichiro Suzuki': '스즈키 이치로',
+      'Haruki Murakami': '무라카미 하루키', 'Shigeru Miyamoto': '미야모토 시게루', 'Jackie Chan': '성룡',
+      'Bruce Lee': '이소룡', 'Jet Li': '이연걸', 'Zhang Ziyi': '장쯔이', 'Chow Yun-fat': '주윤발',
+      'Andy Lau': '유덕화', 'Jay Chou': '주걸륜', 'Donnie Yen': '견자단', 'Gong Li': '궁리',
+      'Shah Rukh Khan': '샤룩 칸', 'Priyanka Chopra': '프리앙카 초프라', 'Deepika Padukone': '디피카 파두콘',
+      'Amitabh Bachchan': '아미타브 바찬', 'Aamir Khan': '아미르 칸', 'Virat Kohli': '비라트 콜리',
+      'Sachin Tendulkar': '사친 텐둘카르', 'Mahatma Gandhi': '마하트마 간디', 'Justin Bieber': '저스틴 비버',
+      'Drake': '드레이크', 'The Weeknd': '위켄드', 'Ryan Gosling': '라이언 고슬링', 'Jim Carrey': '짐 캐리',
+      'Keanu Reeves': '키아누 리브스', 'Chris Hemsworth': '크리스 헴스워스', 'Margot Robbie': '마고 로비',
+      'Hugh Jackman': '휴 잭맨', 'Nicole Kidman': '니콜 키드먼', 'Cate Blanchett': '케이트 블란쳇',
+      'Shakira': '샤키라', 'Bad Bunny': '배드 버니', 'Salma Hayek': '셀마 헤이엑',
+      'Sofía Vergara': '소피아 베르가라', 'Karol G': '카롤 지', 'Frida Kahlo': '프리다 칼로',
+      'Rihanna': '리한나', 'Nelson Mandela': '넬슨 만델라', 'Albert Einstein': '알베르트 아인슈타인',
+      'Marie Curie': '마리 퀴리', 'Audrey Hepburn': '오드리 헵번', 'Charlie Chaplin': '찰리 채플린',
+      'Pope Francis': '프란치스코 교황', 'Greta Thunberg': '그레타 툰베리',
+      'Vincent van Gogh': '빈센트 반 고흐', 'Leonardo da Vinci': '레오나르도 다 빈치', 'Bob Marley': '밥 말리',
+    },
+  };
+  (function () {
+    var pd = PAGE_DICT[location.pathname.toLowerCase()];
+    if (pd) Object.keys(pd).forEach(function (k) { DICT[k] = pd[k]; });
+  })();
 
   // city / time-zone names in the Clocks picker (kept with their flag emoji)
   var CITIES = {
@@ -281,10 +366,69 @@
     [/^A blurred face sharpens second by second\..*?(\d+) faces in this set\.$/,
       function (m) { return '흐릿한 얼굴이 초마다 선명해집니다. 이 세트에는 ' + m[1] + '명이 있습니다.'; }],
     [/^(.+) — Randomthing\.org$/,              function (m) { return tr(m[1]) + ' — Randomthing.org'; }],
+    // Wikipedia one-liners under a Guess Who answer, e.g. "South Korean singer (born 1993)"
+    [/^([A-Z][A-Za-z ]+?) ([a-z][a-z\- ]+?) \(born (\d{4})\)$/,
+      function (m) { return natRole(m[1], m[2]) + ' (' + m[3] + '년생)'; }],
+    [/^([A-Z][A-Za-z ]+?) ([a-z][a-z\- ]+?) \((\d{4})[–-](\d{4})\)$/,
+      function (m) { return natRole(m[1], m[2]) + ' (' + m[3] + '–' + m[4] + ')'; }],
     // flag/pin prefixed entries in the Clocks time-zone picker: keep the emoji, translate the name
     [/^([\u{1F1E6}-\u{1F1FF}\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}️‍]+\s*)(.{2,40})$/u,
       function (m) { return m[1] + tr(m[2]); }],
   ];
+
+  // nationality + occupation used by the Wikipedia one-liner patterns above.
+  // Anything not listed keeps its English word, so the line still reads.
+  var NAT = {
+    'South Korean': '대한민국', 'North Korean': '북한', 'American': '미국', 'British': '영국',
+    'English': '영국', 'Scottish': '스코틀랜드', 'Irish': '아일랜드', 'Welsh': '웨일스',
+    'Japanese': '일본', 'Chinese': '중국', 'Hong Kong': '홍콩', 'Taiwanese': '대만',
+    'Indian': '인도', 'Canadian': '캐나다', 'Australian': '호주', 'New Zealand': '뉴질랜드',
+    'French': '프랑스', 'German': '독일', 'Italian': '이탈리아', 'Spanish': '스페인',
+    'Portuguese': '포르투갈', 'Dutch': '네덜란드', 'Belgian': '벨기에', 'Swiss': '스위스',
+    'Swedish': '스웨덴', 'Norwegian': '노르웨이', 'Danish': '덴마크', 'Polish': '폴란드',
+    'Croatian': '크로아티아', 'Serbian': '세르비아', 'Greek': '그리스', 'Russian': '러시아',
+    'Ukrainian': '우크라이나', 'Turkish': '튀르키예', 'Argentine': '아르헨티나', 'Brazilian': '브라질',
+    'Mexican': '멕시코', 'Colombian': '콜롬비아', 'Chilean': '칠레', 'Jamaican': '자메이카',
+    'Barbadian': '바베이도스', 'Puerto Rican': '푸에르토리코', 'Egyptian': '이집트', 'Kenyan': '케냐',
+    'Nigerian': '나이지리아', 'South African': '남아프리카공화국', 'Israeli': '이스라엘', 'Iranian': '이란',
+    'Pakistani': '파키스탄', 'Bangladeshi': '방글라데시', 'Thai': '태국', 'Indonesian': '인도네시아',
+    'Filipino': '필리핀', 'Singaporean': '싱가포르', 'Malaysian': '말레이시아', 'Austrian': '오스트리아',
+    'Norwegian-born': '노르웨이',
+  };
+  var ROLE = {
+    'singer': '가수', 'singer and actress': '가수 겸 배우', 'singer and actor': '가수 겸 배우',
+    'singer-songwriter': '싱어송라이터', 'rapper': '래퍼', 'rapper and singer': '래퍼 겸 가수',
+    'actress': '배우', 'actor': '배우', 'actor and singer': '배우 겸 가수',
+    'footballer': '축구 선수', 'football manager': '축구 감독', 'basketball player': '농구 선수',
+    'baseball player': '야구 선수', 'tennis player': '테니스 선수', 'sprinter': '단거리 육상 선수',
+    'cricketer': '크리켓 선수', 'boxer': '복싱 선수', 'golfer': '골프 선수', 'swimmer': '수영 선수',
+    'gymnast': '체조 선수', 'figure skater': '피겨 스케이팅 선수', 'racing driver': '카레이서',
+    'film director': '영화감독', 'director': '감독', 'filmmaker': '영화 제작자',
+    'businessman': '기업인', 'entrepreneur': '기업가', 'business magnate': '기업인',
+    'politician': '정치인', 'painter': '화가', 'artist': '예술가', 'writer': '작가',
+    'novelist': '소설가', 'physicist': '물리학자', 'scientist': '과학자', 'chemist': '화학자',
+    'mathematician': '수학자', 'comedian': '코미디언', 'television presenter': '방송인',
+    'media personality': '방송인', 'model': '모델', 'animator': '애니메이터',
+    'video game designer': '게임 디자이너', 'musician': '뮤지션', 'entertainer': '방송인',
+    'activist': '활동가', 'engineer': '엔지니어', 'philanthropist': '자선가',
+    'songwriter': '작곡가', 'producer': '프로듀서', 'record producer': '음반 프로듀서',
+    'dancer': '댄서', 'author': '작가', 'screenwriter': '각본가', 'investor': '투자자',
+    'television host': '방송 진행자', 'presenter': '진행자', 'inventor': '발명가',
+    'composer': '작곡가', 'DJ': 'DJ', 'martial artist': '무술가', 'wrestler': '레슬링 선수',
+  };
+  function natRole(nat, role) {
+    var n = NAT[nat] !== undefined ? NAT[nat] : nat;
+    var r = ROLE[role];
+    if (r === undefined) {
+      // Wikipedia loves compound roles ("rapper and songwriter", "actor, producer
+      // and director") — translate each part it knows and join them Korean-style.
+      var parts = role.split(/,\s*|\s+and\s+/).filter(Boolean);
+      if (parts.length > 1 && parts.every(function (p) { return ROLE[p] !== undefined; }))
+        r = parts.map(function (p) { return ROLE[p]; }).join(' 겸 ');
+      else r = role;
+    }
+    return n + ' ' + r;
+  }
 
   function tr(s) {
     if (DICT[s] !== undefined) return DICT[s];
@@ -404,6 +548,7 @@
 
   function set(l) {
     LANG = (l === 'ko') ? 'ko' : 'en';
+    window.RT_LANG = LANG;                    // panels can read this if they need to
     try { localStorage.setItem('rt_lang', LANG); } catch (e) {}
     var box = document.getElementById('rtLang');
     if (box) box.querySelectorAll('button').forEach(function (b) { b.classList.toggle('on', b.dataset.l === LANG); });

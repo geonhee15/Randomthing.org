@@ -97,8 +97,25 @@
 
 <script>
 const canvas = document.getElementById('gl');
-const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+// Ask for a context several ways before giving up. A plain getContext('webgl')
+// can come back null on machines where the GPU is blocklisted or busy, even
+// though a software context would have worked — so retry with the picky options
+// switched off, and try webgl2 (which happily runs these GLSL ES 1.00 shaders).
+const gl = (function(){
+  const opts = { alpha:false, antialias:false, depth:false, stencil:false,
+                 preserveDrawingBuffer:false, failIfMajorPerformanceCaveat:false,
+                 powerPreference:'default' };
+  for (const name of ['webgl2', 'webgl', 'experimental-webgl']){
+    for (const o of [opts, undefined]){
+      try { const c = canvas.getContext(name, o); if (c) return c; } catch(e){}
+    }
+  }
+  return null;
+})();
 if (!gl) { document.getElementById('nojs').style.display='flex'; }
+// a lost context (GPU hiccup, tab backgrounded for a long time) is recoverable
+canvas.addEventListener('webglcontextlost', e => { e.preventDefault(); }, false);
+canvas.addEventListener('webglcontextrestored', () => { try { initGL(); resize(); } catch(e){} }, false);
 
 const VERT = `attribute vec2 a; void main(){ gl_Position = vec4(a,0.0,1.0); }`;
 
