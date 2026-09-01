@@ -308,6 +308,27 @@
   .sudoku-card .mini::before { left:50%; top:6px; bottom:6px; width:2px; transform:translateX(-1px); }
   .sudoku-card .mini::after { top:50%; left:6px; right:6px; height:2px; transform:translateY(-1px); }
 
+  /* Prank Button card artwork: one button sitting still, one bolting off */
+  .prank-card { background: radial-gradient(120% 120% at 78% 12%, #4b2f6e 0%, #2e1c45 55%, #150d20 100%); }
+  .prank-card .kicker { color:#d7b4ff; }
+  .prank-card .mini {
+    flex:0 0 auto; width:92px; height:92px; border-radius:16px; position:relative; overflow:hidden;
+    background:#1a1030; box-shadow:0 10px 22px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.08);
+    transform:rotate(-4deg); transition:transform .2s ease;
+  }
+  .prank-card .mini i { position:absolute; display:block; border-radius:6px; height:19px; }
+  .prank-card .mini i.a { left:12px; top:37px; width:32px; background:#8b5cf6; box-shadow:0 2px 6px rgba(0,0,0,.4); }
+  .prank-card .mini i.b { left:50px; top:16px; width:30px; background:#efeef5;
+    animation: prankRun 2.6s cubic-bezier(.6,0,.35,1) infinite; }
+  @keyframes prankRun {
+    0%,12%   { transform: translate(0,0) rotate(0deg); }
+    30%      { transform: translate(-4px,42px) rotate(-8deg); }
+    55%      { transform: translate(6px,8px) rotate(6deg); }
+    78%      { transform: translate(-10px,50px) rotate(-4deg); }
+    100%     { transform: translate(0,0) rotate(0deg); }
+  }
+  @media (prefers-reduced-motion: reduce) { .prank-card .mini i.b { animation: none; } }
+
   /* Speed Math card artwork: the four operators */
   .smath-card { background: radial-gradient(120% 120% at 22% 12%, #3b4bd8 0%, #232a72 55%, #12143a 100%); }
   .smath-card .kicker { color:#b7c0ff; }
@@ -787,6 +808,15 @@
           <span class="desc">Name the face before it comes into&nbsp;focus.</span>
         </div>
       </a>
+
+      <a class="card art-card prank-card flip ico-squircle tl-a" href="/Prank-Button/">
+        <div class="mini" aria-hidden="true"><i class="a"></i><i class="b"></i></div>
+        <div class="txt">
+          <span class="kicker">Harmless trap</span>
+          <span class="name">Prank Button</span>
+          <span class="desc">One button answers. The other one&nbsp;runs.</span>
+        </div>
+      </a>
     </div>
   </main>
 
@@ -829,6 +859,7 @@
         'sudoku-card':  ['숫자 퍼즐',   '스도쿠',        '4×4, 6×6, 9×9 또는 직접 정한 크기로.'],
         'smath-card':   ['암산',        '스피드 수학',   '10문제 5단계 — 최고 기록에 도전하세요.'],
         'gw-card':      ['유명인 얼굴', '누구게?',       '선명해지기 전에 누구인지 맞혀 보세요.'],
+        'prank-card':   ['짓궂은 함정', '장난 버튼',     '한쪽은 눌리고, 다른 쪽은 도망갑니다.'],
       };
       var KO_UI = {
         tagline: '재미로 만든 랜덤한 것들',
@@ -970,6 +1001,10 @@
     // Newest day first; items within a day are numbered date-1, date-2, …
     // Each item carries both languages; the log renders whichever is selected.
     const LOGS = [
+      { date: '26.9.1', open: true, items: [
+        { en:'Added Prank Button — a question with two answers underneath: one button works, the other bolts away from your cursor and cannot be clicked by mouse, touch or keyboard. Write your own question and button labels, then use Copy link to send the whole thing to someone',
+          ko:'장난 버튼 추가 — 질문 하나와 그 아래 두 개의 답 버튼이 있습니다. 한쪽은 정상으로 눌리고, 다른 쪽은 커서를 피해 도망쳐서 마우스·터치·키보드 어떤 방법으로도 클릭할 수 없어요. 질문과 두 버튼의 문구를 직접 바꿀 수 있고, 링크 복사로 그대로 다른 사람에게 보낼 수 있습니다' },
+      ] },
       { date: '26.8.1', open: true, items: [
         { en:'The EN / 한국어 switch now rides along into every panel, and the panels themselves are translated — menus, buttons, hints, results and even the Clocks time-zone list. Your choice follows you across the whole site, and switching back to English restores the original wording exactly',
           ko:'EN / 한국어 전환 버튼이 모든 패널 안에서도 나오고, 패널 내용까지 번역됩니다 — 메뉴, 버튼, 설명, 결과는 물론 시계의 시간대 목록까지요. 선택한 언어는 사이트 전체에서 유지되고, 영어로 되돌리면 원래 문구가 그대로 복원됩니다' },

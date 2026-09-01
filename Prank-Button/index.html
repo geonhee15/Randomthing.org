@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Prank Button — Randomthing.org</title>
+<meta name="description" content="Ask a question with two buttons — one answers, the other runs away from the cursor and can never be clicked. Write your own wording and send it to a friend." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root { --ui:"Inter",system-ui,-apple-system,sans-serif; --ink:#1b1b20; --muted:#8a8a93; --line:#e8e8ec;
+    --accent:#6c5ce7; --accent-ink:#5546c8; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; padding:0; }
+  body { font-family:var(--ui); color:var(--ink); min-height:100vh; -webkit-font-smoothing:antialiased;
+    background: radial-gradient(120% 100% at 50% 0%, #f3f1ff 0%, #f7f7fa 45%, #f2f2f5 100%);
+    -webkit-user-select:none; user-select:none; overflow-x:hidden; }
+
+  .nav { display:flex; align-items:center; gap:12px; padding:14px 20px; padding-left:max(20px, env(safe-area-inset-left)); }
+  .brand { font-family:"Baloo 2",sans-serif; font-weight:800; font-size:20px; letter-spacing:-.4px; color:var(--ink); text-decoration:none; padding:5px 8px; border-radius:10px; }
+  .brand:hover { background:rgba(0,0,0,.05); }
+  .brand .org { color:#ff5a5f; }
+  .nav .sep { color:#cfcfd4; } .nav h1 { font-size:15px; font-weight:600; margin:0; color:#56565e; }
+
+  .stage { min-height:calc(100vh - 120px); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:10px 18px 40px; gap:14px; }
+
+  /* the dialog */
+  .card { width:min(440px,100%); background:#fff; border:1px solid var(--line); border-radius:22px;
+    box-shadow:0 20px 50px rgba(40,35,90,.12); padding:34px 28px 28px; text-align:center; }
+  .msg { font-family:"Baloo 2",sans-serif; font-weight:800; font-size:clamp(22px,5.4vw,30px); line-height:1.25;
+    margin:0 0 22px; word-break:break-word; }
+  .row { display:flex; gap:12px; justify-content:center; align-items:center; flex-wrap:nowrap; }
+  .pick { font-family:var(--ui); font-weight:700; font-size:15px; border-radius:12px; padding:11px 22px;
+    cursor:pointer; border:1px solid var(--line); background:#fff; color:var(--ink); transition:transform .06s, background .15s, border-color .15s;
+    white-space:nowrap; max-width:45vw; overflow:hidden; text-overflow:ellipsis; }
+  .pick.yes { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .pick.yes:hover { background:var(--accent-ink); border-color:var(--accent-ink); }
+  .pick.yes:active { transform:translateY(1px); }
+  .pick.no:hover { background:#fafafa; }
+  /* once it starts running it is positioned against the viewport */
+  .pick.no.loose { position:fixed; z-index:80; margin:0; box-shadow:0 10px 24px rgba(40,35,90,.18); transition:left .12s ease, top .12s ease; }
+  .ghost { display:none; } .ghost.on { display:block; }
+
+  .after { margin-top:18px; font-size:14px; font-weight:600; color:var(--accent-ink); min-height:1.2em; }
+  .after .again { background:none; border:none; color:var(--muted); font:600 13px var(--ui); cursor:pointer; text-decoration:underline; padding:4px; }
+  .tally { font-size:12.5px; font-weight:600; color:var(--muted); min-height:1.2em; }
+
+  /* editor */
+  .tools { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+  .tool { font:700 13px var(--ui); border:1px solid var(--line); background:#fff; color:var(--muted);
+    border-radius:999px; padding:8px 15px; cursor:pointer; transition:color .14s, background .14s; }
+  .tool:hover { color:var(--ink); background:#fafafa; }
+  .tool.on { background:var(--accent); border-color:var(--accent); color:#fff; }
+
+  .editor { width:min(440px,100%); background:#fff; border:1px solid var(--line); border-radius:18px; padding:18px; display:none; }
+  .editor.open { display:block; }
+  .field { margin-bottom:12px; }
+  .field label { display:block; font-size:11.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+  .field input { width:100%; border:1px solid var(--line); border-radius:11px; padding:10px 12px;
+    font:600 14px var(--ui); color:var(--ink); outline:none; -webkit-user-select:text; user-select:text; }
+  .field input:focus { border-color:var(--accent); }
+  .editor .acts { display:flex; gap:8px; flex-wrap:wrap; margin-top:14px; }
+  .editor .acts button { flex:1 1 auto; font:700 13.5px var(--ui); border-radius:11px; padding:10px 14px; cursor:pointer; border:1px solid var(--line); background:#fff; color:var(--ink); }
+  .editor .acts .save { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .note { font-size:12px; color:var(--muted); margin-top:10px; line-height:1.5; }
+
+  @media (max-width:380px){ .pick { padding:10px 16px; font-size:14px; } .card { padding:28px 20px 24px; } }
+</style>
+</head>
+<body>
+  <nav class="nav">
+    <a class="brand" href="/">Randomthing<span class="org">.org</span></a>
+    <span class="sep">/</span><h1>Prank Button</h1>
+  </nav>
+
+  <div class="stage">
+    <div class="card">
+      <p class="msg" id="msg">Do you like me?</p>
+      <div class="row" id="row">
+        <button class="pick yes" id="yesBtn" type="button">Yes</button>
+        <span class="ghost" id="ghost" aria-hidden="true"></span>
+        <button class="pick no" id="noBtn" type="button" tabindex="-1">No</button>
+      </div>
+      <div class="after" id="after"></div>
+    </div>
+
+    <div class="tally" id="tally"></div>
+
+    <div class="tools">
+      <button class="tool" id="editBtn" type="button">Edit</button>
+      <button class="tool" id="linkBtn" type="button">Copy link</button>
+    </div>
+
+    <div class="editor" id="editor">
+      <div class="field"><label for="fMsg">Message</label><input id="fMsg" type="text" maxlength="120" /></div>
+      <div class="field"><label for="fYes">Button 1 (clickable)</label><input id="fYes" type="text" maxlength="30" /></div>
+      <div class="field"><label for="fNo">Button 2 (runs away)</label><input id="fNo" type="text" maxlength="30" /></div>
+      <div class="acts">
+        <button class="save" id="saveBtn" type="button">Save</button>
+        <button id="defBtn" type="button">Reset</button>
+      </div>
+      <div class="note" id="note">Saved on this device. Use Copy link to send the prank with your wording baked in.</div>
+    </div>
+  </div>
+
+<script>
+  const $ = id => document.getElementById(id);
+  // The wording is yours to change, so the starting text follows the site language —
+  // otherwise the card could read Korean while the edit fields showed English.
+  const PRESETS = {
+    en: { msg:'Do you like me?', yes:'Yes', no:'No' },
+    ko: { msg:'나 좋아해?',       yes:'응',  no:'아니' },
+  };
+  function siteLang(){ try { return localStorage.getItem('rt_lang') === 'ko' ? 'ko' : 'en'; } catch(e){ return 'en'; } }
+  function defaults(){ return Object.assign({}, PRESETS[siteLang()]); }
+  const KEY = 'prank_cfg';
+
+  // ---------- config: URL hash wins (shared links), else this device, else defaults ----------
+  function decode(s){
+    try { return JSON.parse(decodeURIComponent(escape(atob(s.replace(/-/g,'+').replace(/_/g,'/'))))); }
+    catch(e){ return null; }
+  }
+  function encode(o){
+    try { return btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+    catch(e){ return ''; }
+  }
+  function clean(o){
+    if (!o || typeof o !== 'object') return null;
+    const t = v => typeof v === 'string' ? v.slice(0, 120) : '';
+    const c = { msg:t(o.msg) || defaults().msg, yes:t(o.yes).slice(0,30) || defaults().yes, no:t(o.no).slice(0,30) || defaults().no };
+    return c;
+  }
+  function fromHash(){
+    const m = (location.hash || '').match(/[#&]c=([A-Za-z0-9\-_]+)/);
+    return m ? clean(decode(m[1])) : null;
+  }
+  function load(){
+    const shared = fromHash();
+    if (shared) return shared;
+    try { const s = clean(JSON.parse(localStorage.getItem(KEY))); if (s) return s; } catch(e){}
+    return defaults();
+  }
+  let cfg = load();
+
+  function paint(){
+    $('msg').textContent = cfg.msg;
+    $('yesBtn').textContent = cfg.yes;
+    $('noBtn').textContent = cfg.no;
+    $('fMsg').value = cfg.msg; $('fYes').value = cfg.yes; $('fNo').value = cfg.no;
+  }
+
+  // ---------- the button that will not be clicked ----------
+  const runner = $('noBtn'), ghost = $('ghost');
+  const NEAR = 74;                 // how close the pointer may get, in px
+  let loose = false, dodges = 0;
+
+  function cutLoose(){
+    if (loose) return;
+    const r = runner.getBoundingClientRect();
+    ghost.style.width = r.width + 'px';
+    ghost.style.height = r.height + 'px';
+    ghost.classList.add('on');     // placeholder so the row keeps its shape
+    runner.classList.add('loose');
+    runner.style.left = r.left + 'px';
+    runner.style.top = r.top + 'px';
+    loose = true;
+  }
+
+  // rects the runner must never land on top of — it would block the real button
+  function blockers(){
+    const list = [document.querySelector('.nav'), $('yesBtn'), document.querySelector('.tools'), $('tally')];
+    if ($('editor').classList.contains('open')) list.push($('editor'));
+    return list.filter(Boolean).map(e => e.getBoundingClientRect());
+  }
+  function overlaps(x, y, w, h, r, pad){
+    return !(x + w + pad < r.left || x - pad > r.right || y + h + pad < r.top || y - pad > r.bottom);
+  }
+
+  function flee(px, py){
+    cutLoose();
+    const r = runner.getBoundingClientRect();
+    const w = r.width, h = r.height, pad = 10;
+    const maxX = Math.max(pad, innerWidth - w - pad), maxY = Math.max(pad, innerHeight - h - pad);
+    const hard = blockers();
+    const card = document.querySelector('.card').getBoundingClientRect();
+    const far = Math.min(320, Math.max(innerWidth, innerHeight) * 0.4);
+    let best = null, bestD = -1, alt = null, altD = -1;
+    for (let i = 0; i < 60; i++){
+      const x = pad + Math.random() * (maxX - pad);
+      const y = pad + Math.random() * (maxY - pad);
+      if (hard.some(b => overlaps(x, y, w, h, b, 10))) continue;       // never cover the UI
+      const d = Math.hypot(x + w/2 - px, y + h/2 - py);
+      if (!overlaps(x, y, w, h, card, 6)){                              // prefer outside the dialog
+        if (d > bestD){ bestD = d; best = { x, y }; }
+        if (bestD > far) break;
+      } else if (d > altD){ altD = d; alt = { x, y }; }
+    }
+    const spot = best || alt || { x: pad, y: pad };
+    runner.style.left = spot.x + 'px';
+    runner.style.top = spot.y + 'px';
+    dodges++;
+    showTally();
+  }
+  function showTally(){
+    $('tally').textContent = dodges ? ('Dodged ' + dodges + (dodges === 1 ? ' time' : ' times')) : '';
+  }
+
+  // mouse / trackpad: bail out as soon as the pointer comes near
+  addEventListener('pointermove', e => {
+    const r = runner.getBoundingClientRect();
+    if (e.clientX > r.left - NEAR && e.clientX < r.right + NEAR &&
+        e.clientY > r.top - NEAR && e.clientY < r.bottom + NEAR) flee(e.clientX, e.clientY);
+  }, { passive:true });
+
+  // touch, and any attempt to press it directly — move first, swallow the event.
+  // stopImmediatePropagation matters: stopPropagation alone still lets other
+  // listeners on this same element run, which would let a click 'land'.
+  ['pointerdown','mousedown','mouseup','touchstart','touchend','click','dblclick','contextmenu'].forEach(ev => {
+    runner.addEventListener(ev, e => {
+      e.preventDefault(); e.stopImmediatePropagation();
+      const p = e.touches && e.touches[0] ? e.touches[0] : e;
+      flee(p.clientX != null ? p.clientX : innerWidth / 2, p.clientY != null ? p.clientY : innerHeight / 2);
+    }, { capture:true, passive:false });
+  });
+  // keyboard: it is out of the tab order, and refuses to hold focus if anything forces it
+  runner.addEventListener('focus', () => {
+    runner.blur(); setTimeout(() => runner.blur(), 0);
+    flee(innerWidth / 2, innerHeight / 2);
+  });
+  runner.addEventListener('keydown', e => { e.preventDefault(); e.stopImmediatePropagation(); });
+
+  addEventListener('resize', () => {
+    if (!loose) return;
+    const r = runner.getBoundingClientRect();
+    runner.style.left = Math.min(parseFloat(runner.style.left) || 0, Math.max(10, innerWidth - r.width - 10)) + 'px';
+    runner.style.top = Math.min(parseFloat(runner.style.top) || 0, Math.max(10, innerHeight - r.height - 10)) + 'px';
+  });
+
+  function resetRunner(){
+    loose = false; dodges = 0;
+    runner.classList.remove('loose');
+    runner.style.left = runner.style.top = '';
+    ghost.classList.remove('on');
+    showTally();
+  }
+
+  // ---------- the button that does work ----------
+  $('yesBtn').addEventListener('click', () => {
+    $('after').innerHTML = '';
+    const line = document.createElement('span');
+    line.textContent = 'That one works. The other one, good luck.';
+    const again = document.createElement('button');
+    again.className = 'again'; again.type = 'button'; again.textContent = 'Try again';
+    again.addEventListener('click', () => { $('after').innerHTML = ''; resetRunner(); });
+    $('after').appendChild(line); $('after').appendChild(document.createTextNode(' '));
+    $('after').appendChild(again);
+  });
+
+  // ---------- editing ----------
+  $('editBtn').addEventListener('click', () => {
+    const open = $('editor').classList.toggle('open');
+    $('editBtn').classList.toggle('on', open);
+    if (open) $('fMsg').focus();
+  });
+  $('saveBtn').addEventListener('click', () => {
+    cfg = clean({ msg:$('fMsg').value.trim(), yes:$('fYes').value.trim(), no:$('fNo').value.trim() });
+    try { localStorage.setItem(KEY, JSON.stringify(cfg)); } catch(e){}
+    if (location.hash) history.replaceState(null, '', location.pathname);   // stop a shared link overriding it
+    paint(); resetRunner(); $('after').innerHTML = '';
+    flash('Saved');
+  });
+  $('defBtn').addEventListener('click', () => {
+    cfg = defaults();
+    try { localStorage.removeItem(KEY); } catch(e){}
+    if (location.hash) history.replaceState(null, '', location.pathname);
+    paint(); resetRunner(); $('after').innerHTML = '';
+  });
+  $('linkBtn').addEventListener('click', () => {
+    const url = location.origin + location.pathname + '#c=' + encode(cfg);
+    const done = () => flash('Link copied');
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done, () => prompt('Copy this link', url));
+    else prompt('Copy this link', url);
+  });
+  let flashT = 0;
+  function flash(text){
+    const n = $('note'), keep = n.dataset.base || (n.dataset.base = n.textContent);
+    n.textContent = text; clearTimeout(flashT);
+    flashT = setTimeout(() => { n.textContent = n.dataset.base; }, 1600);
+  }
+
+  // if nothing has been customised, a language switch re-picks the starting wording
+  addEventListener('rt-lang', () => {
+    let stored = null; try { stored = localStorage.getItem(KEY); } catch(e){}
+    if (stored || fromHash()) return;
+    cfg = defaults(); paint(); resetRunner(); $('after').innerHTML = '';
+  });
+  addEventListener('hashchange', () => { const s = fromHash(); if (s){ cfg = s; paint(); resetRunner(); } });
+
+  paint(); showTally();
+</script>
+  <script defer src="/cookie-consent.js"></script>
+  <script defer src="/lang.js"></script>
+  <script defer src="/now-playing.js"></script>
+</body>
+</html>
