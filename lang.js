@@ -223,6 +223,11 @@
     'button to record from your mic.': '버튼으로 마이크 녹음을 할 수 있습니다.',
     // Calculator presets
     'Neo-brutal': '네오 브루탈', 'Terminal': '터미널', 'Pastel': '파스텔', 'Retro LCD': '레트로 LCD',
+    // Checklist
+    'Checklist': '체크리스트', 'Add': '추가', 'Add an item…': '항목 추가…', 'Add an item': '항목 추가',
+    'Nothing here yet — add your first item above.': '아직 아무것도 없습니다 — 위에서 첫 항목을 추가하세요.',
+    'Clear done': '완료 항목 지우기', 'Delete': '삭제',
+
     // Prank Button
     'Prank Button': '장난 버튼', 'Edit': '수정', 'Copy link': '링크 복사',
     'Message': '문구', 'Button 1 (clickable)': '버튼 1 (클릭 가능)', 'Button 2 (runs away)': '버튼 2 (도망감)',
@@ -373,6 +378,7 @@
       function (m) { return '모자이크 얼굴이 빠르게 선명해집니다 — 다 드러나기 전에 맞히세요. 거칠수록 점수가 높아요. ' + tr(m[1]) + ' 이 세트에는 ' + m[2] + '명이 있습니다.'; }],
     [/^A blurred face sharpens second by second\..*?(\d+) faces in this set\.$/,
       function (m) { return '흐릿한 얼굴이 초마다 선명해집니다. 이 세트에는 ' + m[1] + '명이 있습니다.'; }],
+    [/^(\d+) of (\d+) done$/,                  function (m) { return m[2] + '개 중 ' + m[1] + '개 완료'; }],
     [/^Dodged (\d+) times?$/,                  function (m) { return m[1] + '번 도망갔습니다'; }],
     [/^(.+) — Randomthing\.org$/,              function (m) { return tr(m[1]) + ' — Randomthing.org'; }],
     // Wikipedia one-liners under a Guess Who answer, e.g. "South Korean singer (born 1993)"

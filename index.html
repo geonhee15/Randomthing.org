@@ -308,6 +308,22 @@
   .sudoku-card .mini::before { left:50%; top:6px; bottom:6px; width:2px; transform:translateX(-1px); }
   .sudoku-card .mini::after { top:50%; left:6px; right:6px; height:2px; transform:translateY(-1px); }
 
+  /* Checklist card artwork: three rows, two ticked */
+  .check-card { background: radial-gradient(120% 120% at 20% 10%, #1f5c46 0%, #123a2b 55%, #08160f 100%); }
+  .check-card .kicker { color:#8fe3bd; }
+  .check-card .mini {
+    flex:0 0 auto; width:92px; height:92px; border-radius:16px; background:#0d1a14; padding:13px 11px;
+    display:flex; flex-direction:column; justify-content:center; gap:9px;
+    box-shadow:0 10px 22px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.08);
+    transform:rotate(-4deg); transition:transform .2s ease;
+  }
+  .check-card .mini i { display:flex; align-items:center; gap:7px; }
+  .check-card .mini i::before { content:''; width:13px; height:13px; border-radius:4px; flex:0 0 auto;
+    border:2px solid #3d6b58; }
+  .check-card .mini i::after { content:''; height:5px; border-radius:3px; background:#3d6b58; flex:1 1 auto; }
+  .check-card .mini i.on::before { background:#22c58a; border-color:#22c58a; }
+  .check-card .mini i.on::after { background:#1c4a3a; }
+
   /* Prank Button card artwork: one button sitting still, one bolting off */
   .prank-card { background: radial-gradient(120% 120% at 78% 12%, #4b2f6e 0%, #2e1c45 55%, #150d20 100%); }
   .prank-card .kicker { color:#d7b4ff; }
@@ -817,6 +833,15 @@
           <span class="desc">One button answers. The other one&nbsp;runs.</span>
         </div>
       </a>
+
+      <a class="card art-card check-card ico-squircle tl-e" href="/Checklist/">
+        <div class="mini" aria-hidden="true"><i class="on"></i><i class="on"></i><i></i></div>
+        <div class="txt">
+          <span class="kicker">Tick things off</span>
+          <span class="name">Checklist</span>
+          <span class="desc">A plain list that remembers&nbsp;itself.</span>
+        </div>
+      </a>
     </div>
   </main>
 
@@ -860,6 +885,7 @@
         'smath-card':   ['암산',        '스피드 수학',   '10문제 5단계 — 최고 기록에 도전하세요.'],
         'gw-card':      ['유명인 얼굴', '누구게?',       '선명해지기 전에 누구인지 맞혀 보세요.'],
         'prank-card':   ['짓궂은 함정', '장난 버튼',     '한쪽은 눌리고, 다른 쪽은 도망갑니다.'],
+        'check-card':   ['하나씩 체크', '체크리스트',    '적어두면 알아서 기억하는 목록.'],
       };
       var KO_UI = {
         tagline: '재미로 만든 랜덤한 것들',
@@ -1001,6 +1027,10 @@
     // Newest day first; items within a day are numbered date-1, date-2, …
     // Each item carries both languages; the log renders whichever is selected.
     const LOGS = [
+      { date: '26.9.2', open: true, items: [
+        { en:'Added Checklist — type a thing, tick it off, delete it or clear everything you have finished. The list is kept on your device, so it is still there next time',
+          ko:'체크리스트 추가 — 할 일을 적고, 체크하고, 지우거나 완료한 것만 한 번에 정리할 수 있습니다. 목록은 기기에 저장돼서 다음에 와도 그대로 남아 있어요' },
+      ] },
       { date: '26.9.1', open: true, items: [
         { en:'Added Prank Button — a question with two answers underneath: one button works, the other bolts away from your cursor and cannot be clicked by mouse, touch or keyboard. Write your own question and button labels, then use Copy link to send the whole thing to someone',
           ko:'장난 버튼 추가 — 질문 하나와 그 아래 두 개의 답 버튼이 있습니다. 한쪽은 정상으로 눌리고, 다른 쪽은 커서를 피해 도망쳐서 마우스·터치·키보드 어떤 방법으로도 클릭할 수 없어요. 질문과 두 버튼의 문구를 직접 바꿀 수 있고, 링크 복사로 그대로 다른 사람에게 보낼 수 있습니다' },
