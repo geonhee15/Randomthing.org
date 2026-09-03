@@ -226,7 +226,9 @@
     // Checklist
     'Checklist': '체크리스트', 'Add': '추가', 'Add an item…': '항목 추가…', 'Add an item': '항목 추가',
     'Nothing here yet — add your first item above.': '아직 아무것도 없습니다 — 위에서 첫 항목을 추가하세요.',
-    'Tomorrow this list starts fresh and today’s is archived.': '내일이 되면 목록은 새로 시작되고 오늘 것은 보관함으로 들어갑니다.',
+    'Give an item a deadline with the clock, and tomorrow this list starts fresh.':
+      '시계를 눌러 마감 시간을 지정할 수 있고, 내일이 되면 목록은 새로 시작됩니다.',
+    'Deadline': '마감 시간',
     'Today': '오늘', 'Yesterday': '어제', 'Archive': '보관함', 'Clear archive': '보관함 비우기',
     'No past days yet. When a new day starts, the list you leave behind is filed here.':
       '아직 지난 목록이 없습니다. 날짜가 바뀌면 그날 남긴 목록이 여기에 보관됩니다.',
@@ -383,6 +385,7 @@
     [/^A blurred face sharpens second by second\..*?(\d+) faces in this set\.$/,
       function (m) { return '흐릿한 얼굴이 초마다 선명해집니다. 이 세트에는 ' + m[1] + '명이 있습니다.'; }],
     [/^(\d+) of (\d+) done$/,                  function (m) { return m[2] + '개 중 ' + m[1] + '개 완료'; }],
+    [/^(\d+) overdue$/,                        function (m) { return m[1] + '개 마감 지남'; }],
     [/^Dodged (\d+) times?$/,                  function (m) { return m[1] + '번 도망갔습니다'; }],
     [/^(.+) — Randomthing\.org$/,              function (m) { return tr(m[1]) + ' — Randomthing.org'; }],
     // Wikipedia one-liners under a Guess Who answer, e.g. "South Korean singer (born 1993)"

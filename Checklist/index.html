@@ -5,12 +5,13 @@
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>Checklist — Randomthing.org</title>
-<meta name="description" content="A checklist for today. When tomorrow comes it starts empty, and yesterday's list is filed away in the archive." />
+<meta name="description" content="A checklist for today. Give an item a deadline, and when tomorrow comes the list starts empty with yesterday's filed into the archive." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 <style>
-  :root { --ui:"Inter",system-ui,-apple-system,sans-serif; --ink:#1b1b20; --muted:#8a8a93; --line:#e8e8ec; --accent:#22a06b; }
+  :root { --ui:"Inter",system-ui,-apple-system,sans-serif; --ink:#1b1b20; --muted:#8a8a93; --line:#e8e8ec;
+    --accent:#22a06b; --late:#e5484d; }
   * { box-sizing:border-box; }
   html, body { margin:0; padding:0; }
   body { font-family:var(--ui); color:var(--ink); background:#f6f7f6; min-height:100vh;
@@ -29,17 +30,37 @@
   .today { display:flex; align-items:center; gap:9px; padding:15px 17px 13px; border-bottom:1px solid var(--line); }
   .today-date { font:800 16px "Baloo 2",var(--ui); letter-spacing:-.2px; }
   .tag { font-size:11px; font-weight:700; color:var(--accent); background:rgba(34,160,107,.1); padding:3px 8px; border-radius:99px; white-space:nowrap; }
+  .tag.late { color:var(--late); background:rgba(229,72,77,.1); }
 
-  .add { display:flex; gap:9px; padding:14px 16px; border-bottom:1px solid var(--line); }
-  .add input { flex:1 1 auto; min-width:0; border:1px solid var(--line); border-radius:12px; padding:12px 14px;
+  .add { display:flex; gap:8px; padding:14px 16px; border-bottom:1px solid var(--line); }
+  .add input.txt-in { flex:1 1 auto; min-width:0; border:1px solid var(--line); border-radius:12px; padding:12px 14px;
     font:600 15px var(--ui); color:var(--ink); outline:none; -webkit-user-select:text; user-select:text; transition:border-color .12s; }
-  .add input:focus { border-color:var(--accent); }
-  .add button { flex:0 0 auto; border:none; border-radius:12px; padding:0 18px; cursor:pointer;
+  .add input.txt-in:focus { border-color:var(--accent); }
+  .add button.go { flex:0 0 auto; border:none; border-radius:12px; padding:0 17px; cursor:pointer;
     font:800 15px "Baloo 2",var(--ui); background:var(--accent); color:#fff; transition:filter .14s, transform .06s; }
-  .add button:hover { filter:brightness(1.07); } .add button:active { transform:translateY(1px); }
+  .add button.go:hover { filter:brightness(1.07); } .add button.go:active { transform:translateY(1px); }
+
+  /* deadline chip — a transparent <input type=time> sits over it and opens the native picker */
+  .due { position:relative; flex:0 0 auto; display:flex; align-items:center; gap:5px; height:26px; padding:0 9px;
+    border-radius:99px; background:#f1f1f4; color:#a6a6b0; white-space:nowrap;
+    font-size:12px; font-weight:700; font-variant-numeric:tabular-nums; transition:opacity .12s, color .12s, background .12s; }
+  .due svg { width:12px; height:12px; }
+  .due span { line-height:1; }
+  .due.set  { color:var(--accent); background:rgba(34,160,107,.12); }
+  .due.over { color:var(--late);   background:rgba(229,72,77,.12); }
+  .due.unset { opacity:0; }
+  li:hover .due.unset, li:focus-within .due.unset { opacity:1; }
+  .due input { position:absolute; inset:0; width:100%; height:100%; margin:0; padding:0; border:none;
+    opacity:0; cursor:pointer; background:none; color:transparent; }
+  .due:hover { background:#e9e9ee; }
+  .due.set:hover  { background:rgba(34,160,107,.2); }
+  .due.over:hover { background:rgba(229,72,77,.2); }
+  .add .due { height:44px; padding:0 12px; font-size:13px; }
+  .add .due svg { width:14px; height:14px; }
+  .add .due.unset { opacity:1; }          /* the add row's clock is the affordance — always shown */
 
   ul.list { list-style:none; margin:0; padding:0; }
-  ul.list li { display:flex; align-items:center; gap:12px; padding:13px 16px; border-bottom:1px solid #f1f1f3; }
+  ul.list li { display:flex; align-items:center; gap:10px; padding:13px 16px; border-bottom:1px solid #f1f1f3; }
   ul.list li:last-child { border-bottom:none; }
   .box { flex:0 0 auto; width:22px; height:22px; border-radius:7px; border:2px solid #d6d6dc; background:#fff;
     cursor:pointer; display:flex; align-items:center; justify-content:center; transition:border-color .12s, background .12s; }
@@ -50,21 +71,23 @@
   .txt { flex:1 1 auto; min-width:0; font-size:15px; font-weight:500; line-height:1.4; word-break:break-word;
     cursor:pointer; transition:color .12s; }
   li.done .txt { color:#b3b3bb; text-decoration:line-through; }
+  li.done .due { opacity:.5; }
   .del { flex:0 0 auto; border:none; background:none; cursor:pointer; color:#c9c9d0; padding:5px; border-radius:8px;
     display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity .12s, color .12s, background .12s; }
   .del svg { width:15px; height:15px; }
   li:hover .del, li:focus-within .del { opacity:1; }
-  .del:hover { color:#e5484d; background:rgba(229,72,77,.1); }
+  .del:hover { color:var(--late); background:rgba(229,72,77,.1); }
 
   .empty { padding:32px 20px; text-align:center; color:var(--muted); font-size:14px; font-weight:500; line-height:1.6; }
 
   .foot { display:flex; align-items:center; gap:8px; padding:11px 12px 11px 16px;
     border-top:1px solid var(--line); background:#fbfbfb; }
   .count { flex:1 1 auto; font-size:13px; font-weight:600; color:var(--muted); }
+  .count .late-n { color:var(--late); }
   .fbtn { flex:0 0 auto; border:none; background:none; cursor:pointer; font:600 13px var(--ui); color:var(--muted);
     padding:6px 10px; border-radius:9px; display:flex; align-items:center; gap:6px; transition:color .12s, background .12s; }
   .fbtn:hover { color:var(--ink); background:#f0f0f2; }
-  .fbtn.danger:hover { color:#e5484d; background:rgba(229,72,77,.08); }
+  .fbtn.danger:hover { color:var(--late); background:rgba(229,72,77,.08); }
   .fbtn.hide { display:none; }
   .badge { font-size:11px; font-weight:800; background:#e6e6ea; color:#6f6f79; border-radius:99px; padding:1px 6px; }
   .fbtn:hover .badge { background:#dcdce2; }
@@ -94,7 +117,7 @@
   .day-count { flex:1 1 auto; text-align:right; font-size:12px; font-weight:600; color:var(--muted); font-variant-numeric:tabular-nums; }
   .day-del { flex:0 0 auto; border:none; background:none; cursor:pointer; color:#cdcdd4; padding:5px; border-radius:8px; display:flex; }
   .day-del svg { width:14px; height:14px; }
-  .day-del:hover { color:#e5484d; background:rgba(229,72,77,.1); }
+  .day-del:hover { color:var(--late); background:rgba(229,72,77,.1); }
   ul.day-items { list-style:none; margin:0; padding:0 16px 12px 37px; display:none; }
   .day.open ul.day-items { display:block; }
   ul.day-items li { display:flex; align-items:flex-start; gap:9px; padding:5px 0; font-size:14px; font-weight:500; line-height:1.45; }
@@ -103,13 +126,26 @@
   .mini-box svg { width:9px; height:9px; color:#fff; opacity:0; }
   ul.day-items li.d .mini-box { background:var(--accent); border-color:var(--accent); }
   ul.day-items li.d .mini-box svg { opacity:1; }
-  ul.day-items li.d span { color:#b3b3bb; text-decoration:line-through; }
+  ul.day-items li.d .a-txt { color:#b3b3bb; text-decoration:line-through; }
+  .a-txt { flex:1 1 auto; min-width:0; word-break:break-word; }
+  .a-due { flex:0 0 auto; margin-top:1px; display:flex; align-items:center; gap:4px; padding:1px 7px; border-radius:99px;
+    font-size:11px; font-weight:700; color:#a6a6b0; background:#f1f1f4; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .a-due svg { width:10px; height:10px; }
+  ul.day-items li.miss .a-due { color:var(--late); background:rgba(229,72,77,.12); }
 
   .modal-foot { padding:11px 14px; border-top:1px solid var(--line); background:#fbfbfb; display:flex; justify-content:flex-end; }
   .arch-empty { padding:38px 24px; text-align:center; color:var(--muted); font-size:14px; font-weight:500; line-height:1.65; }
 
+  /* the footer runs out of room before the rest of the card does */
+  @media (max-width:460px){
+    .foot { flex-wrap:wrap; justify-content:flex-end; }
+    .count { flex:1 0 100%; }
+  }
+
   @media (max-width:380px){
-    .add { padding:12px 13px; } ul.list li { padding:12px 13px; } .del { opacity:1; }
+    .add { padding:12px 13px; gap:7px; } ul.list li { padding:12px 13px; gap:9px; }
+    .del { opacity:1; } .due.unset { opacity:1; }
+    .add .due { padding:0 10px; }
     .today { padding:13px 15px 11px; } .today-date { font-size:15px; }
     .foot { padding-left:13px; } .fbtn { padding:6px 8px; }
     .overlay { padding:12px; } ul.day-items { padding-left:34px; }
@@ -130,12 +166,13 @@
       </div>
 
       <form class="add" id="addForm" autocomplete="off">
-        <input id="addInput" type="text" maxlength="200" placeholder="Add an item…" aria-label="Add an item" />
-        <button type="submit" id="addBtn">Add</button>
+        <input class="txt-in" id="addInput" type="text" maxlength="200" placeholder="Add an item…" aria-label="Add an item" />
+        <span class="due unset" id="addDue" title="Deadline"></span>
+        <button class="go" type="submit" id="addBtn">Add</button>
       </form>
 
       <ul class="list" id="list"></ul>
-      <div class="empty" id="empty">Nothing here yet — add your first item above.<br />Tomorrow this list starts fresh and today’s is archived.</div>
+      <div class="empty" id="empty">Nothing here yet — add your first item above.<br />Give an item a deadline with the clock, and tomorrow this list starts fresh.</div>
 
       <div class="foot">
         <span class="count" id="count"></span>
@@ -160,14 +197,16 @@
   const $ = id => document.getElementById(id);
   const K_ITEMS = 'checklist_items', K_DAY = 'checklist_day', K_ARCH = 'checklist_archive';
   const MAX_DAYS = 90;
-  const TICK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
-  const EX   = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
-  const CARET= '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 5 16 12 9 19"/></svg>';
+  const TICK  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+  const EX    = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+  const CARET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 5 16 12 9 19"/></svg>';
+  const CLOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>';
 
-  // ---------- dates ----------
+  // ---------- dates & times ----------
   function ymd(d){
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }
+  function hm(d){ return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
   function isKo(){ try { return localStorage.getItem('rt_lang') === 'ko'; } catch(e){ return false; } }
   function pretty(iso){
     const p = iso.split('-').map(Number);
@@ -177,18 +216,35 @@
       ? d.toLocaleDateString('ko-KR', { month:'long', day:'numeric', weekday:'long' })
       : d.toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long' });
   }
+  function prettyTime(v){
+    const p = v.split(':').map(Number);
+    const d = new Date(); d.setHours(p[0], p[1], 0, 0);
+    return d.toLocaleTimeString(isKo() ? 'ko-KR' : 'en-US', { hour:'numeric', minute:'2-digit' });
+  }
+  // The counts are written here rather than left to the shared translator: they
+  // are rebuilt on every keystroke, and a half-translated tally reads badly.
+  function doneText(done, total){
+    return isKo() ? (total + '개 중 ' + done + '개 완료') : (done + ' of ' + total + ' done');
+  }
+  function lateText(n){ return isKo() ? (n + '개 마감 지남') : (n + ' overdue'); }
+
   function daysAgo(iso){
     const p = iso.split('-').map(Number);
     const a = new Date(p[0], p[1] - 1, p[2]), b = new Date();
     a.setHours(0,0,0,0); b.setHours(0,0,0,0);
     return Math.round((b - a) / 86400000);
   }
+  // Only today's unfinished items can run late; a day already archived is settled.
+  function isLate(it){ return !!it.due && !it.done && day === ymd(new Date()) && it.due < hm(new Date()); }
 
   // ---------- storage ----------
   function cleanItems(raw){
     if (!Array.isArray(raw)) return [];
-    return raw.filter(o => o && typeof o.text === 'string')
-              .map(o => ({ text: o.text.slice(0, 200), done: !!o.done }));
+    return raw.filter(o => o && typeof o.text === 'string').map(o => ({
+      text: o.text.slice(0, 200),
+      done: !!o.done,
+      due: (typeof o.due === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(o.due)) ? o.due : null
+    }));
   }
   function readJSON(key){ try { return JSON.parse(localStorage.getItem(key)); } catch(e){ return null; } }
 
@@ -227,7 +283,47 @@
     return true;
   }
 
+  // ---------- the deadline chip ----------
+  // A styled pill with a transparent <input type="time"> laid over it, so a tap
+  // gets the browser's own picker on every platform.
+  function makeDue(value, onPick){
+    const chip = document.createElement('span');
+    chip.className = 'due unset';
+    chip.title = 'Deadline';
+
+    const icon = document.createElement('span');
+    icon.style.display = 'flex'; icon.innerHTML = CLOCK;
+    const label = document.createElement('span');
+
+    const input = document.createElement('input');
+    input.type = 'time'; input.setAttribute('aria-label', 'Deadline');
+    input.value = value || '';
+
+    chip.appendChild(icon); chip.appendChild(label); chip.appendChild(input);
+    chip.paint = function (v, late){
+      label.textContent = v ? prettyTime(v) : '';
+      input.value = v || '';
+      chip.classList.toggle('unset', !v);
+      chip.classList.toggle('set', !!v && !late);
+      chip.classList.toggle('over', !!v && !!late);
+    };
+    chip.paint(value, false);
+
+    input.addEventListener('change', () => onPick(input.value || null));
+    input.addEventListener('click', e => {
+      e.stopPropagation();
+      if (input.showPicker) { try { input.showPicker(); } catch(err){} }
+    });
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') e.preventDefault(); });
+    return chip;
+  }
+
   // ---------- today's list ----------
+  let pendingDue = null;
+  const addDue = makeDue(null, v => { pendingDue = v; addDue.paint(v, false); });
+  $('addDue').replaceWith(addDue);
+  addDue.id = 'addDue';
+
   function render(){
     $('todayDate').textContent = pretty(day);
 
@@ -250,18 +346,34 @@
       txt.className = 'txt'; txt.textContent = it.text;
       txt.addEventListener('click', toggle);
 
+      const due = makeDue(it.due, v => { items[i].due = v; saveToday(); render(); });
+      due.paint(it.due, isLate(it));
+
       const del = document.createElement('button');
       del.className = 'del'; del.type = 'button'; del.innerHTML = EX;
       del.setAttribute('aria-label', 'Delete');
       del.addEventListener('click', () => { items.splice(i, 1); saveToday(); render(); });
 
-      li.appendChild(box); li.appendChild(txt); li.appendChild(del);
+      li.appendChild(box); li.appendChild(txt); li.appendChild(due); li.appendChild(del);
       ul.appendChild(li);
     });
 
     const done = items.filter(it => it.done).length;
+    const late = items.filter(isLate).length;
     $('empty').style.display = items.length ? 'none' : '';
-    $('count').textContent = items.length ? (done + ' of ' + items.length + ' done') : '';
+
+    const count = $('count');
+    count.textContent = '';
+    if (items.length){
+      count.appendChild(document.createTextNode(doneText(done, items.length)));
+      if (late){
+        count.appendChild(document.createTextNode(' · '));
+        const s = document.createElement('span');
+        s.className = 'late-n';
+        s.textContent = lateText(late);
+        count.appendChild(s);
+      }
+    }
     $('clearBtn').classList.toggle('hide', done === 0);
 
     const n = archive.length;
@@ -274,8 +386,9 @@
     const v = $('addInput').value.trim();
     if (!v) return;
     rollover();                                  // typing just after midnight still lands on the right day
-    items.push({ text: v.slice(0, 200), done: false });
+    items.push({ text: v.slice(0, 200), done: false, due: pendingDue });
     $('addInput').value = '';
+    pendingDue = null; addDue.paint(null, false);
     saveToday(); render();
     $('addInput').focus();
   });
@@ -318,8 +431,7 @@
 
       top.appendChild(caret); top.appendChild(date);
 
-      const gap = daysAgo(entry.date);
-      if (gap === 1){
+      if (daysAgo(entry.date) === 1){
         const tag = document.createElement('span');
         tag.className = 'tag'; tag.textContent = 'Yesterday';
         top.appendChild(tag);
@@ -327,7 +439,7 @@
 
       const done = entry.items.filter(it => it.done).length;
       const cnt = document.createElement('span');
-      cnt.className = 'day-count'; cnt.textContent = done + ' of ' + entry.items.length + ' done';
+      cnt.className = 'day-count'; cnt.textContent = doneText(done, entry.items.length);
       top.appendChild(cnt);
 
       const del = document.createElement('button');
@@ -350,12 +462,24 @@
       ul.className = 'day-items';
       entry.items.forEach(it => {
         const li = document.createElement('li');
-        if (it.done) li.className = 'd';
+        li.className = (it.done ? 'd' : '') + (it.due && !it.done ? ' miss' : '');
+
         const b = document.createElement('span');
         b.className = 'mini-box'; b.innerHTML = TICK;
+
         const s = document.createElement('span');
-        s.textContent = it.text;
+        s.className = 'a-txt'; s.textContent = it.text;
+
         li.appendChild(b); li.appendChild(s);
+
+        if (it.due){
+          const d = document.createElement('span');
+          d.className = 'a-due';
+          const ic = document.createElement('span'); ic.style.display = 'flex'; ic.innerHTML = CLOCK;
+          const lb = document.createElement('span'); lb.textContent = prettyTime(it.due);
+          d.appendChild(ic); d.appendChild(lb);
+          li.appendChild(d);
+        }
         ul.appendChild(li);
       });
 
@@ -376,20 +500,29 @@
     archive = []; openDay = null; saveArchive(); renderArchive(); render();
   });
 
-  // ---------- keep the day honest ----------
+  // ---------- keep the day, and the deadlines, honest ----------
+  let lateSig = '';
   function check(){
     if (rollover()){
       render();
       if (!$('overlay').classList.contains('hide')){ openDay = null; renderArchive(); }
+      return;
     }
+    const sig = items.map(isLate).join('');   // a deadline passing is the only other reason to repaint
+    if (sig !== lateSig){ lateSig = sig; render(); }
   }
-  setInterval(check, 30000);
+  setInterval(check, 20000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
   window.addEventListener('focus', check);
-  window.addEventListener('rt-lang', () => { render(); if (!$('overlay').classList.contains('hide')) renderArchive(); });
+  window.addEventListener('rt-lang', () => {
+    addDue.paint(pendingDue, false);
+    render();
+    if (!$('overlay').classList.contains('hide')) renderArchive();
+  });
 
   rollover();
   render();
+  lateSig = items.map(isLate).join('');
 </script>
   <script defer src="/cookie-consent.js"></script>
   <script defer src="/lang.js"></script>
