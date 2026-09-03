@@ -134,6 +134,11 @@
   ul.day-items li.miss .a-due { color:var(--late); background:rgba(229,72,77,.12); }
 
   .modal-foot { padding:11px 14px; border-top:1px solid var(--line); background:#fbfbfb; display:flex; justify-content:flex-end; }
+  .confirm { display:flex; align-items:center; justify-content:flex-end; gap:8px; flex-wrap:wrap; width:100%; }
+  .confirm.hide { display:none; }
+  .warn { flex:1 1 170px; font-size:12.5px; font-weight:600; color:var(--late); line-height:1.45; }
+  .fbtn.solid { background:var(--late); color:#fff; }
+  .fbtn.solid:hover { background:#cf3b40; color:#fff; }
   .arch-empty { padding:38px 24px; text-align:center; color:var(--muted); font-size:14px; font-weight:500; line-height:1.65; }
 
   /* the footer runs out of room before the rest of the card does */
@@ -176,7 +181,7 @@
 
       <div class="foot">
         <span class="count" id="count"></span>
-        <button class="fbtn danger hide" id="clearBtn" type="button">Clear done</button>
+        <button class="fbtn hide" id="stashBtn" type="button">Put away</button>
         <button class="fbtn" id="archBtn" type="button"><span>Archive</span><span class="badge hide" id="archCount">0</span></button>
       </div>
     </div>
@@ -189,7 +194,14 @@
         <button class="x" id="closeArch" type="button" aria-label="Close"></button>
       </div>
       <div class="modal-body" id="archBody"></div>
-      <div class="modal-foot"><button class="fbtn danger hide" id="wipeArch" type="button">Clear archive</button></div>
+      <div class="modal-foot">
+        <button class="fbtn danger hide" id="wipeArch" type="button">Clear archive</button>
+        <div class="confirm hide" id="wipeAsk">
+          <span class="warn">This empties the whole archive — every past day. It can’t be undone.</span>
+          <button class="fbtn" id="wipeNo" type="button">Cancel</button>
+          <button class="fbtn solid" id="wipeYes" type="button">Empty it</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -266,18 +278,25 @@
   }
   function saveArchive(){ try { localStorage.setItem(K_ARCH, JSON.stringify(archive)); } catch(e){} }
 
-  // File yesterday away and start the new day empty. Runs on load and while the
-  // page sits open past midnight.
+  // Items reach the archive two ways — ticked off and put away by hand, or left
+  // on the list when the day turns — so both go through here and a day filed
+  // twice keeps everything.
+  function fileInto(date, list){
+    if (!list.length) return;
+    const entry = archive.find(e => e.date === date);
+    if (entry) entry.items = entry.items.concat(list);
+    else archive.push({ date: date, items: list.slice() });
+    archive.sort((a, b) => b.date.localeCompare(a.date));
+    if (archive.length > MAX_DAYS) archive.length = MAX_DAYS;
+    saveArchive();
+  }
+
+  // File whatever is left away and start the new day empty. Runs on load and
+  // while the page sits open past midnight.
   function rollover(){
     const today = ymd(new Date());
     if (day === today) return false;
-    if (items.length){
-      archive = archive.filter(e => e.date !== day);
-      archive.unshift({ date: day, items: items });
-      archive.sort((a, b) => b.date.localeCompare(a.date));
-      if (archive.length > MAX_DAYS) archive.length = MAX_DAYS;
-      saveArchive();
-    }
+    fileInto(day, items);
     day = today; items = [];
     saveToday();
     return true;
@@ -374,7 +393,7 @@
         count.appendChild(s);
       }
     }
-    $('clearBtn').classList.toggle('hide', done === 0);
+    $('stashBtn').classList.toggle('hide', done === 0);
 
     const n = archive.length;
     $('archCount').textContent = n;
@@ -393,9 +412,13 @@
     $('addInput').focus();
   });
 
-  $('clearBtn').addEventListener('click', () => {
+  $('stashBtn').addEventListener('click', () => {
+    const done = items.filter(it => it.done);
+    if (!done.length) return;
     items = items.filter(it => !it.done);
+    fileInto(day, done);
     saveToday(); render();
+    if (!$('overlay').classList.contains('hide')){ openDay = day; renderArchive(); }
   });
 
   // ---------- archive ----------
@@ -405,10 +428,11 @@
     const body = $('archBody');
     body.innerHTML = '';
 
+    askWipe(false);
     if (!archive.length){
       const p = document.createElement('div');
       p.className = 'arch-empty';
-      p.textContent = 'No past days yet. When a new day starts, the list you leave behind is filed here.';
+      p.textContent = 'No past days yet. Tick something off and put it away, or leave it on the list overnight, and it lands here.';
       body.appendChild(p);
       $('wipeArch').classList.add('hide');
       return;
@@ -431,9 +455,10 @@
 
       top.appendChild(caret); top.appendChild(date);
 
-      if (daysAgo(entry.date) === 1){
+      const gap = daysAgo(entry.date);
+      if (gap === 0 || gap === 1){
         const tag = document.createElement('span');
-        tag.className = 'tag'; tag.textContent = 'Yesterday';
+        tag.className = 'tag'; tag.textContent = gap === 0 ? 'Today' : 'Yesterday';
         top.appendChild(tag);
       }
 
@@ -489,14 +514,21 @@
   }
 
   function openArchive(){ check(); openDay = null; renderArchive(); $('overlay').classList.remove('hide'); }
-  function closeArchive(){ $('overlay').classList.add('hide'); }
+  function closeArchive(){ askWipe(false); $('overlay').classList.add('hide'); }
 
   $('closeArch').innerHTML = EX;
   $('archBtn').addEventListener('click', openArchive);
   $('closeArch').addEventListener('click', closeArchive);
   $('overlay').addEventListener('click', e => { if (e.target === $('overlay')) closeArchive(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeArchive(); });
-  $('wipeArch').addEventListener('click', () => {
+  // Emptying the archive throws away every past day, so it takes two taps.
+  function askWipe(on){
+    $('wipeArch').classList.toggle('hide', on || !archive.length);
+    $('wipeAsk').classList.toggle('hide', !on);
+  }
+  $('wipeArch').addEventListener('click', () => askWipe(true));
+  $('wipeNo').addEventListener('click', () => askWipe(false));
+  $('wipeYes').addEventListener('click', () => {
     archive = []; openDay = null; saveArchive(); renderArchive(); render();
   });
 

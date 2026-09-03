@@ -229,9 +229,12 @@
     'Give an item a deadline with the clock, and tomorrow this list starts fresh.':
       '시계를 눌러 마감 시간을 지정할 수 있고, 내일이 되면 목록은 새로 시작됩니다.',
     'Deadline': '마감 시간',
-    'Today': '오늘', 'Yesterday': '어제', 'Archive': '보관함', 'Clear archive': '보관함 비우기',
-    'No past days yet. When a new day starts, the list you leave behind is filed here.':
-      '아직 지난 목록이 없습니다. 날짜가 바뀌면 그날 남긴 목록이 여기에 보관됩니다.',
+    'Today': '오늘', 'Yesterday': '어제', 'Archive': '보관함',
+    'Put away': '완료 항목 보관', 'Clear archive': '보관함 비우기', 'Empty it': '비우기',
+    'This empties the whole archive — every past day. It can’t be undone.':
+      '보관함의 지난 날짜가 전부 지워집니다. 되돌릴 수 없습니다.',
+    'No past days yet. Tick something off and put it away, or leave it on the list overnight, and it lands here.':
+      '아직 보관된 것이 없습니다. 완료한 항목을 보관하거나, 목록에 남긴 채로 날짜가 바뀌면 여기에 쌓입니다.',
     'Clear done': '완료 항목 지우기', 'Delete': '삭제',
 
     // Prank Button
