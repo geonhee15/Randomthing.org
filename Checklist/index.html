@@ -5,7 +5,7 @@
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>Checklist — Randomthing.org</title>
-<meta name="description" content="A plain checklist. Type a thing, tick it off, and it stays put until you clear it." />
+<meta name="description" content="A checklist for today. When tomorrow comes it starts empty, and yesterday's list is filed away in the archive." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -25,7 +25,12 @@
   .wrap { max-width:520px; margin:0 auto; padding:6px 18px 70px; }
   .card { background:#fff; border:1px solid var(--line); border-radius:20px; box-shadow:0 12px 30px rgba(30,40,30,.06); overflow:hidden; }
 
-  .add { display:flex; gap:9px; padding:16px; border-bottom:1px solid var(--line); }
+  /* today's date strip */
+  .today { display:flex; align-items:center; gap:9px; padding:15px 17px 13px; border-bottom:1px solid var(--line); }
+  .today-date { font:800 16px "Baloo 2",var(--ui); letter-spacing:-.2px; }
+  .tag { font-size:11px; font-weight:700; color:var(--accent); background:rgba(34,160,107,.1); padding:3px 8px; border-radius:99px; white-space:nowrap; }
+
+  .add { display:flex; gap:9px; padding:14px 16px; border-bottom:1px solid var(--line); }
   .add input { flex:1 1 auto; min-width:0; border:1px solid var(--line); border-radius:12px; padding:12px 14px;
     font:600 15px var(--ui); color:var(--ink); outline:none; -webkit-user-select:text; user-select:text; transition:border-color .12s; }
   .add input:focus { border-color:var(--accent); }
@@ -51,17 +56,64 @@
   li:hover .del, li:focus-within .del { opacity:1; }
   .del:hover { color:#e5484d; background:rgba(229,72,77,.1); }
 
-  .empty { padding:34px 20px; text-align:center; color:var(--muted); font-size:14px; font-weight:500; }
+  .empty { padding:32px 20px; text-align:center; color:var(--muted); font-size:14px; font-weight:500; line-height:1.6; }
 
-  .foot { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:13px 16px;
+  .foot { display:flex; align-items:center; gap:8px; padding:11px 12px 11px 16px;
     border-top:1px solid var(--line); background:#fbfbfb; }
-  .count { font-size:13px; font-weight:600; color:var(--muted); }
-  .clear { border:none; background:none; cursor:pointer; font:600 13px var(--ui); color:var(--muted);
-    padding:6px 10px; border-radius:9px; transition:color .12s, background .12s; }
-  .clear:hover { color:#e5484d; background:rgba(229,72,77,.08); }
-  .clear.hide { display:none; }
+  .count { flex:1 1 auto; font-size:13px; font-weight:600; color:var(--muted); }
+  .fbtn { flex:0 0 auto; border:none; background:none; cursor:pointer; font:600 13px var(--ui); color:var(--muted);
+    padding:6px 10px; border-radius:9px; display:flex; align-items:center; gap:6px; transition:color .12s, background .12s; }
+  .fbtn:hover { color:var(--ink); background:#f0f0f2; }
+  .fbtn.danger:hover { color:#e5484d; background:rgba(229,72,77,.08); }
+  .fbtn.hide { display:none; }
+  .badge { font-size:11px; font-weight:800; background:#e6e6ea; color:#6f6f79; border-radius:99px; padding:1px 6px; }
+  .fbtn:hover .badge { background:#dcdce2; }
+  .badge.hide { display:none; }
 
-  @media (max-width:380px){ .add { padding:13px; } ul.list li { padding:12px 13px; } .del { opacity:1; } }
+  /* archive popup */
+  .overlay { position:fixed; inset:0; z-index:60; background:rgba(20,28,22,.42);
+    display:flex; align-items:center; justify-content:center; padding:20px; }
+  .overlay.hide { display:none; }
+  .modal { background:#fff; border-radius:20px; width:100%; max-width:440px; max-height:min(78vh, 640px);
+    display:flex; flex-direction:column; overflow:hidden; box-shadow:0 24px 60px rgba(0,0,0,.28); }
+  .modal-top { display:flex; align-items:center; gap:10px; padding:15px 12px 15px 18px; border-bottom:1px solid var(--line); }
+  .modal-top h2 { margin:0; font:800 18px "Baloo 2",var(--ui); flex:1 1 auto; }
+  .x { flex:0 0 auto; border:none; background:none; cursor:pointer; color:#a0a0aa; padding:7px; border-radius:9px; display:flex; }
+  .x svg { width:16px; height:16px; }
+  .x:hover { background:#f1f1f3; color:var(--ink); }
+  .modal-body { overflow-y:auto; -webkit-overflow-scrolling:touch; }
+
+  .day { border-bottom:1px solid #f1f1f3; }
+  .day:last-child { border-bottom:none; }
+  .day-top { display:flex; align-items:center; gap:8px; padding:12px 12px 12px 16px; cursor:pointer; }
+  .day-top:hover { background:#fafafa; }
+  .caret { flex:0 0 auto; color:#b8b8c0; display:flex; transition:transform .16s; }
+  .caret svg { width:13px; height:13px; }
+  .day.open .caret { transform:rotate(90deg); }
+  .day-date { font-size:14px; font-weight:700; white-space:nowrap; }
+  .day-count { flex:1 1 auto; text-align:right; font-size:12px; font-weight:600; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .day-del { flex:0 0 auto; border:none; background:none; cursor:pointer; color:#cdcdd4; padding:5px; border-radius:8px; display:flex; }
+  .day-del svg { width:14px; height:14px; }
+  .day-del:hover { color:#e5484d; background:rgba(229,72,77,.1); }
+  ul.day-items { list-style:none; margin:0; padding:0 16px 12px 37px; display:none; }
+  .day.open ul.day-items { display:block; }
+  ul.day-items li { display:flex; align-items:flex-start; gap:9px; padding:5px 0; font-size:14px; font-weight:500; line-height:1.45; }
+  .mini-box { flex:0 0 auto; margin-top:2px; width:16px; height:16px; border-radius:5px; border:2px solid #d8d8de;
+    display:flex; align-items:center; justify-content:center; }
+  .mini-box svg { width:9px; height:9px; color:#fff; opacity:0; }
+  ul.day-items li.d .mini-box { background:var(--accent); border-color:var(--accent); }
+  ul.day-items li.d .mini-box svg { opacity:1; }
+  ul.day-items li.d span { color:#b3b3bb; text-decoration:line-through; }
+
+  .modal-foot { padding:11px 14px; border-top:1px solid var(--line); background:#fbfbfb; display:flex; justify-content:flex-end; }
+  .arch-empty { padding:38px 24px; text-align:center; color:var(--muted); font-size:14px; font-weight:500; line-height:1.65; }
+
+  @media (max-width:380px){
+    .add { padding:12px 13px; } ul.list li { padding:12px 13px; } .del { opacity:1; }
+    .today { padding:13px 15px 11px; } .today-date { font-size:15px; }
+    .foot { padding-left:13px; } .fbtn { padding:6px 8px; }
+    .overlay { padding:12px; } ul.day-items { padding-left:34px; }
+  }
 </style>
 </head>
 <body>
@@ -72,40 +124,113 @@
 
   <div class="wrap">
     <div class="card">
+      <div class="today">
+        <span class="today-date" id="todayDate"></span>
+        <span class="tag">Today</span>
+      </div>
+
       <form class="add" id="addForm" autocomplete="off">
         <input id="addInput" type="text" maxlength="200" placeholder="Add an item…" aria-label="Add an item" />
         <button type="submit" id="addBtn">Add</button>
       </form>
 
       <ul class="list" id="list"></ul>
-      <div class="empty" id="empty">Nothing here yet — add your first item above.</div>
+      <div class="empty" id="empty">Nothing here yet — add your first item above.<br />Tomorrow this list starts fresh and today’s is archived.</div>
 
       <div class="foot">
         <span class="count" id="count"></span>
-        <button class="clear hide" id="clearBtn" type="button">Clear done</button>
+        <button class="fbtn danger hide" id="clearBtn" type="button">Clear done</button>
+        <button class="fbtn" id="archBtn" type="button"><span>Archive</span><span class="badge hide" id="archCount">0</span></button>
       </div>
+    </div>
+  </div>
+
+  <div class="overlay hide" id="overlay">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Archive">
+      <div class="modal-top">
+        <h2>Archive</h2>
+        <button class="x" id="closeArch" type="button" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="archBody"></div>
+      <div class="modal-foot"><button class="fbtn danger hide" id="wipeArch" type="button">Clear archive</button></div>
     </div>
   </div>
 
 <script>
   const $ = id => document.getElementById(id);
-  const KEY = 'checklist_items';
+  const K_ITEMS = 'checklist_items', K_DAY = 'checklist_day', K_ARCH = 'checklist_archive';
+  const MAX_DAYS = 90;
   const TICK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
-  const BIN  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+  const EX   = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+  const CARET= '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 5 16 12 9 19"/></svg>';
 
-  let items = load();
-
-  function load(){
-    try {
-      const raw = JSON.parse(localStorage.getItem(KEY));
-      if (!Array.isArray(raw)) return [];
-      return raw.filter(o => o && typeof o.text === 'string')
-                .map(o => ({ text: o.text.slice(0, 200), done: !!o.done }));
-    } catch(e){ return []; }
+  // ---------- dates ----------
+  function ymd(d){
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }
-  function save(){ try { localStorage.setItem(KEY, JSON.stringify(items)); } catch(e){} }
+  function isKo(){ try { return localStorage.getItem('rt_lang') === 'ko'; } catch(e){ return false; } }
+  function pretty(iso){
+    const p = iso.split('-').map(Number);
+    const d = new Date(p[0], p[1] - 1, p[2]);
+    if (isNaN(d)) return iso;
+    return isKo()
+      ? d.toLocaleDateString('ko-KR', { month:'long', day:'numeric', weekday:'long' })
+      : d.toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long' });
+  }
+  function daysAgo(iso){
+    const p = iso.split('-').map(Number);
+    const a = new Date(p[0], p[1] - 1, p[2]), b = new Date();
+    a.setHours(0,0,0,0); b.setHours(0,0,0,0);
+    return Math.round((b - a) / 86400000);
+  }
 
+  // ---------- storage ----------
+  function cleanItems(raw){
+    if (!Array.isArray(raw)) return [];
+    return raw.filter(o => o && typeof o.text === 'string')
+              .map(o => ({ text: o.text.slice(0, 200), done: !!o.done }));
+  }
+  function readJSON(key){ try { return JSON.parse(localStorage.getItem(key)); } catch(e){ return null; } }
+
+  let items = cleanItems(readJSON(K_ITEMS));
+  let archive = (function(){
+    const raw = readJSON(K_ARCH);
+    if (!Array.isArray(raw)) return [];
+    return raw.filter(e => e && typeof e.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(e.date))
+              .map(e => ({ date: e.date, items: cleanItems(e.items) }))
+              .filter(e => e.items.length)
+              .sort((a, b) => b.date.localeCompare(a.date));
+  })();
+  let day = null;
+  try { day = localStorage.getItem(K_DAY); } catch(e){}
+  if (!day || !/^\d{4}-\d{2}-\d{2}$/.test(day)) day = ymd(new Date());   // first visit, or a list from before days existed
+
+  function saveToday(){
+    try { localStorage.setItem(K_ITEMS, JSON.stringify(items)); localStorage.setItem(K_DAY, day); } catch(e){}
+  }
+  function saveArchive(){ try { localStorage.setItem(K_ARCH, JSON.stringify(archive)); } catch(e){} }
+
+  // File yesterday away and start the new day empty. Runs on load and while the
+  // page sits open past midnight.
+  function rollover(){
+    const today = ymd(new Date());
+    if (day === today) return false;
+    if (items.length){
+      archive = archive.filter(e => e.date !== day);
+      archive.unshift({ date: day, items: items });
+      archive.sort((a, b) => b.date.localeCompare(a.date));
+      if (archive.length > MAX_DAYS) archive.length = MAX_DAYS;
+      saveArchive();
+    }
+    day = today; items = [];
+    saveToday();
+    return true;
+  }
+
+  // ---------- today's list ----------
   function render(){
+    $('todayDate').textContent = pretty(day);
+
     const ul = $('list');
     ul.innerHTML = '';
     items.forEach((it, i) => {
@@ -117,7 +242,7 @@
       box.setAttribute('role', 'checkbox');
       box.setAttribute('tabindex', '0');
       box.setAttribute('aria-checked', it.done ? 'true' : 'false');
-      const toggle = () => { items[i].done = !items[i].done; save(); render(); };
+      const toggle = () => { items[i].done = !items[i].done; saveToday(); render(); };
       box.addEventListener('click', toggle);
       box.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); toggle(); } });
 
@@ -126,9 +251,9 @@
       txt.addEventListener('click', toggle);
 
       const del = document.createElement('button');
-      del.className = 'del'; del.type = 'button'; del.innerHTML = BIN;
+      del.className = 'del'; del.type = 'button'; del.innerHTML = EX;
       del.setAttribute('aria-label', 'Delete');
-      del.addEventListener('click', () => { items.splice(i, 1); save(); render(); });
+      del.addEventListener('click', () => { items.splice(i, 1); saveToday(); render(); });
 
       li.appendChild(box); li.appendChild(txt); li.appendChild(del);
       ul.appendChild(li);
@@ -138,23 +263,132 @@
     $('empty').style.display = items.length ? 'none' : '';
     $('count').textContent = items.length ? (done + ' of ' + items.length + ' done') : '';
     $('clearBtn').classList.toggle('hide', done === 0);
+
+    const n = archive.length;
+    $('archCount').textContent = n;
+    $('archCount').classList.toggle('hide', n === 0);
   }
 
   $('addForm').addEventListener('submit', e => {
     e.preventDefault();
     const v = $('addInput').value.trim();
     if (!v) return;
+    rollover();                                  // typing just after midnight still lands on the right day
     items.push({ text: v.slice(0, 200), done: false });
     $('addInput').value = '';
-    save(); render();
+    saveToday(); render();
     $('addInput').focus();
   });
 
   $('clearBtn').addEventListener('click', () => {
     items = items.filter(it => !it.done);
-    save(); render();
+    saveToday(); render();
   });
 
+  // ---------- archive ----------
+  let openDay = null;
+
+  function renderArchive(){
+    const body = $('archBody');
+    body.innerHTML = '';
+
+    if (!archive.length){
+      const p = document.createElement('div');
+      p.className = 'arch-empty';
+      p.textContent = 'No past days yet. When a new day starts, the list you leave behind is filed here.';
+      body.appendChild(p);
+      $('wipeArch').classList.add('hide');
+      return;
+    }
+    $('wipeArch').classList.remove('hide');
+    if (openDay === null) openDay = archive[0].date;
+
+    archive.forEach(entry => {
+      const wrap = document.createElement('div');
+      wrap.className = 'day' + (entry.date === openDay ? ' open' : '');
+
+      const top = document.createElement('div');
+      top.className = 'day-top';
+
+      const caret = document.createElement('span');
+      caret.className = 'caret'; caret.innerHTML = CARET;
+
+      const date = document.createElement('span');
+      date.className = 'day-date'; date.textContent = pretty(entry.date);
+
+      top.appendChild(caret); top.appendChild(date);
+
+      const gap = daysAgo(entry.date);
+      if (gap === 1){
+        const tag = document.createElement('span');
+        tag.className = 'tag'; tag.textContent = 'Yesterday';
+        top.appendChild(tag);
+      }
+
+      const done = entry.items.filter(it => it.done).length;
+      const cnt = document.createElement('span');
+      cnt.className = 'day-count'; cnt.textContent = done + ' of ' + entry.items.length + ' done';
+      top.appendChild(cnt);
+
+      const del = document.createElement('button');
+      del.className = 'day-del'; del.type = 'button'; del.innerHTML = EX;
+      del.setAttribute('aria-label', 'Delete');
+      del.addEventListener('click', e => {
+        e.stopPropagation();
+        archive = archive.filter(x => x.date !== entry.date);
+        if (openDay === entry.date) openDay = null;
+        saveArchive(); renderArchive(); render();
+      });
+      top.appendChild(del);
+
+      top.addEventListener('click', () => {
+        openDay = (openDay === entry.date) ? '' : entry.date;
+        renderArchive();
+      });
+
+      const ul = document.createElement('ul');
+      ul.className = 'day-items';
+      entry.items.forEach(it => {
+        const li = document.createElement('li');
+        if (it.done) li.className = 'd';
+        const b = document.createElement('span');
+        b.className = 'mini-box'; b.innerHTML = TICK;
+        const s = document.createElement('span');
+        s.textContent = it.text;
+        li.appendChild(b); li.appendChild(s);
+        ul.appendChild(li);
+      });
+
+      wrap.appendChild(top); wrap.appendChild(ul);
+      body.appendChild(wrap);
+    });
+  }
+
+  function openArchive(){ check(); openDay = null; renderArchive(); $('overlay').classList.remove('hide'); }
+  function closeArchive(){ $('overlay').classList.add('hide'); }
+
+  $('closeArch').innerHTML = EX;
+  $('archBtn').addEventListener('click', openArchive);
+  $('closeArch').addEventListener('click', closeArchive);
+  $('overlay').addEventListener('click', e => { if (e.target === $('overlay')) closeArchive(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeArchive(); });
+  $('wipeArch').addEventListener('click', () => {
+    archive = []; openDay = null; saveArchive(); renderArchive(); render();
+  });
+
+  // ---------- keep the day honest ----------
+  function check(){
+    if (rollover()){
+      render();
+      if (!$('overlay').classList.contains('hide')){ openDay = null; renderArchive(); }
+    }
+  }
+  setInterval(check, 30000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
+  window.addEventListener('focus', check);
+  window.addEventListener('rt-lang', () => { render(); if (!$('overlay').classList.contains('hide')) renderArchive(); });
+
+  rollover();
   render();
 </script>
   <script defer src="/cookie-consent.js"></script>

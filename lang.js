@@ -226,6 +226,10 @@
     // Checklist
     'Checklist': '체크리스트', 'Add': '추가', 'Add an item…': '항목 추가…', 'Add an item': '항목 추가',
     'Nothing here yet — add your first item above.': '아직 아무것도 없습니다 — 위에서 첫 항목을 추가하세요.',
+    'Tomorrow this list starts fresh and today’s is archived.': '내일이 되면 목록은 새로 시작되고 오늘 것은 보관함으로 들어갑니다.',
+    'Today': '오늘', 'Yesterday': '어제', 'Archive': '보관함', 'Clear archive': '보관함 비우기',
+    'No past days yet. When a new day starts, the list you leave behind is filed here.':
+      '아직 지난 목록이 없습니다. 날짜가 바뀌면 그날 남긴 목록이 여기에 보관됩니다.',
     'Clear done': '완료 항목 지우기', 'Delete': '삭제',
 
     // Prank Button

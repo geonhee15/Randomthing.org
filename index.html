@@ -839,7 +839,7 @@
         <div class="txt">
           <span class="kicker">Tick things off</span>
           <span class="name">Checklist</span>
-          <span class="desc">A plain list that remembers&nbsp;itself.</span>
+          <span class="desc">A fresh list each day. Yesterday’s is&nbsp;archived.</span>
         </div>
       </a>
     </div>
@@ -885,7 +885,7 @@
         'smath-card':   ['암산',        '스피드 수학',   '10문제 5단계 — 최고 기록에 도전하세요.'],
         'gw-card':      ['유명인 얼굴', '누구게?',       '선명해지기 전에 누구인지 맞혀 보세요.'],
         'prank-card':   ['짓궂은 함정', '장난 버튼',     '한쪽은 눌리고, 다른 쪽은 도망갑니다.'],
-        'check-card':   ['하나씩 체크', '체크리스트',    '적어두면 알아서 기억하는 목록.'],
+        'check-card':   ['하나씩 체크', '체크리스트',    '매일 새로 시작하는 목록. 어제 것은 보관함에.'],
       };
       var KO_UI = {
         tagline: '재미로 만든 랜덤한 것들',
@@ -1027,6 +1027,10 @@
     // Newest day first; items within a day are numbered date-1, date-2, …
     // Each item carries both languages; the log renders whichever is selected.
     const LOGS = [
+      { date: '26.9.3', open: true, items: [
+        { en:'The checklist is now a list for the day. Cross midnight and it starts empty, with the day you just left filed into an Archive you can open from the footer — expand any day to see what you ticked off, or throw one away',
+          ko:'체크리스트가 하루 단위 목록이 되었습니다. 날짜가 바뀌면 목록은 비어서 시작되고, 방금 지나간 날은 아래 보관함에 정리됩니다 — 날짜를 펼치면 그날 뭘 체크했는지 볼 수 있고, 필요 없으면 지울 수도 있어요' },
+      ] },
       { date: '26.9.2', open: true, items: [
         { en:'Added Checklist — type a thing, tick it off, delete it or clear everything you have finished. The list is kept on your device, so it is still there next time',
           ko:'체크리스트 추가 — 할 일을 적고, 체크하고, 지우거나 완료한 것만 한 번에 정리할 수 있습니다. 목록은 기기에 저장돼서 다음에 와도 그대로 남아 있어요' },
